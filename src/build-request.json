@@ -1,55 +1,70 @@
 {
   "kind": "build_request",
-  "title": "Seed default onboarding custom lists “Week” and “Month” for every new user (non-admin-gated)",
+  "title": "Add Momentum logo asset and display in global header + login page",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-23",
-      "text": "Update the backend new-user creation lifecycle so that, when a Principal is seen for the first time (i.e., the user record does not yet exist), the canister automatically creates two empty, normal custom lists owned by that user named exactly “Week” and “Month” (non-quadrant: quadrant=false, urgent=false, important=false). This must run for all authenticated users (not admin-only) and must be part of the one-time user creation path (not invoked on subsequent app loads).",
-      "target": "backend",
+      "id": "REQ-1",
+      "text": "Add the uploaded Momentum logo image (Momentum.png) to the frontend as a static asset so it loads instantly without any backend fetch, and ensure it can be referenced via a stable path in the UI (e.g., under frontend/public/assets/...).",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-user-1"
         ],
         "quotes": [
-          "build it, ensure it will apply for all users not only admins"
+          "help me update new logo name \"Momentum\"\nstore it somewhere so it can retrieved quickly"
         ]
       },
       "acceptanceCriteria": [
-        "When a brand-new authenticated user first triggers backend user creation, getAllLists() returns the 4 quadrant lists plus two additional lists named exactly “Week” and “Month”.",
-        "“Week” and “Month” are created with quadrant=false, urgent=false, important=false and contain no tasks at creation time.",
-        "The onboarding list creation runs for any authenticated user regardless of admin status/role."
+        "The Momentum logo is stored as a frontend static file under frontend/public (or a subfolder such as frontend/public/assets/...)",
+        "The logo is served by the frontend at a stable URL path and does not require any backend call to load"
       ]
     },
     {
-      "id": "REQ-24",
-      "text": "Ensure the backend never auto-recreates “Week” and/or “Month” for an existing user after initial creation. Specifically: if the user later deletes or renames either list, subsequent logins, quadrant bootstrap calls, or list fetches must not recreate them automatically.",
-      "target": "backend",
+      "id": "REQ-2",
+      "text": "Update the global app header (frontend/src/components/Header.tsx) to display the Momentum logo using the new static asset, and ensure the logo renders cleanly (no stretching/cropping) across common screen sizes.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-user-2"
         ],
         "quotes": [
-          "show it will never need to check the flag again?"
+          "Make the logo headers",
+          "2. global header"
         ]
       },
       "acceptanceCriteria": [
-        "If an existing user deletes the “Week” list, then calls getAllLists() again, the “Week” list does not reappear unless the user manually creates a new list named “Week”.",
-        "If an existing user renames “Month” to another name, then calls getAllLists() again, there is no newly-created list named “Month”.",
-        "Quadrant initialization (ensureAllQuadrants / implicit quadrant ensure during getOrCreate) does not create or restore “Week”/“Month”."
+        "The global header shows the Momentum logo on all authenticated screens where the header is used",
+        "The logo uses object-fit styling (or equivalent) so it does not appear distorted",
+        "The logo path in Header.tsx points to the new stored Momentum logo asset (not a placeholder/old filename)"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Update the unauthenticated/login page (frontend/src/components/UnauthenticatedScreen.tsx) to display the Momentum logo at full uploaded resolution (or the maximum practical size without distortion), centered, and styled so it looks visually balanced with the rest of the card layout.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-user-3"
+        ],
+        "quotes": [
+          "put logo in login page",
+          "3 fully uploaded resolution make sure it look nice"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The login/unauthenticated screen displays the Momentum logo above the login button",
+        "The logo is displayed without distortion and at a large, high-quality size (not forced into a small fixed square like an icon)",
+        "The layout remains responsive on mobile and desktop (logo does not overflow the card or cause horizontal scrolling)"
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single-actor Motoko canister with all logic implemented in backend/main.mo.",
-    "Do not introduce admin-only gating for onboarding list creation; it must apply to all authenticated users uniformly.",
-    "Do not add recurring per-login/per-fetch checks or ‘repair’ logic that recreates deleted onboarding lists."
+    "Frontend immutable paths must not be edited: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui"
   ],
   "nonGoals": [
-    "Do not seed Morning Routine instructional items in this step.",
-    "Do not change the existing quadrant list initialization behavior (IDs 1–4) beyond keeping it independent from onboarding list seeding.",
-    "Do not create any tasks inside “Week” or “Month”.",
-    "Do not add new UI screens specifically for onboarding; the lists should appear naturally wherever custom lists are rendered."
+    "Do not add backend storage or APIs for retrieving the logo",
+    "Do not change authentication behavior (Internet Identity) beyond adding branding"
   ],
   "imageRequirements": {
     "required": [],

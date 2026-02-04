@@ -70,7 +70,7 @@ export default function Header() {
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg overflow-hidden">
               <img 
-                src="/assets/logo1.png" 
+                src="/assets/Momentum.png" 
                 alt="Momentum Logo" 
                 className="h-full w-full object-contain"
               />

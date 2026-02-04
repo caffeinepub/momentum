@@ -1,40 +1,57 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-04T00:57:15.966Z",
+  "generatedAt": "2026-02-04T12:58:40.861Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 2,
-    "implemented": 0,
+    "total": 3,
+    "implemented": 2,
     "items": [
       {
-        "id": "REQ-23",
-        "summary": "Update the backend new-user creation lifecycle so that, when a Principal is seen for the first time (i.e., the user record does not yet exist), the canister automatically creates two empty, normal custom lists owned by that user named exactly “Week” and “Month” (non-quadrant: quadrant=false, urgent=false, important=false). This must run for all authenticated users (not admin-only) and must be part of the one-time user creation path (not invoked on subsequent app loads).",
-        "status": "unknown",
-        "plannedFiles": [],
+        "id": "REQ-1",
+        "summary": "Add the uploaded Momentum logo image (Momentum.png) to the frontend as a static asset so it loads instantly without any backend fetch, and ensure it can be referenced via a stable path in the UI (e.g., under frontend/public/assets/...).",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/public/assets/Momentum.png"
+        ],
         "matchedFiles": []
       },
       {
-        "id": "REQ-24",
-        "summary": "Ensure the backend never auto-recreates “Week” and/or “Month” for an existing user after initial creation. Specifically: if the user later deletes or renames either list, subsequent logins, quadrant bootstrap calls, or list fetches must not recreate them automatically.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
+        "id": "REQ-2",
+        "summary": "Update the global app header (frontend/src/components/Header.tsx) to display the Momentum logo using the new static asset, and ensure the logo renders cleanly (no stretching/cropping) across common screen sizes.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/Header.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/Header.tsx"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Update the unauthenticated/login page (frontend/src/components/UnauthenticatedScreen.tsx) to display the Momentum logo at full uploaded resolution (or the maximum practical size without distortion), centered, and styled so it looks visually balanced with the rest of the card layout.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/UnauthenticatedScreen.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/UnauthenticatedScreen.tsx"
+        ]
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
     "build-request.json",
+    "caffeine.lock.json",
     "feature_evidence.json",
+    "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
+    "frontend/public/assets/logo1.png",
+    "frontend/src/components/Header.tsx",
+    "frontend/src/components/UnauthenticatedScreen.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

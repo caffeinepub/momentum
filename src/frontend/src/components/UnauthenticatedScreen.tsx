@@ -13,11 +13,11 @@ export default function UnauthenticatedScreen({ onLogin, isLoggingIn }: Unauthen
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-lg overflow-hidden">
+            <div className="w-full max-w-[280px] aspect-[4/3] flex items-center justify-center">
               <img 
-                src="/assets/logo1.png" 
+                src="/assets/Momentum.png" 
                 alt="Momentum Logo" 
-                className="h-full w-full object-contain"
+                className="w-full h-full object-contain"
               />
             </div>
           </div>

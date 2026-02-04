@@ -1,11 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Automatically seed two default empty custom lists (“Week” and “Month”) exactly once for every brand-new authenticated user during initial backend user creation.
+**Goal:** Add the uploaded Momentum logo as a frontend static asset and display it in the global header and login/unauthenticated screen.
 
 **Planned changes:**
-- Update the backend first-time user creation flow to create two additional normal (non-quadrant) empty custom lists owned by the new user named exactly “Week” and “Month” with quadrant=false, urgent=false, important=false.
-- Ensure this seeding runs for all authenticated users (no admin gating) and only on the one-time user creation path.
-- Ensure “Week”/“Month” are never auto-recreated for existing users if they are later deleted or renamed (no per-login/per-fetch repair behavior).
+- Store `Momentum.png` under `frontend/public` (e.g., `frontend/public/assets/`) so it is served at a stable URL without any backend fetch.
+- Update `frontend/src/components/Header.tsx` to render the Momentum logo from the new static asset path with non-distorting sizing (e.g., object-fit) so it looks correct across screen sizes.
+- Update `frontend/src/components/UnauthenticatedScreen.tsx` to show the Momentum logo above the login button, centered and displayed large/high-quality without overflow on mobile/desktop.
 
-**User-visible outcome:** New users will see the usual 4 quadrant lists plus two additional empty lists named “Week” and “Month”; existing users won’t have these lists re-added automatically if they remove or rename them.
+**User-visible outcome:** Users see Momentum branding in the app header on authenticated pages and a large, centered Momentum logo on the login page without distortion.

@@ -1,6 +1,54 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Frontend plan: no changes required for backend-only onboarding list seeding",
-  "requirements": []
+  "title": "Add Momentum logo static asset and render in header + login screen",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "summary": "Store Momentum.png as a frontend static asset under frontend/public so it loads instantly and can be referenced via a stable UI path.",
+      "acceptanceCriteria": [
+        "The Momentum logo is stored as a frontend static file under frontend/public (or a subfolder such as frontend/public/assets/...)",
+        "The logo is served by the frontend at a stable URL path and does not require any backend call to load"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/public/assets/Momentum.png",
+          "operation": "create",
+          "description": "Add the uploaded Momentum logo as a static public asset so the UI can reference it via a stable path (e.g., /assets/Momentum.png) with no backend fetch."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Update the global header to display the Momentum logo from the new static asset without distortion across screen sizes.",
+      "acceptanceCriteria": [
+        "The global header shows the Momentum logo on all authenticated screens where the header is used",
+        "The logo uses object-fit styling (or equivalent) so it does not appear distorted",
+        "The logo path in Header.tsx points to the new stored Momentum logo asset (not a placeholder/old filename)"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/Header.tsx",
+          "operation": "modify",
+          "description": "Replace the current header logo image source with the new static asset path (/assets/Momentum.png) and adjust sizing classes to remain responsive and undistorted (use object-fit/object-contain; avoid cropping)."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Update the unauthenticated/login screen to show the Momentum logo centered at a large, high-quality size without distortion and without overflowing the card layout.",
+      "acceptanceCriteria": [
+        "The login/unauthenticated screen displays the Momentum logo above the login button",
+        "The logo is displayed without distortion and at a large, high-quality size (not forced into a small fixed square like an icon)",
+        "The layout remains responsive on mobile and desktop (logo does not overflow the card or cause horizontal scrolling)"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/UnauthenticatedScreen.tsx",
+          "operation": "modify",
+          "description": "Update the logo rendering to use the new static asset path (/assets/Momentum.png) and revise layout/styles so the image is centered and shown large (prefer natural aspect ratio with object-contain and responsive max dimensions) while staying within the shadcn-ui Card layout. Verify the component's usage instructions before implementing."
+        }
+      ]
+    }
+  ]
 }
