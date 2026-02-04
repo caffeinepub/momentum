@@ -1,35 +1,60 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-04T01:53:09.767Z",
+  "generatedAt": "2026-02-04T12:33:38.459Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 0,
+    "total": 5,
+    "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Update the backend new-user provisioning flow so that, on first user registration only, the canister seeds initial onboarding instruction items into the user’s routines: 3 items in the Morning Routine section and 3 items in the Evening Routine section. These seeded routine items must be normal routine items (user can complete/edit/delete) and must never be auto-recreated on later logins if the user deletes them.",
+        "summary": "Backend: Add idempotent, per-user quadrant initialization endpoints so that a newly authenticated user can always obtain exactly 4 quadrant lists (IDs 1–4) without requiring admin privileges or any RBAC/admin-secret dependency.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "Seed the following exact English onboarding routine texts (brief, gesture-based, with one playful line) into the routines created on first registration:\n- Morning Routine (section=#top):\n  1) \"Create your first routine\"\n  2) \"Tap Plan to organize\"\n  3) \"Hold items to reorder\"\n- Evening Routine (section=#bottom):\n  1) \"Press + to add task\"\n  2) \"Swipe + up... it's shy\"\n  3) \"Hold + to open Plan\"",
+        "summary": "Backend: Implement the list read endpoint used by the frontend bootstrap so the frontend can reliably verify quadrant readiness (i.e., return all user lists including quadrants).",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-3",
-        "summary": "Ensure seeded routine items have deterministic ordering within each section by assigning increasing `order` values (e.g., START_OFFSET, 2*START_OFFSET, 3*START_OFFSET) so that they render in the intended sequence on first load.",
+        "summary": "Backend: Remove the fresh-user deadlock where user/quadrant seeding is only reachable after passing an RBAC check; ensure that fresh authenticated users can be granted/recognized as a normal \"user\" (non-admin) and proceed with profile + data initialization without requiring an admin token.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Frontend: Make actor initialization resilient when no admin secret is present by preventing bootstrap from failing due to access-control secret initialization errors; the app must still allow standard (non-admin) users to log in and initialize their workspace.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useActor.ts",
+          "frontend/src/pages/TaskManager.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/TaskManager.tsx"
+        ]
+      },
+      {
+        "id": "REQ-5",
+        "summary": "Frontend: Ensure the quadrant bootstrap flow reliably transitions out of the loading state when the backend successfully returns 4 quadrants; if quadrant creation fails, show a single actionable English error and allow retry via refresh without looping.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/pages/TaskManager.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/pages/TaskManager.tsx"
+        ]
       }
     ]
   },
@@ -37,11 +62,22 @@
     "backend/main.mo",
     "build-request.json",
     "feature_evidence.json",
+    "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/backend.d.ts",
     "frontend/src/backend.ts",
+    "frontend/src/components/InsightsDialog.tsx",
+    "frontend/src/components/MorningRoutine.tsx",
+    "frontend/src/components/PayrollHistoryDialog.tsx",
+    "frontend/src/components/SettingsDialog.tsx",
+    "frontend/src/components/SpendPlanDialog.tsx",
+    "frontend/src/components/TodayEarnsDialog.tsx",
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/lib/backendTypes.ts",
+    "frontend/src/lib/types.ts",
+    "frontend/src/pages/TaskManager.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

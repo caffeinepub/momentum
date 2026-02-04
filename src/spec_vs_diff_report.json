@@ -1,46 +1,109 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-04T01:53:09.745Z",
-  "summary": "The diff summary is truncated and does not show any changes to the new-user provisioning flow or routine seeding logic in backend/main.mo. There is also an unrelated modification to project_state.json. Based on the provided evidence, the onboarding routine seeding requirements are not verifiably implemented.",
+  "generatedAt": "2026-02-04T12:33:38.436Z",
+  "summary": "Diff shows broad frontend UI/feature work (earnings/spend dialogs, drag-and-drop, styling, admin dashboard hooks) and some frontend bootstrap-related mentions (using `maybeInitializeAllQuadrants()` / `getAllUserLists()` and improved bootstrap state machine). The backend diff excerpt is truncated and does not show the required new quadrant/list/profile endpoints or RBAC decoupling changes, so backend requirements cannot be confirmed from the provided evidence.",
   "missing_requirements": [
     {
       "id": "REQ-1",
-      "requirement": "On first user registration only, seed 3 routine items in Morning Routine (section=#top) and 3 in Evening Routine (section=#bottom) as normal routine items that are not auto-recreated on later logins.",
-      "reason": "The diff snippet for backend/main.mo does not include the new-user creation/provisioning branch or any routine-item seeding logic; therefore this behavior is not evidenced as implemented.",
+      "requirement": "Backend: Add idempotent, per-user quadrant initialization endpoints so newly authenticated users can always obtain exactly 4 quadrant lists (IDs 1–4) without admin/RBAC/admin-secret dependency.",
+      "reason": "The backend diff is truncated and does not include any shown public endpoint additions/changes for quadrant initialization, nor evidence that quadrant seeding is callable by fresh non-admin users without secret/RBAC coupling.",
       "evidence": [
-        "backend/main.mo (truncated)"
+        "backend/main.mo (truncated; no shown quadrant init endpoint changes)"
       ]
     },
     {
       "id": "REQ-2",
-      "requirement": "Seed the exact six English onboarding routine texts (3 morning, 3 evening including \"Swipe + up... it's shy\") on first registration.",
-      "reason": "The diff snippet does not show any of the specified strings being added anywhere in backend/main.mo; no evidence of exact-text seeding is present.",
+      "requirement": "Backend: Implement the list read endpoint used by frontend bootstrap to return all user lists including quadrants with fields (id, name, quadrant, urgent, important) and not trap for fresh users.",
+      "reason": "No backend evidence is shown that a lists-read endpoint (e.g., `getAllUserLists`) is implemented/updated to satisfy the required fields and fresh-user non-trap behavior; frontend summary mentions `getAllUserLists()` but backend implementation is not evidenced in the diff excerpt.",
       "evidence": [
-        "backend/main.mo (truncated)"
+        "backend/main.mo (truncated; no shown list read endpoint implementation)",
+        "frontend-file-summaries.txt (mentions `getAllUserLists()` usage but not backend implementation)"
       ]
     },
     {
       "id": "REQ-3",
-      "requirement": "Ensure deterministic ordering of seeded routine items within each section by assigning increasing order values (e.g., START_OFFSET, 2*START_OFFSET, 3*START_OFFSET).",
-      "reason": "Although START_OFFSET appears in backend/main.mo, the diff snippet does not show it being used to set routine-item order for seeded onboarding items; deterministic seeding order is not evidenced.",
+      "requirement": "Backend: Remove fresh-user deadlock where seeding is only reachable after RBAC check; fresh users must be recognized as normal users without requiring CAFFEINE_ADMIN_TOKEN for login/bootstrap; profile fetch returns existing profile or null without Unauthorized traps.",
+      "reason": "No visible backend changes demonstrate removal of RBAC gating or unauthorized traps for fresh users; backend section shown contains types/imports but not authorization logic changes.",
       "evidence": [
-        "backend/main.mo (truncated)"
+        "backend/main.mo (truncated; no shown RBAC/authorization flow changes)"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "requirement": "Frontend: Make actor initialization resilient when no admin secret is present; bootstrap must not fail/stall due to admin-secret initialization errors; continue with non-admin flows.",
+      "reason": "While the TaskManager summary mentions 'proper error handling for actor initialization', the actual diff content provided for actor initialization / admin-secret handling is not shown (TaskManager/useActor changes are truncated or not included), so the required resilience behavior cannot be confirmed from evidence.",
+      "evidence": [
+        "frontend/src/pages/TaskManager.tsx (truncated)",
+        "frontend/src/hooks/useQueries.ts (truncated)",
+        "frontend-file-summaries.txt (claims resilience, but underlying code evidence not shown)"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "requirement": "Frontend: Ensure quadrant bootstrap exits loading when backend returns 4 quadrants; on failure show a single actionable English error, stop bootstrap loop (bootstrapState=failed), allow retry via refresh without looping.",
+      "reason": "TaskManager diff is truncated around the bootstrap effect/state machine; EisenhowerMatrix summary mentions placeholder when <4 quadrants, but there is no concrete evidence of the specified single-toast error behavior, loop stopping, and retry semantics.",
+      "evidence": [
+        "frontend/src/pages/TaskManager.tsx (truncated)",
+        "frontend-file-summaries.txt (describes behavior but does not show code proving the AC details)"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Project metadata/state update in project_state.json unrelated to onboarding routine seeding.",
-      "reason": "The BuildRequest constraints emphasize backend changes in backend/main.mo for onboarding seeding and does not request updates to project_state.json; this change is not requested by the spec.",
+      "description": "Added/expanded earnings, payroll history editing/submission flows and related dialogs/toasts.",
+      "reason": "BuildRequest explicitly states non-goal to implement broader monetary/payroll APIs/features unless required for quadrant bootstrap/login blocker; these UI changes are unrelated to quadrant initialization/bootstrap based on provided diff summary.",
       "evidence": [
-        "project_state.json (truncated)"
+        "frontend/src/components/PayrollHistoryDialog.tsx",
+        "frontend/src/components/TodayEarnsDialog.tsx",
+        "frontend/src/components/SettingsDialog.tsx"
+      ]
+    },
+    {
+      "description": "Spend planning, presets management, and insights chart UI.",
+      "reason": "Not requested for fixing fresh-account quadrant bootstrap/login blocker and falls under non-goal monetary/spend surface expansion.",
+      "evidence": [
+        "frontend/src/components/SpendPlanDialog.tsx",
+        "frontend/src/components/InsightsDialog.tsx"
+      ]
+    },
+    {
+      "description": "Routine UI enhancements including long-press reorder mode and additional interaction patterns.",
+      "reason": "Not requested; unrelated to quadrant bootstrap/login unblocker.",
+      "evidence": [
+        "frontend/src/components/MorningRoutine.tsx"
+      ]
+    },
+    {
+      "description": "Admin dashboard-related query hooks (admin user list/promote/remove) and associated frontend support.",
+      "reason": "Not requested; BuildRequest goal is explicitly to remove admin-secret dependency for normal bootstrap, not to add admin management features.",
+      "evidence": [
+        "frontend/src/hooks/useQueries.ts (useAdminUserList/usePromoteToAdmin/useRemoveAdmin)"
+      ]
+    },
+    {
+      "description": "Local type mirroring/expansion for many backend types (tasks/routines/spend/presets) beyond quadrant bootstrap needs.",
+      "reason": "Not requested and appears to broaden app surface beyond the quadrant bootstrap fix.",
+      "evidence": [
+        "frontend/src/lib/backendTypes.ts",
+        "frontend/src/lib/types.ts"
       ]
     }
   ],
-  "confidence": 0.56,
+  "confidence": 0.62,
   "changed_files": [
     "backend/main.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/components/InsightsDialog.tsx",
+    "frontend/src/components/MorningRoutine.tsx",
+    "frontend/src/components/PayrollHistoryDialog.tsx",
+    "frontend/src/components/SettingsDialog.tsx",
+    "frontend/src/components/SpendPlanDialog.tsx",
+    "frontend/src/components/TodayEarnsDialog.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/lib/backendTypes.ts",
+    "frontend/src/lib/types.ts",
+    "frontend/src/pages/TaskManager.tsx",
     "project_state.json"
   ]
 }

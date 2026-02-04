@@ -1,70 +1,115 @@
 {
   "kind": "build_request",
-  "title": "Seed one-time onboarding Morning/Evening routine instructions on first registration",
-  "priority": "normal",
+  "title": "Fix fresh-account bootstrap: quadrant initialization no longer blocks after Internet Identity login",
+  "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Update the backend new-user provisioning flow so that, on first user registration only, the canister seeds initial onboarding instruction items into the user’s routines: 3 items in the Morning Routine section and 3 items in the Evening Routine section. These seeded routine items must be normal routine items (user can complete/edit/delete) and must never be auto-recreated on later logins if the user deletes them.",
+      "text": "Backend: Add idempotent, per-user quadrant initialization endpoints so that a newly authenticated user can always obtain exactly 4 quadrant lists (IDs 1–4) without requiring admin privileges or any RBAC/admin-secret dependency.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-6",
+          "msg-7"
         ],
         "quotes": [
-          "just add this for the first initial script for first user register",
-          "since this is for initiali user first register do it only 1 time",
-          "build it"
+          "stuck at initializing quadrant list?",
+          "fix it"
         ]
       },
       "acceptanceCriteria": [
-        "When a principal is seen for the first time (new user branch), the backend creates 3 routine items with section=#top and 3 routine items with section=#bottom.",
-        "Seeded routine items are created only in the new-user creation path; existing users do not receive any new routine items.",
-        "If a user deletes any/all seeded routine items and logs out/in again, the deleted items are not re-created."
+        "A fresh account (new principal) can call the quadrant initialization endpoint successfully without being an admin.",
+        "Calling the quadrant initialization endpoint multiple times does not create duplicates and always results in 4 quadrant lists for that user.",
+        "Quadrant lists are created/ensured with the existing backend quadrant IDs and attributes (1..4, quadrant=true, urgent/important flags) as defined in backend/main.mo."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Seed the following exact English onboarding routine texts (brief, gesture-based, with one playful line) into the routines created on first registration:\n- Morning Routine (section=#top):\n  1) \"Create your first routine\"\n  2) \"Tap Plan to organize\"\n  3) \"Hold items to reorder\"\n- Evening Routine (section=#bottom):\n  1) \"Press + to add task\"\n  2) \"Swipe + up... it's shy\"\n  3) \"Hold + to open Plan\"",
+      "text": "Backend: Implement the list read endpoint used by the frontend bootstrap so the frontend can reliably verify quadrant readiness (i.e., return all user lists including quadrants).",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-6"
         ],
         "quotes": [
-          "Morning Routine : (routine)  +Create the first Routine + Click on [Plan]",
-          "Evening Routine: (routine) + Press (+) circle to create task + Swipe (+) up to expand .... (help me with this, something funny) + Hold (+) for Plan"
+          "Bootstrap error: Error: Failed to initialize all quadrants. Please refresh the page to try again."
         ]
       },
       "acceptanceCriteria": [
-        "A newly registered user sees exactly the 6 seeded routine items above (3 in Morning Routine, 3 in Evening Routine) when the frontend loads routines.",
-        "The seeded Evening Routine includes a funny but clear swipe instruction: \"Swipe + up... it's shy\"."
+        "After quadrant initialization, the lists read endpoint returns the 4 quadrants (and any custom lists) for the caller.",
+        "The returned list data includes the fields required by the frontend (id, name, quadrant, urgent, important).",
+        "The endpoint does not trap for fresh authenticated users."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Ensure seeded routine items have deterministic ordering within each section by assigning increasing `order` values (e.g., START_OFFSET, 2*START_OFFSET, 3*START_OFFSET) so that they render in the intended sequence on first load.",
+      "text": "Backend: Remove the fresh-user deadlock where user/quadrant seeding is only reachable after passing an RBAC check; ensure that fresh authenticated users can be granted/recognized as a normal \"user\" (non-admin) and proceed with profile + data initialization without requiring an admin token.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-5",
+          "msg-6"
+        ],
+        "quotes": [
+          "both admin and regular user have this issues => everyone",
+          "This points to a systemic bootstrap/initialization failure in the quadrant seeding or access-control init path"
         ]
       },
       "acceptanceCriteria": [
-        "For a new user, the 3 Morning Routine seeded items appear in the intended order and remain stable across refreshes.",
-        "For a new user, the 3 Evening Routine seeded items appear in the intended order and remain stable across refreshes."
+        "A fresh authenticated user can successfully reach a state where profile fetch returns either an existing profile or null (for onboarding) without trapping with Unauthorized.",
+        "A fresh authenticated user can successfully initialize quadrants and load lists/tasks after login.",
+        "The change does not require CAFFEINE_ADMIN_TOKEN to be configured for normal user login/bootstrap."
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Frontend: Make actor initialization resilient when no admin secret is present by preventing bootstrap from failing due to access-control secret initialization errors; the app must still allow standard (non-admin) users to log in and initialize their workspace.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6",
+          "msg-7"
+        ],
+        "quotes": [
+          "after login",
+          "fix it"
+        ]
+      },
+      "acceptanceCriteria": [
+        "After Internet Identity login, the app does not get stuck on \"Initializing workspace...\" for fresh accounts when no admin token/secret is provided.",
+        "If admin-secret initialization fails, the app still creates an authenticated actor and continues with non-admin flows.",
+        "Any user-facing error messages shown during bootstrap are in English."
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Frontend: Ensure the quadrant bootstrap flow reliably transitions out of the loading state when the backend successfully returns 4 quadrants; if quadrant creation fails, show a single actionable English error and allow retry via refresh without looping.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4",
+          "msg-6"
+        ],
+        "quotes": [
+          "stuck at initializing quadrant list?",
+          "Failed to initialize all quadrants. Please refresh the page to try again."
+        ]
+      },
+      "acceptanceCriteria": [
+        "On a fresh account, after login the Eisenhower Matrix renders with 4 quadrant columns (no indefinite bootstrap spinner).",
+        "If quadrant initialization fails, the app shows one toast error and stops the bootstrap loop (bootstrapState becomes failed).",
+        "A successful retry after refresh results in quadrantsReady=true and normal app rendering."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single-actor Motoko canister (all logic in backend/main.mo).",
-    "Do not change or regress the existing one-time Week/Month list creation behavior for new users.",
-    "Use English for all user-facing seeded routine text."
+    "Backend must remain a single-actor Motoko canister; keep all logic in backend/main.mo and only add migration.mo changes if state migration is truly required.",
+    "Do not edit files under frontend/src/components/ui or any paths listed as immutable in SYSTEM_CONTEXT.",
+    "Use English for any user-facing text."
   ],
   "nonGoals": [
-    "Do not add new authentication providers or third-party onboarding tooling.",
-    "Do not implement multi-day onboarding schedules (Day 3/5/7 injections); only seed the initial script once at first registration.",
-    "Do not add new UI screens or tooltips for onboarding beyond the seeded routine items."
+    "Do not implement the full tasks/routines/monetary/spend API surface unless it is required to fix the quadrant bootstrap/login blocker.",
+    "Do not add new product features unrelated to fresh-user workspace initialization."
   ],
   "imageRequirements": {
     "required": [],

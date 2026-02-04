@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { History, Edit, Check, X } from 'lucide-react';
 import { usePayrollHistory } from '@/hooks/useQueries';
 import { toast } from 'sonner';
-import type { PayrollRecord } from '@/backend';
+import type { PayrollRecord } from '@/lib/backendTypes';
 
 interface PayrollHistoryDialogProps {
   open: boolean;

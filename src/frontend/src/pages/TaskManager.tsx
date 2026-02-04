@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { useGetCallerUserProfile, useTaskQueries, useMorningRoutineQueries, useAppMode, useEarningsEnabled, useMonetarySettings, useSpendRecords, useSpendPresets } from '../hooks/useQueries';
+import { useActor } from '../hooks/useActor';
 import { toLocalTask, toLocalList, type LocalTask, type LocalList } from '../lib/types';
 import { writeDragPayload, readDragPayload } from '../utils/dragPayload';
 import Header from '../components/Header';
@@ -19,7 +20,8 @@ import CreateListDialog from '../components/CreateListDialog';
 import EditTaskDialog from '../components/EditTaskDialog';
 import AuthBootstrapLoading from '../components/AuthBootstrapLoading';
 import UnauthenticatedScreen from '../components/UnauthenticatedScreen';
-import { RoutineSection, type TaskCreateInput, type TaskUpdateInput } from '@/backend';
+import { RoutineSection } from '@/lib/backendTypes';
+import type { TaskCreateInput, TaskUpdateInput } from '@/lib/backendTypes';
 import { toast } from 'sonner';
 
 export default function TaskManager() {
@@ -27,6 +29,7 @@ export default function TaskManager() {
   const isAuthenticated = !!identity;
   const isLoggingIn = loginStatus === 'logging-in';
 
+  const { actor } = useActor();
   const { data: userProfile, isLoading: profileLoading, isFetched } = useGetCallerUserProfile();
   const { 
     tasks, 
@@ -79,8 +82,8 @@ export default function TaskManager() {
 
   // Bootstrap quadrants and reset new day after profile load
   useEffect(() => {
-    // Only run if authenticated, profile loaded, and not already bootstrapped
-    if (!isAuthenticated || !userProfile || bootstrapState !== 'idle') return;
+    // Only run if authenticated, profile loaded, actor ready, and not already bootstrapped
+    if (!isAuthenticated || !userProfile || !actor || bootstrapState !== 'idle') return;
 
     const bootstrap = async () => {
       setBootstrapState('running');
@@ -108,7 +111,7 @@ export default function TaskManager() {
       // Quadrants already exist, mark as complete
       setBootstrapState('complete');
     }
-  }, [isAuthenticated, userProfile, quadrantsReady, bootstrapState, bootstrapQuadrants, resetNewDay]);
+  }, [isAuthenticated, userProfile, actor, quadrantsReady, bootstrapState, bootstrapQuadrants, resetNewDay]);
 
   // Show loading screen while Internet Identity is initializing
   if (isInitializing) {
@@ -136,7 +139,7 @@ export default function TaskManager() {
 
   // Show loading only while profile/data is loading OR bootstrap is actively running
   const isBootstrapping = bootstrapState === 'running';
-  if (profileLoading || dataLoading || isBootstrapping) {
+  if (profileLoading || dataLoading || isBootstrapping || !actor) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted">
         <div className="text-center space-y-4">

@@ -1,4 +1,4 @@
-import type { Task, List, TaskId, ListId } from '@/backend';
+import type { Task, TaskId, List, ListId } from './backendTypes';
 
 // Extended types with local identifiers for React keys
 export interface LocalTask extends Task {

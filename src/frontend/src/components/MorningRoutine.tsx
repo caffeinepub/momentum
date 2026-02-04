@@ -14,8 +14,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Switch } from '@/components/ui/switch';
-import { RoutineSection } from '@/backend';
-import type { MorningRoutine as MorningRoutineType } from '@/backend';
+import { RoutineSection, type MorningRoutine as MorningRoutineType } from '@/lib/backendTypes';
 
 interface MorningRoutineProps {
   section: RoutineSection;
