@@ -16,3 +16,12 @@ export function getUserTierLabel(tier: UserTier | undefined): string {
       return 'Basic';
   }
 }
+
+export function getAllTiers(): Array<{ value: UserTier; label: string }> {
+  return [
+    { value: UserTier.basic, label: 'Basic' },
+    { value: UserTier.silver, label: 'Silver' },
+    { value: UserTier.gold, label: 'Gold' },
+    { value: UserTier.diamond, label: 'Diamond' },
+  ];
+}

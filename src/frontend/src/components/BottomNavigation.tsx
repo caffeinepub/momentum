@@ -4,6 +4,7 @@ import { X, Plus, ListPlus, ChevronDown } from 'lucide-react';
 
 interface BottomNavigationProps {
   isPlanMode: boolean;
+  planLayout?: 'lists' | 'homeLike';
   onSwitchMode: (mode: number) => void;
   onPlanModeX?: () => void;
   onAddTask: () => void;
@@ -17,6 +18,7 @@ interface BottomNavigationProps {
 
 export default function BottomNavigation({ 
   isPlanMode, 
+  planLayout = 'lists',
   onSwitchMode, 
   onPlanModeX,
   onAddTask, 
@@ -263,9 +265,9 @@ export default function BottomNavigation({
   };
 
   const handleXButtonClick = () => {
-    if (!isPlanMode) return;
+    if (!isPlanMode || planLayout !== 'lists') return;
     
-    // Call the Plan-mode X callback instead of switching modes
+    // Call the Plan-mode X callback to toggle layout only
     if (onPlanModeX) {
       onPlanModeX();
     }
@@ -285,6 +287,11 @@ export default function BottomNavigation({
       isModeSwitching.current = false;
     }, 250);
   };
+
+  // Determine if we should show the X button (only in Plan mode with 'lists' layout)
+  const showXButton = isPlanMode && planLayout === 'lists';
+  // Show (+) button in Plan mode with 'homeLike' layout
+  const showPlusButton = isPlanMode && planLayout === 'homeLike';
 
   return (
     <>
@@ -310,19 +317,23 @@ export default function BottomNavigation({
               Plan
             </Button>
 
-            <Button 
-              onClick={onOpenSpendPlan}
-              variant="outline" 
-              className="h-12 text-base font-semibold bg-background/50 backdrop-blur-sm hover:bg-background/70 transition-colors"
-            >
-              Spend
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-12 text-base font-semibold bg-background/50 backdrop-blur-sm hover:bg-background/70 transition-colors"
-            >
-              Earn
-            </Button>
+            {earningsEnabled && (
+              <>
+                <Button 
+                  onClick={onOpenSpendPlan}
+                  variant="outline" 
+                  className="h-12 text-base font-semibold bg-background/50 backdrop-blur-sm hover:bg-background/70 transition-colors"
+                >
+                  Spend
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="h-12 text-base font-semibold bg-background/50 backdrop-blur-sm hover:bg-background/70 transition-colors"
+                >
+                  Earn
+                </Button>
+              </>
+            )}
 
             <Button 
               onClick={onOpenSettings}
@@ -355,51 +366,68 @@ export default function BottomNavigation({
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-lg">
         <div className="relative h-14 flex items-end justify-center">
           <div className="absolute inset-x-0 bottom-0 flex items-end justify-between px-8">
-            <Button
-              onClick={isPlanMode ? onAddTask : onOpenSpendPlan}
-              variant="ghost"
-              className={`h-10 px-6 text-sm font-semibold rounded-t-2xl transition-all flex items-center justify-center ${
-                isPlanMode 
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 shadow-lg shadow-blue-500/50 text-base px-8' 
-                  : 'hover:bg-accent'
-              }`}
-              style={{
-                willChange: 'transform, opacity',
-              }}
-            >
-              {isPlanMode ? (
-                <>
-                  <Plus className="h-5 w-5 mr-1.5" />
-                  Add Task
-                </>
-              ) : (
-                'Spend'
-              )}
-            </Button>
+            {earningsEnabled && !isPlanMode && (
+              <Button
+                onClick={onOpenSpendPlan}
+                variant="ghost"
+                className="h-10 px-6 text-sm font-semibold rounded-t-2xl transition-all flex items-center justify-center hover:bg-accent"
+                style={{
+                  willChange: 'transform, opacity',
+                }}
+              >
+                Spend
+              </Button>
+            )}
+
+            {isPlanMode && (
+              <Button
+                onClick={onAddTask}
+                variant="ghost"
+                className="h-10 text-base font-semibold rounded-t-2xl transition-all flex items-center justify-center bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 shadow-lg shadow-blue-500/50 px-8"
+                style={{
+                  willChange: 'transform, opacity',
+                }}
+              >
+                <Plus className="h-5 w-5 mr-1.5" />
+                Add Task
+              </Button>
+            )}
+
+            {!earningsEnabled && !isPlanMode && (
+              <div className="w-20" />
+            )}
 
             <div className="w-20" />
 
-            <Button
-              onClick={isPlanMode ? onAddList : undefined}
-              variant="ghost"
-              className={`h-10 px-6 text-sm font-semibold rounded-t-2xl transition-all flex items-center justify-center ${
-                isPlanMode 
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 shadow-lg shadow-blue-500/50 text-base px-8' 
-                  : 'hover:bg-accent'
-              }`}
-              style={{
-                willChange: 'transform, opacity',
-              }}
-            >
-              {isPlanMode ? (
-                <>
-                  <ListPlus className="h-5 w-5 mr-1.5" />
-                  Add List
-                </>
-              ) : (
-                'Earn'
-              )}
-            </Button>
+            {earningsEnabled && !isPlanMode && (
+              <Button
+                variant="ghost"
+                className="h-10 px-6 text-sm font-semibold rounded-t-2xl transition-all flex items-center justify-center hover:bg-accent"
+                style={{
+                  willChange: 'transform, opacity',
+                }}
+              >
+                Earn
+              </Button>
+            )}
+
+            {isPlanMode && (
+              <Button
+                onClick={onAddList}
+                variant="ghost"
+                className="h-10 text-base font-semibold rounded-t-2xl transition-all flex items-center justify-center bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 shadow-lg shadow-blue-500/50 px-8"
+                style={{
+                  willChange: 'transform, opacity',
+                }}
+              >
+                <ListPlus className="h-5 w-5 mr-1.5" />
+                Add List
+              </Button>
+            )}
+
+            {!earningsEnabled && !isPlanMode && (
+              <div className="w-20" />
+            )}
           </div>
 
           {!isPlanMode ? (
@@ -454,7 +482,7 @@ export default function BottomNavigation({
                 </div>
               </div>
             </button>
-          ) : (
+          ) : showXButton ? (
             <button
               onClick={handleXButtonClick}
               className={`absolute bottom-2 left-1/2 -translate-x-1/2 h-14 w-14 rounded-full shadow-xl flex items-center justify-center z-10 border-4 border-background bg-gradient-to-br from-gray-400 to-gray-500 hover:shadow-2xl hover:scale-105`}
@@ -463,11 +491,24 @@ export default function BottomNavigation({
                 transition: 'transform 175ms cubic-bezier(0.33, 1, 0.68, 1), box-shadow 150ms ease-out',
                 willChange: 'transform, opacity',
               }}
-              aria-label="Hide My Lists and show routines"
+              aria-label="Switch to Home-like layout"
             >
               <X className="h-6 w-6 text-white" strokeWidth={2.5} />
             </button>
-          )}
+          ) : showPlusButton ? (
+            <button
+              onClick={onAddTask}
+              className={`absolute bottom-2 left-1/2 -translate-x-1/2 h-20 w-20 rounded-full shadow-xl flex items-center justify-center z-10 border-4 border-background bg-gradient-to-br from-primary to-primary/80 hover:shadow-2xl hover:scale-105`}
+              style={{
+                transform: 'translateX(-50%) translateY(0px) scale(1)',
+                transition: 'transform 175ms cubic-bezier(0.33, 1, 0.68, 1), box-shadow 150ms ease-out',
+                willChange: 'transform, opacity',
+              }}
+              aria-label="Add Task"
+            >
+              <Plus className="h-10 w-10 text-white" strokeWidth={2.5} />
+            </button>
+          ) : null}
         </div>
       </nav>
     </>

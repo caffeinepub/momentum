@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import type { Task, List, TaskCreateInput, TaskUpdateInput, TaskId, ListId, UserProfile, MorningRoutine, RoutineSection, RoutineId, MonetarySettings, PayrollRecord, SpendRecord, SpendInput, SpendId, SpendPreset, UserMetadata } from '@/backend';
+import type { Task, List, TaskCreateInput, TaskUpdateInput, TaskId, ListId, UserProfile, MorningRoutine, RoutineSection, RoutineId, MonetarySettings, PayrollRecord, SpendRecord, SpendInput, SpendId, SpendPreset, UserMetadata, UserTier } from '@/backend';
 import type { Principal } from '@icp-sdk/core/principal';
+import { useState } from 'react';
 
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
@@ -96,6 +97,21 @@ export function useRemoveAdmin() {
   });
 }
 
+export function useSetUserTier() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ targetUser, newTier }: { targetUser: Principal; newTier: UserTier }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      return actor.setUserTier(targetUser, newTier);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminUserList'] });
+    },
+  });
+}
+
 export function useGetDefaultOrder() {
   const { actor, isFetching } = useActor();
 
@@ -110,23 +126,19 @@ export function useGetDefaultOrder() {
 }
 
 export function useAppMode() {
-  const { actor, isFetching } = useActor();
   const queryClient = useQueryClient();
 
   const appModeQuery = useQuery<number>({
     queryKey: ['appMode'],
     queryFn: async () => {
-      if (!actor) return 0;
-      const mode = await actor.getUserDisplayMode();
-      return Number(mode);
+      return 0;
     },
-    enabled: !!actor && !isFetching,
+    staleTime: Infinity,
   });
 
   const setAppModeMutation = useMutation({
     mutationFn: async (mode: number) => {
-      if (!actor) throw new Error('Actor not initialized');
-      return actor.setUserDisplayMode(BigInt(mode));
+      return mode;
     },
     onMutate: async (newMode) => {
       await queryClient.cancelQueries({ queryKey: ['appMode'] });
@@ -138,9 +150,6 @@ export function useAppMode() {
       if (context?.previousMode !== undefined) {
         queryClient.setQueryData(['appMode'], context.previousMode);
       }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['appMode'] });
     },
   });
 
@@ -453,8 +462,6 @@ export function useTaskQueries() {
       }
     },
     onSettled: () => {
-      // No blanket invalidation - the optimistic update is sufficient
-      // Backend state is already authoritative for earnings calculations
     },
   });
 
@@ -597,17 +604,14 @@ export function useTaskQueries() {
     },
   });
 
-  // Derived state: check if quadrants are ready (all 4 exist)
   const quadrantLists = listsQuery.data?.filter(l => l.quadrant) || [];
   const quadrantsReady = quadrantLists.length === 4;
 
-  // Helper to refetch lists and wait for completion
   const refetchLists = async () => {
     await queryClient.invalidateQueries({ queryKey: ['lists'] });
     await listsQuery.refetch();
   };
 
-  // Robust quadrant bootstrap helper with bounded retry logic and clear failure path
   const bootstrapQuadrants = async (): Promise<void> => {
     if (!actor) throw new Error('Actor not initialized');
     
@@ -616,10 +620,8 @@ export function useTaskQueries() {
     
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        // Call backend to ensure quadrants exist
         await actor.ensureAllQuadrants();
         
-        // Refetch lists and wait for the query to complete
         await queryClient.invalidateQueries({ queryKey: ['lists'] });
         const result = await queryClient.fetchQuery({
           queryKey: ['lists'],
@@ -629,23 +631,19 @@ export function useTaskQueries() {
           },
         });
         
-        // Check if we now have all 4 quadrants
         const quadrants = result.filter(l => l.quadrant);
         if (quadrants.length === 4) {
-          return; // Success!
+          return;
         }
         
-        // Wait before retrying
         if (attempt < MAX_RETRIES - 1) {
           await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
         }
       } catch (error: any) {
-        // If we get an authorization error, fail immediately without retrying
         if (error?.message?.includes('Unauthorized') || error?.message?.includes('Only admins')) {
           throw new Error('Unable to initialize workspace. Please refresh the page and try again.');
         }
         
-        // For other errors, continue retrying
         if (attempt === MAX_RETRIES - 1) {
           throw error;
         }
@@ -692,16 +690,15 @@ export function useMorningRoutineQueries() {
   const displayModeQuery = useQuery<bigint>({
     queryKey: ['displayMode'],
     queryFn: async () => {
-      if (!actor) return BigInt(0);
-      return actor.getUserDisplayMode();
+      return BigInt(0);
     },
-    enabled: !!actor && !isFetching,
+    staleTime: Infinity,
   });
 
   const createRoutineMutation = useMutation({
     mutationFn: async ({ text, section }: { text: string; section: RoutineSection }) => {
       if (!actor) throw new Error('Actor not initialized');
-      return actor.createMorningRoutine(text, section, BigInt(0));
+      return actor.createMorningRoutine(text, section);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['morningRoutines'] });
@@ -809,8 +806,7 @@ export function useMorningRoutineQueries() {
 
   const setDisplayModeMutation = useMutation({
     mutationFn: async (displayMode: number) => {
-      if (!actor) throw new Error('Actor not initialized');
-      return actor.setUserDisplayMode(BigInt(displayMode));
+      return BigInt(displayMode);
     },
     onMutate: async (newMode) => {
       await queryClient.cancelQueries({ queryKey: ['displayMode'] });
@@ -822,9 +818,6 @@ export function useMorningRoutineQueries() {
       if (context?.previousMode !== undefined) {
         queryClient.setQueryData(['displayMode'], context.previousMode);
       }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['displayMode'] });
     },
   });
 

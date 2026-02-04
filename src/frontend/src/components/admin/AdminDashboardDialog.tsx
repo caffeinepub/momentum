@@ -15,12 +15,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { useAdminUserList, usePromoteToAdmin, useRemoveAdmin } from '@/hooks/useQueries';
-import { getUserTierLabel } from '@/lib/userTier';
+import { useAdminUserList, usePromoteToAdmin, useRemoveAdmin, useSetUserTier } from '@/hooks/useQueries';
+import { getUserTierLabel, getAllTiers } from '@/lib/userTier';
+import { UserTier } from '@/backend';
 import { toast } from 'sonner';
 
 interface AdminDashboardDialogProps {
@@ -34,12 +42,12 @@ export default function AdminDashboardDialog({ open, onOpenChange }: AdminDashbo
   const { data: users, isLoading } = useAdminUserList();
   const promoteToAdmin = usePromoteToAdmin();
   const removeAdmin = useRemoveAdmin();
+  const setUserTier = useSetUserTier();
   const [processingPrincipal, setProcessingPrincipal] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [copiedPrincipal, setCopiedPrincipal] = useState<string | null>(null);
 
-  // Filter users based on search query
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     if (!searchQuery.trim()) return users;
@@ -56,19 +64,16 @@ export default function AdminDashboardDialog({ open, onOpenChange }: AdminDashbo
     });
   }, [users, searchQuery]);
 
-  // Calculate pagination
   const totalPages = Math.ceil(filteredUsers.length / PAGE_SIZE);
   const startIndex = (currentPage - 1) * PAGE_SIZE;
   const endIndex = startIndex + PAGE_SIZE;
   const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
 
-  // Reset to page 1 when search query changes
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
     setCurrentPage(1);
   };
 
-  // Clamp current page when filtered results change
   useMemo(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(totalPages);
@@ -111,6 +116,19 @@ export default function AdminDashboardDialog({ open, onOpenChange }: AdminDashbo
     }
   };
 
+  const handleTierChange = async (principalId: string, newTier: UserTier) => {
+    setProcessingPrincipal(principalId);
+    try {
+      await setUserTier.mutateAsync({ targetUser: principalId as any, newTier });
+      toast.success('User tier updated successfully');
+    } catch (error: any) {
+      console.error('Failed to update tier:', error);
+      toast.error('Failed to update user tier');
+    } finally {
+      setProcessingPrincipal(null);
+    }
+  };
+
   const truncatePrincipal = (principal: string) => {
     if (principal.length <= 20) return principal;
     return `${principal.slice(0, 10)}...${principal.slice(-8)}`;
@@ -135,21 +153,22 @@ export default function AdminDashboardDialog({ open, onOpenChange }: AdminDashbo
     setCurrentPage((prev) => Math.min(totalPages, prev + 1));
   };
 
+  const allTiers = getAllTiers();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[85vh]">
+      <DialogContent className="max-w-6xl max-h-[85vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
             Admin Dashboard
           </DialogTitle>
           <DialogDescription>
-            Manage user roles and view user information. Maximum 3 admins allowed.
+            Manage user roles, tiers, and view user information. Maximum 3 admins allowed.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Search Input */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -174,6 +193,7 @@ export default function AdminDashboardDialog({ open, onOpenChange }: AdminDashbo
                 <TableHeader>
                   <TableRow>
                     <TableHead>Username</TableHead>
+                    <TableHead>Email</TableHead>
                     <TableHead>Principal ID</TableHead>
                     <TableHead>Tier</TableHead>
                     <TableHead>Role</TableHead>
@@ -190,6 +210,9 @@ export default function AdminDashboardDialog({ open, onOpenChange }: AdminDashbo
                       <TableRow key={principalStr}>
                         <TableCell className="font-medium">
                           {user.profile?.name || <span className="text-muted-foreground italic">No name</span>}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {user.profile?.email || <span className="text-muted-foreground italic">No email</span>}
                         </TableCell>
                         <TableCell className="font-mono text-xs">
                           <div className="flex items-center gap-2">
@@ -209,9 +232,22 @@ export default function AdminDashboardDialog({ open, onOpenChange }: AdminDashbo
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">
-                            {getUserTierLabel(user.profile?.tier)}
-                          </Badge>
+                          <Select
+                            value={user.profile?.tier || UserTier.basic}
+                            onValueChange={(value) => handleTierChange(principalStr, value as UserTier)}
+                            disabled={isProcessing || setUserTier.isPending}
+                          >
+                            <SelectTrigger className="w-[120px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allTiers.map((tier) => (
+                                <SelectItem key={tier.value} value={tier.value}>
+                                  {tier.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </TableCell>
                         <TableCell>
                           {user.isAdmin ? (
@@ -264,7 +300,6 @@ export default function AdminDashboardDialog({ open, onOpenChange }: AdminDashbo
             )}
           </ScrollArea>
 
-          {/* Pagination Controls */}
           {filteredUsers.length > 0 && totalPages > 1 && (
             <div className="flex items-center justify-between border-t pt-4">
               <div className="text-sm text-muted-foreground">

@@ -55,7 +55,6 @@ export const List = IDL.Record({
 export const MorningRoutine = IDL.Record({
   'id' : RoutineId,
   'weight' : IDL.Int,
-  'displayMode' : IDL.Nat,
   'order' : IDL.Nat,
   'text' : IDL.Text,
   'completed' : IDL.Bool,
@@ -91,6 +90,7 @@ export const UserProfile = IDL.Record({
   'earningsEnabled' : IDL.Bool,
   'name' : IDL.Text,
   'tier' : UserTier,
+  'email' : IDL.Opt(IDL.Text),
 });
 export const UserMetadata = IDL.Record({
   'principal' : IDL.Principal,
@@ -133,7 +133,7 @@ export const idlService = IDL.Service({
   'completeTask' : IDL.Func([TaskId, IDL.Bool], [], []),
   'createList' : IDL.Func([IDL.Text], [ListId], []),
   'createMorningRoutine' : IDL.Func(
-      [IDL.Text, RoutineSection, IDL.Nat],
+      [IDL.Text, RoutineSection],
       [RoutineId],
       [],
     ),
@@ -179,7 +179,6 @@ export const idlService = IDL.Service({
   'getPayrollHistory' : IDL.Func([], [IDL.Vec(PayrollRecord)], ['query']),
   'getPreset' : IDL.Func([IDL.Nat], [IDL.Opt(SpendPreset)], ['query']),
   'getTask' : IDL.Func([TaskId], [Task], ['query']),
-  'getUserDisplayMode' : IDL.Func([], [IDL.Nat], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
@@ -194,11 +193,11 @@ export const idlService = IDL.Service({
   'resetNewDay' : IDL.Func([], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'saveMonetarySettings' : IDL.Func([MonetarySettings], [], []),
-  'setUserDisplayMode' : IDL.Func([IDL.Nat], [], []),
+  'setUserTier' : IDL.Func([IDL.Principal, UserTier], [], []),
   'submitPayrollLog' : IDL.Func([IDL.Int], [IDL.Int], []),
   'toggleEarningsSystem' : IDL.Func([IDL.Bool], [IDL.Bool], []),
   'updateMorningRoutine' : IDL.Func(
-      [RoutineId, IDL.Text, RoutineSection, IDL.Nat],
+      [RoutineId, IDL.Text, RoutineSection],
       [],
       [],
     ),
@@ -255,7 +254,6 @@ export const idlFactory = ({ IDL }) => {
   const MorningRoutine = IDL.Record({
     'id' : RoutineId,
     'weight' : IDL.Int,
-    'displayMode' : IDL.Nat,
     'order' : IDL.Nat,
     'text' : IDL.Text,
     'completed' : IDL.Bool,
@@ -291,6 +289,7 @@ export const idlFactory = ({ IDL }) => {
     'earningsEnabled' : IDL.Bool,
     'name' : IDL.Text,
     'tier' : UserTier,
+    'email' : IDL.Opt(IDL.Text),
   });
   const UserMetadata = IDL.Record({
     'principal' : IDL.Principal,
@@ -333,7 +332,7 @@ export const idlFactory = ({ IDL }) => {
     'completeTask' : IDL.Func([TaskId, IDL.Bool], [], []),
     'createList' : IDL.Func([IDL.Text], [ListId], []),
     'createMorningRoutine' : IDL.Func(
-        [IDL.Text, RoutineSection, IDL.Nat],
+        [IDL.Text, RoutineSection],
         [RoutineId],
         [],
       ),
@@ -383,7 +382,6 @@ export const idlFactory = ({ IDL }) => {
     'getPayrollHistory' : IDL.Func([], [IDL.Vec(PayrollRecord)], ['query']),
     'getPreset' : IDL.Func([IDL.Nat], [IDL.Opt(SpendPreset)], ['query']),
     'getTask' : IDL.Func([TaskId], [Task], ['query']),
-    'getUserDisplayMode' : IDL.Func([], [IDL.Nat], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
@@ -398,11 +396,11 @@ export const idlFactory = ({ IDL }) => {
     'resetNewDay' : IDL.Func([], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'saveMonetarySettings' : IDL.Func([MonetarySettings], [], []),
-    'setUserDisplayMode' : IDL.Func([IDL.Nat], [], []),
+    'setUserTier' : IDL.Func([IDL.Principal, UserTier], [], []),
     'submitPayrollLog' : IDL.Func([IDL.Int], [IDL.Int], []),
     'toggleEarningsSystem' : IDL.Func([IDL.Bool], [IDL.Bool], []),
     'updateMorningRoutine' : IDL.Func(
-        [RoutineId, IDL.Text, RoutineSection, IDL.Nat],
+        [RoutineId, IDL.Text, RoutineSection],
         [],
         [],
       ),

@@ -1,37 +1,55 @@
 {
   "kind": "build_request",
-  "title": "Change Plan mode X button to only hide My Lists and show routines (eliminate flicker)",
+  "title": "Persist Plan Mode onboarding tip per user (not per device)",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-7",
-      "text": "Update the Plan mode X button behavior so that pressing X does NOT switch the app mode (must not call the existing Plan→Home mode switch). Instead, while remaining in Plan mode, pressing X must ONLY (1) hide the “My Lists” (CustomLists) section and (2) unhide/show the “Morning Routine” and “Evening Routine” sections, to eliminate the current flickering caused by mode switching/unmounting.",
+      "id": "REQ-3",
+      "text": "Update the Plan Mode tip persistence logic so the “Plan Mode Tips” instruction dialog is tracked per authenticated user (keyed by the user’s Internet Identity principal) rather than a single shared localStorage key for the whole browser/device.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-10",
-          "msg-12"
+          "msg-5"
         ],
         "quotes": [
-          "Remove completely function for x button in Plan mode",
-          "from now, when user hit on X button it will ONLY  hide \"My Lists\" and  unhide \"Morning Routine\" and  \"Everning Routine\" this will avoid current flickering issue"
+          "Why cannot see the 4 instructions on new users after registration",
+          "Those onboarding steps are being tracked in localStorage, which is shared by all users on the same device.",
+          "If you want, I can adjust the code so onboarding is stored per user instead of per device.",
+          "Yes please",
+          "Build it"
         ]
       },
       "acceptanceCriteria": [
-        "In Plan mode, tapping the X button does not change the underlying app mode value (Plan mode remains active).",
-        "After tapping X in Plan mode, the “My Lists” UI is not visible.",
-        "After tapping X in Plan mode, both “Morning Routine” and “Evening Routine” UIs are visible.",
-        "Pressing the X button no longer causes visible flicker/jitter from rapid section unmount/mount during the transition."
+        "When User A logs in on a device, enters Plan Mode, and dismisses the Plan Mode tip, User A does not see it again on that device after reload/restart.",
+        "After User A logs out, User B logs in on the same device and enters Plan Mode, User B does see the Plan Mode tip (even though User A previously dismissed it).",
+        "The tip dialog content remains unchanged (including the exact text: \"The Real Magic Is in Settings.\")."
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Add a client-side migration/fallback so existing users who previously dismissed the Plan Mode tip under the old shared localStorage key keep it dismissed for their own account after upgrading (without affecting other users on the same device).",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-5"
+        ],
+        "quotes": [
+          "Those onboarding steps are being tracked in localStorage, which is shared by all users on the same device."
+        ]
+      },
+      "acceptanceCriteria": [
+        "If the old shared localStorage key indicates the tip was previously dismissed, the currently logged-in user is treated as dismissed under the new per-user key after the update.",
+        "The migration does not cause the tip to be dismissed for other users who log in later on the same device."
       ]
     }
   ],
   "constraints": [
-    "Do not modify files under frontend/src/components/ui (Shadcn components are read-only).",
-    "Keep the backend unchanged (this is a UI behavior change only)."
+    "Do not edit files under frontend/src/components/ui (Shadcn UI sources are read-only).",
+    "Do not modify any files listed in SYSTEM_CONTEXT.frontend.immutablePaths."
   ],
   "nonGoals": [
-    "Do not redesign Plan mode or change task/list/routine data models.",
-    "Do not change how tasks, lists, or routines are fetched or mutated."
+    "Adding new onboarding/tutorial steps or changing the number of instruction steps.",
+    "Moving onboarding-tip persistence into the backend canister."
   ],
   "imageRequirements": {
     "required": [],

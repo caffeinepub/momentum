@@ -8,8 +8,10 @@ import Array "mo:core/Array";
 import Text "mo:core/Text";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
+
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
+
 
 actor {
   let accessControlState = AccessControl.initState();
@@ -25,7 +27,6 @@ actor {
   public type ListId = Nat;
   public type RoutineId = Nat;
   public type SpendId = Nat;
-
   public type UserTier = {
     #basic;
     #silver;
@@ -35,6 +36,7 @@ actor {
 
   public type UserProfile = {
     name : Text;
+    email : ?Text;
     earningsEnabled : Bool;
     tier : UserTier;
   };
@@ -62,7 +64,6 @@ actor {
     order : Nat;
     streakCount : Nat;
     weight : Int;
-    displayMode : Nat;
   };
 
   public type Task = {
@@ -175,7 +176,6 @@ actor {
     nextRoutineId : RoutineId;
     nextSpendId : SpendId;
     lastResetDate : Int;
-    displayMode : Nat;
     monetarySettings : MonetarySettings;
     todayEarns : ?TodayEarns;
     principal : PrincipalId;
@@ -185,6 +185,111 @@ actor {
   };
 
   let users = Map.empty<Principal, User>();
+
+  // Tier limits configuration
+  type TierLimits = {
+    maxRoutines : ?Nat; // null means unlimited
+    maxCustomLists : ?Nat;
+    maxTasks : ?Nat;
+    earningsAllowed : Bool;
+  };
+
+  func getTierLimits(tier : UserTier) : TierLimits {
+    switch (tier) {
+      case (#basic) {
+        {
+          maxRoutines = ?5;
+          maxCustomLists = ?2;
+          maxTasks = ?20;
+          earningsAllowed = false;
+        };
+      };
+      case (#silver) {
+        {
+          maxRoutines = ?10;
+          maxCustomLists = ?5;
+          maxTasks = ?50;
+          earningsAllowed = true;
+        };
+      };
+      case (#gold) {
+        {
+          maxRoutines = ?20;
+          maxCustomLists = ?10;
+          maxTasks = ?100;
+          earningsAllowed = true;
+        };
+      };
+      case (#diamond) {
+        {
+          maxRoutines = null; // unlimited
+          maxCustomLists = null;
+          maxTasks = null;
+          earningsAllowed = true;
+        };
+      };
+    };
+  };
+
+  func getUserTier(caller : Principal) : UserTier {
+    switch (userProfiles.get(caller)) {
+      case (?profile) { profile.tier };
+      case (null) { #basic };
+    };
+  };
+
+  func checkRoutineLimit(caller : Principal, user : User) {
+    let tier = getUserTier(caller);
+    let limits = getTierLimits(tier);
+    switch (limits.maxRoutines) {
+      case (?maxRoutines) {
+        let currentCount = user.routines.size();
+        if (currentCount >= maxRoutines) {
+          Runtime.trap("You have reached the maximum number of routines (" # maxRoutines.toText() # ") for your tier. Please upgrade your tier to add more routines.");
+        };
+      };
+      case (null) {}; // unlimited
+    };
+  };
+
+  func checkCustomListLimit(caller : Principal, user : User) {
+    let tier = getUserTier(caller);
+    let limits = getTierLimits(tier);
+    switch (limits.maxCustomLists) {
+      case (?maxLists) {
+        // Count custom lists (non-quadrant lists, excluding the 4 default quadrants)
+        let customListCount = user.lists.values().toArray().filter(func(list : List) : Bool {
+          not list.quadrant
+        }).size();
+        if (customListCount >= maxLists) {
+          Runtime.trap("You have reached the maximum number of custom lists (" # maxLists.toText() # ") for your tier. Please upgrade your tier to add more lists.");
+        };
+      };
+      case (null) {}; // unlimited
+    };
+  };
+
+  func checkTaskLimit(caller : Principal, user : User) {
+    let tier = getUserTier(caller);
+    let limits = getTierLimits(tier);
+    switch (limits.maxTasks) {
+      case (?maxTasks) {
+        let currentCount = user.tasks.size();
+        if (currentCount >= maxTasks) {
+          Runtime.trap("You have reached the maximum number of tasks (" # maxTasks.toText() # ") for your tier. Please upgrade your tier to add more tasks.");
+        };
+      };
+      case (null) {}; // unlimited
+    };
+  };
+
+  func checkEarningsAccess(caller : Principal) {
+    let tier = getUserTier(caller);
+    let limits = getTierLimits(tier);
+    if (not limits.earningsAllowed) {
+      Runtime.trap("The earnings system is not available for your tier. Please upgrade to Silver tier or higher to access earnings features.");
+    };
+  };
 
   func addQuadrantIfMissing(user : User, id : ListId, name : Text, urgent : Bool, important : Bool) {
     if (not user.lists.containsKey(id)) {
@@ -218,7 +323,6 @@ actor {
       nextRoutineId = 0;
       nextSpendId = 1;
       lastResetDate = 0;
-      displayMode = 0;
       monetarySettings = {
         maxMoneyPerDay = 0;
         maxMorningRoutine = 0;
@@ -228,7 +332,7 @@ actor {
       };
       todayEarns = null;
       principal;
-      earningsEnabled = true;
+      earningsEnabled = false;
       spendPresets = Map.empty<Nat, SpendPreset>();
       nextPresetId = 1;
     };
@@ -272,7 +376,8 @@ actor {
         if (userProfiles.get(caller) == null) {
           let defaultProfile : UserProfile = {
             name = "";
-            earningsEnabled = true;
+            email = null;
+            earningsEnabled = false;
             tier = #basic;
           };
           userProfiles.add(caller, defaultProfile);
@@ -404,6 +509,10 @@ actor {
       Runtime.trap("Unauthorized: Only users can perform this action");
     };
     let user = getUser(caller);
+    
+    // Enforce tier-based task limit
+    checkTaskLimit(caller, user);
+    
     if (input.title.size() > MAX_TITLE_LENGTH) {
       Runtime.trap("Title can't exceed " # MAX_TITLE_LENGTH.toText() # " characters");
     };
@@ -518,6 +627,10 @@ actor {
       Runtime.trap("Unauthorized: Only users can perform this action");
     };
     let user = getUser(caller);
+    
+    // Enforce tier-based custom list limit
+    checkCustomListLimit(caller, user);
+    
     let list : List = {
       id = user.nextListId;
       name;
@@ -628,11 +741,15 @@ actor {
     weight;
   };
 
-  public shared ({ caller }) func createMorningRoutine(text : Text, section : RoutineSection, displayMode : Nat) : async RoutineId {
+  public shared ({ caller }) func createMorningRoutine(text : Text, section : RoutineSection) : async RoutineId {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can perform this action");
     };
     let user = getUser(caller);
+    
+    // Enforce tier-based routine limit
+    checkRoutineLimit(caller, user);
+    
     let routine : MorningRoutine = {
       id = user.nextRoutineId;
       text;
@@ -641,7 +758,6 @@ actor {
       order = START_OFFSET;
       streakCount = 1;
       weight = 1;
-      displayMode;
     };
     user.routines.add(user.nextRoutineId, routine);
     let updatedUser = { user with nextRoutineId = user.nextRoutineId + 1 };
@@ -649,7 +765,7 @@ actor {
     routine.id;
   };
 
-  public shared ({ caller }) func updateMorningRoutine(id : RoutineId, text : Text, section : RoutineSection, displayMode : Nat) : async () {
+  public shared ({ caller }) func updateMorningRoutine(id : RoutineId, text : Text, section : RoutineSection) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can perform this action");
     };
@@ -664,7 +780,6 @@ actor {
               routine with
               text;
               section;
-              displayMode;
               weight = newWeight;
             };
             user.routines.add(id, updatedRoutine);
@@ -733,30 +848,6 @@ actor {
     };
     let user = getUser(caller);
     user.routines.values().toArray();
-  };
-
-  public shared ({ caller }) func setUserDisplayMode(displayMode : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can perform this action");
-    };
-    withUser(
-      caller,
-      func(user) {
-        let updatedUser = {
-          user with
-          displayMode;
-        };
-        users.add(caller, updatedUser);
-      },
-    );
-  };
-
-  public query ({ caller }) func getUserDisplayMode() : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can perform this action");
-    };
-    let user = getUser(caller);
-    user.displayMode;
   };
 
   public shared ({ caller }) func updateRoutineItemPosition(routineId : RoutineId, positionIndex : Nat) : async () {
@@ -1019,8 +1110,34 @@ actor {
         let updatedProfile = {
           profile with
           tier = existingProfile.tier;
+          earningsEnabled = existingProfile.earningsEnabled;
         };
         userProfiles.add(caller, updatedProfile);
+      };
+    };
+  };
+
+  public shared ({ caller }) func setUserTier(targetUser : Principal, newTier : UserTier) : async () {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can change user tiers");
+    };
+
+    switch (userProfiles.get(targetUser)) {
+      case (null) {
+        let newProfile : UserProfile = {
+          name = "";
+          email = null;
+          earningsEnabled = false;
+          tier = newTier;
+        };
+        userProfiles.add(targetUser, newProfile);
+      };
+      case (?existingProfile) {
+        let updatedProfile = {
+          existingProfile with
+          tier = newTier;
+        };
+        userProfiles.add(targetUser, updatedProfile);
       };
     };
   };
@@ -1088,6 +1205,11 @@ actor {
       Runtime.trap("Unauthorized: Only users can perform this action");
     };
 
+    // Enforce tier-based earnings access
+    if (enabled) {
+      checkEarningsAccess(caller);
+    };
+
     let user = getUser(caller);
 
     if (enabled and user.monetarySettings.maxMoneyPerDay == 0) {
@@ -1096,6 +1218,16 @@ actor {
 
     let updatedUser = { user with earningsEnabled = enabled };
     users.add(caller, updatedUser);
+    
+    // Also update the profile
+    switch (userProfiles.get(caller)) {
+      case (?profile) {
+        let updatedProfile = { profile with earningsEnabled = enabled };
+        userProfiles.add(caller, updatedProfile);
+      };
+      case (null) {};
+    };
+    
     enabled;
   };
 
@@ -1295,8 +1427,9 @@ actor {
     if (userProfiles.get(target) == null) {
       let defaultProfile : UserProfile = {
         name = "";
-        earningsEnabled = true;
+        earningsEnabled = false;
         tier = #basic;
+        email = null;
       };
       userProfiles.add(target, defaultProfile);
     };
@@ -1320,4 +1453,3 @@ actor {
     AccessControl.assignRole(accessControlState, caller, target, #user);
   };
 };
-

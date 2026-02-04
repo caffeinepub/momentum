@@ -1,14 +1,29 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-04T14:39:34.750Z",
-  "summary": "Diff appears to implement a Plan-mode-only X-button behavior by introducing a Plan mode subview state in TaskManager and adding an optional `onPlanModeX` callback to BottomNavigation. Based on the provided summaries/snippets, the intent is to hide CustomLists and show Morning/Evening routines without changing the underlying app mode (to avoid flicker). No evidence of changes under `frontend/src/components/ui` or backend files is shown.",
+  "generatedAt": "2026-02-04T22:34:32.218Z",
+  "summary": "The diff implements per-user Plan Mode tip persistence by keying localStorage with the authenticated user’s principal and adds a legacy-key migration path. One notable extra behavior is suppressing the tip entirely when no principal is provided (unauthenticated), which is not explicitly requested.",
   "missing_requirements": [],
-  "hallucinated_features": [],
-  "confidence": 0.66,
+  "hallucinated_features": [
+    {
+      "description": "Do not show the Plan Mode tip when there is no authenticated principal (principalId is null).",
+      "reason": "REQ-3/REQ-4 specify per-user persistence keyed by principal and migration behavior for logged-in users, but do not request changing tip visibility behavior for unauthenticated sessions.",
+      "evidence": [
+        "frontend/src/hooks/usePlanModeTip.ts (\"// If no principal (not logged in), don't show the tip\" and early return setting shouldShow(false))"
+      ]
+    },
+    {
+      "description": "Remove the legacy shared localStorage key during migration (localStorage.removeItem(LEGACY_STORAGE_KEY)).",
+      "reason": "REQ-4 requires migrating legacy dismissal to the current user without affecting other users; it does not explicitly require deleting the legacy key as part of migration (though it may be a reasonable implementation choice).",
+      "evidence": [
+        "frontend/src/hooks/usePlanModeTip.ts (migration block calls localStorage.removeItem(LEGACY_STORAGE_KEY))"
+      ]
+    }
+  ],
+  "confidence": 0.72,
   "changed_files": [
     "frontend-file-summaries.txt",
-    "frontend/src/components/BottomNavigation.tsx",
+    "frontend/src/hooks/usePlanModeTip.ts",
     "frontend/src/pages/TaskManager.tsx",
     "project_state.json"
   ]

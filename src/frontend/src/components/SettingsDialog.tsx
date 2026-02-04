@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Settings, AlertCircle } from 'lucide-react';
-import type { MonetarySettings } from '@/backend';
+import { Separator } from '@/components/ui/separator';
+import { Settings, AlertCircle, Mail, User } from 'lucide-react';
+import type { MonetarySettings, UserProfile } from '@/backend';
 import { toast } from 'sonner';
 
 interface SettingsDialogProps {
@@ -18,6 +19,9 @@ interface SettingsDialogProps {
   earningsEnabled: boolean;
   onToggleEarnings: (enabled: boolean) => Promise<void>;
   isTogglingEarnings: boolean;
+  userProfile?: UserProfile | null;
+  onSaveProfile?: (profile: UserProfile) => Promise<void>;
+  isSavingProfile?: boolean;
 }
 
 export default function SettingsDialog({
@@ -29,6 +33,9 @@ export default function SettingsDialog({
   earningsEnabled,
   onToggleEarnings,
   isTogglingEarnings,
+  userProfile,
+  onSaveProfile,
+  isSavingProfile = false,
 }: SettingsDialogProps) {
   const [localEarningsEnabled, setLocalEarningsEnabled] = useState(earningsEnabled);
   const [maxMoneyPerDay, setMaxMoneyPerDay] = useState<number>(0);
@@ -36,6 +43,10 @@ export default function SettingsDialog({
   const [maxDailyPriorities, setMaxDailyPriorities] = useState<number>(0);
   const [maxEveningRoutine, setMaxEveningRoutine] = useState<number>(0);
   const [showConfigPrompt, setShowConfigPrompt] = useState(false);
+
+  // Profile editing state
+  const [profileEmail, setProfileEmail] = useState('');
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   useEffect(() => {
     setLocalEarningsEnabled(earningsEnabled);
@@ -49,6 +60,18 @@ export default function SettingsDialog({
       setMaxEveningRoutine(Number(monetarySettings.maxEveningRoutine));
     }
   }, [monetarySettings]);
+
+  useEffect(() => {
+    if (userProfile) {
+      setProfileEmail(userProfile.email || '');
+    }
+  }, [userProfile]);
+
+  const validateEmail = (email: string): boolean => {
+    if (!email.trim()) return false;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
   const handleMaxMoneyChange = (value: number) => {
     setMaxMoneyPerDay(value);
@@ -86,7 +109,6 @@ export default function SettingsDialog({
 
   const handleToggleEarnings = async (checked: boolean) => {
     if (checked && maxMoneyPerDay === 0) {
-      // Show configuration prompt instead of immediately toggling
       setShowConfigPrompt(true);
       return;
     }
@@ -97,7 +119,11 @@ export default function SettingsDialog({
       toast.success(checked ? 'Earnings system enabled' : 'Earnings system disabled');
     } catch (error: any) {
       console.error('Toggle earnings error:', error);
-      if (error.message?.includes('Max Money Per Day')) {
+      if (error.message?.includes('not available for your tier')) {
+        toast.error('Earnings system not available', {
+          description: 'Please upgrade to Silver tier or higher to access earnings features.',
+        });
+      } else if (error.message?.includes('Max Money Per Day')) {
         toast.error('Cannot enable earnings system', {
           description: 'Please set Max Money Per Day to a positive value first.',
         });
@@ -128,18 +154,20 @@ export default function SettingsDialog({
     };
 
     try {
-      // First save the monetary settings
       await onSaveSettings(settings);
-      
-      // Then enable the earnings system
       await onToggleEarnings(true);
       setLocalEarningsEnabled(true);
       setShowConfigPrompt(false);
-      
       toast.success('Settings saved and earnings system enabled');
-    } catch (error) {
-      toast.error('Failed to save settings and enable earnings system');
-      console.error(error);
+    } catch (error: any) {
+      console.error('Save and enable error:', error);
+      if (error.message?.includes('not available for your tier')) {
+        toast.error('Earnings system not available', {
+          description: 'Please upgrade to Silver tier or higher to access earnings features.',
+        });
+      } else {
+        toast.error('Failed to save settings and enable earnings system');
+      }
     }
   };
 
@@ -168,6 +196,32 @@ export default function SettingsDialog({
     }
   };
 
+  const handleSaveProfile = async () => {
+    if (!userProfile || !onSaveProfile) return;
+
+    if (!profileEmail.trim()) {
+      toast.error('Email address is required');
+      return;
+    }
+
+    if (!validateEmail(profileEmail)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      await onSaveProfile({
+        ...userProfile,
+        email: profileEmail.trim(),
+      });
+      setIsEditingProfile(false);
+      toast.success('Profile updated successfully');
+    } catch (error) {
+      console.error('Failed to save profile:', error);
+      toast.error('Failed to update profile');
+    }
+  };
+
   const isValidConfiguration = maxMoneyPerDay > 0 && (maxMorningRoutine + maxDailyPriorities + maxEveningRoutine === maxMoneyPerDay);
 
   return (
@@ -181,6 +235,65 @@ export default function SettingsDialog({
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          {/* Profile Section */}
+          {userProfile && onSaveProfile && (
+            <>
+              <div className="space-y-3 p-4 rounded-lg bg-muted/50 border border-border">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label className="text-base font-semibold flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Profile
+                    </Label>
+                  </div>
+                </div>
+                <div className="space-y-3 mt-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="profile-name" className="text-sm">Name</Label>
+                    <Input
+                      id="profile-name"
+                      value={userProfile.name}
+                      disabled
+                      className="bg-muted"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="profile-email" className="text-sm">Email Address</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="profile-email"
+                        type="email"
+                        placeholder="your.email@example.com"
+                        value={profileEmail}
+                        onChange={(e) => {
+                          setProfileEmail(e.target.value);
+                          setIsEditingProfile(true);
+                        }}
+                        disabled={isSavingProfile}
+                        className="pl-9"
+                      />
+                    </div>
+                    {profileEmail && !validateEmail(profileEmail) && (
+                      <p className="text-xs text-destructive">Please enter a valid email address</p>
+                    )}
+                  </div>
+                  {isEditingProfile && (
+                    <Button
+                      onClick={handleSaveProfile}
+                      disabled={isSavingProfile || !validateEmail(profileEmail)}
+                      size="sm"
+                      className="w-full"
+                    >
+                      {isSavingProfile ? 'Saving...' : 'Save Profile'}
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <Separator />
+            </>
+          )}
+
           {/* Earnings System Toggle Section */}
           <div className="space-y-3 p-4 rounded-lg bg-muted/50 border border-border">
             <div className="flex items-center justify-between">
@@ -201,7 +314,7 @@ export default function SettingsDialog({
             </div>
           </div>
 
-          {/* Configuration Prompt - Shows when trying to enable with maxMoneyPerDay == 0 */}
+          {/* Configuration Prompt */}
           {showConfigPrompt && !localEarningsEnabled && (
             <div className="space-y-4 p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-500">
               <div className="flex items-start gap-3">
@@ -218,10 +331,9 @@ export default function SettingsDialog({
             </div>
           )}
 
-          {/* Monetary Settings - Visible when earnings enabled OR when config prompt is shown */}
+          {/* Monetary Settings */}
           {(localEarningsEnabled || showConfigPrompt) && (
             <>
-              {/* Max Money Per Day Section */}
               <div className="space-y-3">
                 <Label htmlFor="maxMoneyPerDay" className="text-base font-semibold">
                   Max Money Per Day
@@ -239,7 +351,6 @@ export default function SettingsDialog({
                 />
               </div>
 
-              {/* Bucket Distribution Section */}
               <div className="space-y-4 p-4 rounded-lg bg-muted/50">
                 <div className="space-y-2">
                   <h3 className="font-semibold text-lg">Bucket Distribution</h3>
@@ -248,7 +359,6 @@ export default function SettingsDialog({
                   </p>
                 </div>
                 
-                {/* Morning Routine Bucket */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="maxMorningRoutine">Morning Routine</Label>
@@ -265,7 +375,6 @@ export default function SettingsDialog({
                   />
                 </div>
 
-                {/* Daily Priorities Bucket */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="maxDailyPriorities">Daily Priorities</Label>
@@ -282,7 +391,6 @@ export default function SettingsDialog({
                   />
                 </div>
 
-                {/* Evening Routine Bucket */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="maxEveningRoutine">Evening Routine</Label>
@@ -299,7 +407,6 @@ export default function SettingsDialog({
                   />
                 </div>
 
-                {/* Validation Message */}
                 <div className="text-sm text-muted-foreground">
                   Total: ${maxMorningRoutine + maxDailyPriorities + maxEveningRoutine} / ${maxMoneyPerDay}
                   {maxMorningRoutine + maxDailyPriorities + maxEveningRoutine !== maxMoneyPerDay && (
@@ -316,9 +423,10 @@ export default function SettingsDialog({
             variant="outline"
             onClick={() => {
               setShowConfigPrompt(false);
+              setIsEditingProfile(false);
               onOpenChange(false);
             }}
-            disabled={isSaving || isTogglingEarnings}
+            disabled={isSaving || isTogglingEarnings || isSavingProfile}
           >
             Cancel
           </Button>

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useGetCallerUserProfile, useTaskQueries, useMorningRoutineQueries, useAppMode, useEarningsEnabled, useMonetarySettings, useSpendRecords, useSpendPresets } from '../hooks/useQueries';
+import { useGetCallerUserProfile, useTaskQueries, useMorningRoutineQueries, useAppMode, useEarningsEnabled, useMonetarySettings, useSpendRecords, useSpendPresets, useSaveCallerUserProfile } from '../hooks/useQueries';
 import { toLocalTask, toLocalList, type LocalTask, type LocalList } from '../lib/types';
 import { writeDragPayload, readDragPayload } from '../utils/dragPayload';
+import { parseTierError } from '../utils/tierErrors';
+import { usePlanModeTip } from '../hooks/usePlanModeTip';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import EisenhowerMatrix from '../components/EisenhowerMatrix';
@@ -17,6 +19,7 @@ import InsightsDialog from '../components/InsightsDialog';
 import UniversalAddTaskDialog from '../components/UniversalAddTaskDialog';
 import CreateListDialog from '../components/CreateListDialog';
 import EditTaskDialog from '../components/EditTaskDialog';
+import PlanModeTipDialog from '../components/PlanModeTipDialog';
 import AuthBootstrapLoading from '../components/AuthBootstrapLoading';
 import UnauthenticatedScreen from '../components/UnauthenticatedScreen';
 import { RoutineSection, type TaskCreateInput, type TaskUpdateInput } from '@/backend';
@@ -27,7 +30,10 @@ export default function TaskManager() {
   const isAuthenticated = !!identity;
   const isLoggingIn = loginStatus === 'logging-in';
 
+  const principalString = identity?.getPrincipal().toString() || null;
+
   const { data: userProfile, isLoading: profileLoading, isFetched } = useGetCallerUserProfile();
+  const saveProfile = useSaveCallerUserProfile();
   const { 
     tasks, 
     lists, 
@@ -60,6 +66,7 @@ export default function TaskManager() {
   const { monetarySettings, saveMonetarySettings, addPayroll } = useMonetarySettings();
   const { spends, createSpend, deleteSpend } = useSpendRecords();
   const { presets, createPreset, updatePreset, deletePreset } = useSpendPresets();
+  const { shouldShow: shouldShowPlanTip, isChecking: isCheckingPlanTip, markAsShown: markPlanTipAsShown } = usePlanModeTip(principalString);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [todayEarnsOpen, setTodayEarnsOpen] = useState(false);
@@ -69,63 +76,56 @@ export default function TaskManager() {
   const [createListOpen, setCreateListOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<LocalTask | null>(null);
   const [preSelectedListId, setPreSelectedListId] = useState<bigint | null>(null);
+  const [planTipOpen, setPlanTipOpen] = useState(false);
   
   const [isMatrixExpanded, setIsMatrixExpanded] = useState(true);
   const [isMorningExpanded, setIsMorningExpanded] = useState(true);
   const [isEveningExpanded, setIsEveningExpanded] = useState(true);
   const [bootstrapState, setBootstrapState] = useState<'idle' | 'running' | 'complete' | 'failed'>('idle');
 
-  // Plan mode subview state: 'lists' shows CustomLists, 'routines' shows Morning/Evening routines
-  const [planSubview, setPlanSubview] = useState<'lists' | 'routines'>('lists');
+  const [planLayout, setPlanLayout] = useState<'lists' | 'homeLike'>('lists');
 
   const showProfileSetup = isAuthenticated && !profileLoading && isFetched && userProfile === null;
 
-  // Bootstrap quadrants and reset new day after profile load
   useEffect(() => {
-    // Only run if authenticated, profile loaded, and not already bootstrapped
     if (!isAuthenticated || !userProfile || bootstrapState !== 'idle') return;
 
     const bootstrap = async () => {
       setBootstrapState('running');
       try {
-        // Step 1: Ensure all quadrants exist and wait until confirmed
         await bootstrapQuadrants();
-        
-        // Step 2: Reset new day (only runs after quadrants are confirmed ready)
         await resetNewDay.mutateAsync();
-        
         setBootstrapState('complete');
       } catch (error: any) {
         console.error('Bootstrap error:', error);
         setBootstrapState('failed');
-        
-        // Show a single user-friendly error toast
         toast.error('Failed to initialize workspace. Please refresh the page to try again.');
       }
     };
 
-    // Only run bootstrap if quadrants are not ready
     if (!quadrantsReady) {
       bootstrap();
     } else {
-      // Quadrants already exist, mark as complete
       setBootstrapState('complete');
     }
   }, [isAuthenticated, userProfile, quadrantsReady, bootstrapState, bootstrapQuadrants, resetNewDay]);
 
-  // Reset planSubview to 'lists' when entering Plan mode
   useEffect(() => {
     if (appMode === 1) {
-      setPlanSubview('lists');
+      setPlanLayout('lists');
     }
   }, [appMode]);
 
-  // Show loading screen while Internet Identity is initializing
+  useEffect(() => {
+    if (appMode === 1 && planLayout === 'lists' && shouldShowPlanTip && !isCheckingPlanTip && bootstrapState === 'complete') {
+      setPlanTipOpen(true);
+    }
+  }, [appMode, planLayout, shouldShowPlanTip, isCheckingPlanTip, bootstrapState]);
+
   if (isInitializing) {
     return <AuthBootstrapLoading />;
   }
 
-  // Show unauthenticated screen with login button
   if (!isAuthenticated) {
     const handleLogin = async () => {
       try {
@@ -144,7 +144,6 @@ export default function TaskManager() {
     return <UserProfileSetup />;
   }
 
-  // Show loading only while profile/data is loading OR bootstrap is actively running
   const isBootstrapping = bootstrapState === 'running';
   if (profileLoading || dataLoading || isBootstrapping) {
     return (
@@ -252,8 +251,10 @@ export default function TaskManager() {
     try {
       await createTask.mutateAsync(input);
       setAddTaskOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Create task error:', error);
+      const errorMessage = parseTierError(error);
+      toast.error(errorMessage);
     }
   };
 
@@ -261,8 +262,10 @@ export default function TaskManager() {
     try {
       await createList.mutateAsync(name);
       setCreateListOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Create list error:', error);
+      const errorMessage = parseTierError(error);
+      toast.error(errorMessage);
     }
   };
 
@@ -320,47 +323,34 @@ export default function TaskManager() {
   };
 
   const handlePlanModeX = () => {
-    // In Plan mode, X button toggles between 'lists' and 'routines' subview
-    // When showing lists, X switches to routines
-    // When showing routines, X switches back to lists
-    setPlanSubview(prev => prev === 'lists' ? 'routines' : 'lists');
+    setPlanLayout('homeLike');
+  };
+
+  const handleCreateRoutine = async (text: string, section: RoutineSection) => {
+    try {
+      await createRoutine.mutateAsync({ text, section });
+    } catch (error: any) {
+      console.error('Create routine error:', error);
+      const errorMessage = parseTierError(error);
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleDismissPlanTip = () => {
+    markPlanTipAsShown();
+    setPlanTipOpen(false);
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted">
-      {isHomeMode && <Header />}
+      {(isHomeMode || (isPlanMode && planLayout === 'homeLike')) && <Header />}
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        {isHomeMode && (
+        {(isHomeMode || (isPlanMode && planLayout === 'homeLike')) && (
           <MorningRoutine
             section={RoutineSection.top}
             routines={morningRoutines}
-            onCreateRoutine={async (text, section) => {
-              await createRoutine.mutateAsync({ text, section });
-            }}
-            onToggleComplete={async (id, completed) => {
-              await completeRoutine.mutateAsync({ id, completed });
-            }}
-            onDeleteRoutine={async (id) => {
-              await deleteRoutine.mutateAsync(id);
-            }}
-            onReorderRoutine={async (routineId, positionIndex) => {
-              await updateRoutinePosition.mutateAsync({ routineId, positionIndex });
-            }}
-            displayMode={Number(displayMode || BigInt(0))}
-            onToggleDisplayMode={(mode) => setDisplayMode.mutate(mode)}
-            isExpanded={isMorningExpanded}
-            onToggleExpand={() => setIsMorningExpanded(!isMorningExpanded)}
-          />
-        )}
-
-        {isPlanMode && planSubview === 'routines' && (
-          <MorningRoutine
-            section={RoutineSection.top}
-            routines={morningRoutines}
-            onCreateRoutine={async (text, section) => {
-              await createRoutine.mutateAsync({ text, section });
-            }}
+            onCreateRoutine={handleCreateRoutine}
             onToggleComplete={async (id, completed) => {
               await completeRoutine.mutateAsync({ id, completed });
             }}
@@ -393,13 +383,11 @@ export default function TaskManager() {
           onSwitchToPlanMode={handleSwitchToPlanMode}
         />
 
-        {isHomeMode && (
+        {(isHomeMode || (isPlanMode && planLayout === 'homeLike')) && (
           <MorningRoutine
             section={RoutineSection.bottom}
             routines={eveningRoutines}
-            onCreateRoutine={async (text, section) => {
-              await createRoutine.mutateAsync({ text, section });
-            }}
+            onCreateRoutine={handleCreateRoutine}
             onToggleComplete={async (id, completed) => {
               await completeRoutine.mutateAsync({ id, completed });
             }}
@@ -416,30 +404,7 @@ export default function TaskManager() {
           />
         )}
 
-        {isPlanMode && planSubview === 'routines' && (
-          <MorningRoutine
-            section={RoutineSection.bottom}
-            routines={eveningRoutines}
-            onCreateRoutine={async (text, section) => {
-              await createRoutine.mutateAsync({ text, section });
-            }}
-            onToggleComplete={async (id, completed) => {
-              await completeRoutine.mutateAsync({ id, completed });
-            }}
-            onDeleteRoutine={async (id) => {
-              await deleteRoutine.mutateAsync(id);
-            }}
-            onReorderRoutine={async (routineId, positionIndex) => {
-              await updateRoutinePosition.mutateAsync({ routineId, positionIndex });
-            }}
-            displayMode={Number(displayMode || BigInt(0))}
-            onToggleDisplayMode={(mode) => setDisplayMode.mutate(mode)}
-            isExpanded={isEveningExpanded}
-            onToggleExpand={() => setIsEveningExpanded(!isEveningExpanded)}
-          />
-        )}
-
-        {isPlanMode && planSubview === 'lists' && (
+        {isPlanMode && planLayout === 'lists' && (
           <CustomLists
             tasks={localTasks}
             lists={customLists}
@@ -462,6 +427,7 @@ export default function TaskManager() {
 
       <BottomNavigation
         isPlanMode={isPlanMode}
+        planLayout={planLayout}
         onSwitchMode={(mode) => setAppMode.mutate(mode)}
         onPlanModeX={handlePlanModeX}
         onAddTask={() => handleOpenAddTask()}
@@ -482,6 +448,9 @@ export default function TaskManager() {
         earningsEnabled={earningsEnabled}
         onToggleEarnings={handleToggleEarnings}
         isTogglingEarnings={toggleEarningsSystem.isPending}
+        userProfile={userProfile}
+        onSaveProfile={saveProfile.mutateAsync}
+        isSavingProfile={saveProfile.isPending}
       />
 
       {earningsEnabled && (
@@ -545,6 +514,12 @@ export default function TaskManager() {
           isLoading={updateTask.isPending}
         />
       )}
+
+      <PlanModeTipDialog
+        open={planTipOpen}
+        onOpenChange={setPlanTipOpen}
+        onDismiss={handleDismissPlanTip}
+      />
 
       <Footer />
     </div>

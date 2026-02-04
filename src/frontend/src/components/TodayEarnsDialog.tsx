@@ -6,6 +6,7 @@ import type { MonetarySettings, Task, MorningRoutine } from '@/backend';
 import { RoutineSection } from '@/backend';
 import { toast } from 'sonner';
 import PayrollHistoryDialog from './PayrollHistoryDialog';
+import { calculateDailyPrioritiesIncome } from '@/utils/dailyPrioritiesEarnings';
 
 interface TodayEarnsDialogProps {
   open: boolean;
@@ -42,11 +43,8 @@ export default function TodayEarnsDialog({
     const maxDailyPriorities = Number(monetarySettings.maxDailyPriorities);
     const maxEveningRoutine = Number(monetarySettings.maxEveningRoutine);
 
-    const quadrantTasks = tasks.filter(t => t.listId >= BigInt(1) && t.listId <= BigInt(4));
-    const totalTaskWeight = quadrantTasks.reduce((sum, task) => sum + task.weight, 0);
-    const taskWeightCompleted = quadrantTasks
-      .filter(t => t.completed)
-      .reduce((sum, task) => sum + task.weight, 0);
+    // Use the new quadrant-weight scaling logic for Daily Priorities
+    const dailyTaskIncome = calculateDailyPrioritiesIncome(tasks, maxDailyPriorities);
 
     const morningRoutines = routines.filter(r => r.section === RoutineSection.top);
     const eveningRoutines = routines.filter(r => r.section === RoutineSection.bottom);
@@ -59,7 +57,6 @@ export default function TodayEarnsDialog({
       .filter(r => r.completed)
       .reduce((sum, r) => sum + Number(r.weight), 0);
 
-    const taskWeightUnit = totalTaskWeight > 0 ? maxDailyPriorities / totalTaskWeight : 0;
     const morningRoutineWeightUnit = morningRoutines.length > 0 
       ? maxMorningRoutine / (morningRoutines.length * 5) 
       : 0;
@@ -67,7 +64,6 @@ export default function TodayEarnsDialog({
       ? maxEveningRoutine / (eveningRoutines.length * 5) 
       : 0;
 
-    const dailyTaskIncome = taskWeightUnit * taskWeightCompleted;
     const dailyMorningRoutineIncome = morningRoutineWeightUnit * morningWeightCompleted;
     const dailyEveningRoutineIncome = eveningRoutineWeightUnit * eveningWeightCompleted;
     const totalDailyIncome = dailyTaskIncome + dailyMorningRoutineIncome + dailyEveningRoutineIncome;

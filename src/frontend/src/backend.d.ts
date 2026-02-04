@@ -58,7 +58,6 @@ export interface PayrollRecord {
 export interface MorningRoutine {
     id: RoutineId;
     weight: bigint;
-    displayMode: bigint;
     order: bigint;
     text: string;
     completed: boolean;
@@ -103,6 +102,7 @@ export interface UserProfile {
     earningsEnabled: boolean;
     name: string;
     tier: UserTier;
+    email?: string;
 }
 export enum RoutineSection {
     top = "top",
@@ -129,7 +129,7 @@ export interface backendInterface {
     completeMorningRoutine(id: RoutineId, completed: boolean): Promise<void>;
     completeTask(id: TaskId, completed: boolean): Promise<void>;
     createList(name: string): Promise<ListId>;
-    createMorningRoutine(text: string, section: RoutineSection, displayMode: bigint): Promise<RoutineId>;
+    createMorningRoutine(text: string, section: RoutineSection): Promise<RoutineId>;
     createPreset(preset: SpendPreset): Promise<bigint>;
     createSpend(input: SpendInput): Promise<string>;
     createTask(input: TaskCreateInput): Promise<TaskId>;
@@ -160,7 +160,6 @@ export interface backendInterface {
     getPayrollHistory(): Promise<Array<PayrollRecord>>;
     getPreset(id: bigint): Promise<SpendPreset | null>;
     getTask(id: TaskId): Promise<Task>;
-    getUserDisplayMode(): Promise<bigint>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     moveTask(taskId: TaskId, destinationListId: ListId): Promise<void>;
@@ -171,10 +170,10 @@ export interface backendInterface {
     resetNewDay(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveMonetarySettings(settings: MonetarySettings): Promise<void>;
-    setUserDisplayMode(displayMode: bigint): Promise<void>;
+    setUserTier(targetUser: Principal, newTier: UserTier): Promise<void>;
     submitPayrollLog(date: bigint): Promise<bigint>;
     toggleEarningsSystem(enabled: boolean): Promise<boolean>;
-    updateMorningRoutine(id: RoutineId, text: string, section: RoutineSection, displayMode: bigint): Promise<void>;
+    updateMorningRoutine(id: RoutineId, text: string, section: RoutineSection): Promise<void>;
     updatePreset(id: bigint, updatedPreset: SpendPreset): Promise<void>;
     updateRoutineItemPosition(routineId: RoutineId, positionIndex: bigint): Promise<void>;
     updateTask(id: TaskId, updatedTask: TaskUpdateInput): Promise<void>;

@@ -1,11 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Adjust the Plan mode X button to hide/show specific sections without switching modes, eliminating flicker.
+**Goal:** Persist the Plan Mode onboarding tip dismissal per authenticated user (Internet Identity principal) instead of per browser/device, while keeping existing users’ dismissed state via a client-side migration.
 
 **Planned changes:**
-- Update the Plan mode X button handler to stop triggering the existing Plan→Home mode switch.
-- In Plan mode, make the X button only hide the “My Lists” (CustomLists) section.
-- In Plan mode, make the X button only show/unhide the “Morning Routine” and “Evening Routine” sections, keeping Plan mode active to prevent mount/unmount flicker.
+- Change Plan Mode tip persistence to use a per-user localStorage key derived from the logged-in user’s Internet Identity principal.
+- Add a client-side migration/fallback: if the old shared localStorage key indicates the tip was dismissed, record dismissal under the current user’s new per-user key (without affecting other users on the same device).
+- Keep the Plan Mode tip dialog content unchanged (including the exact text: "The Real Magic Is in Settings.").
 
-**User-visible outcome:** In Plan mode, tapping X no longer exits Plan mode; it simply hides “My Lists” and shows “Morning Routine” and “Evening Routine” with no flicker.
+**User-visible outcome:** Each user will see the Plan Mode tip independently on shared devices; dismissing it will only hide it for that specific account, and previously dismissed tips stay dismissed after upgrading.

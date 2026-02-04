@@ -28,7 +28,6 @@ export interface MonetarySettings {
 export interface MorningRoutine {
   'id' : RoutineId,
   'weight' : bigint,
-  'displayMode' : bigint,
   'order' : bigint,
   'text' : string,
   'completed' : boolean,
@@ -106,6 +105,7 @@ export interface UserProfile {
   'earningsEnabled' : boolean,
   'name' : string,
   'tier' : UserTier,
+  'email' : [] | [string],
 }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
@@ -121,10 +121,7 @@ export interface _SERVICE {
   'completeMorningRoutine' : ActorMethod<[RoutineId, boolean], undefined>,
   'completeTask' : ActorMethod<[TaskId, boolean], undefined>,
   'createList' : ActorMethod<[string], ListId>,
-  'createMorningRoutine' : ActorMethod<
-    [string, RoutineSection, bigint],
-    RoutineId
-  >,
+  'createMorningRoutine' : ActorMethod<[string, RoutineSection], RoutineId>,
   'createPreset' : ActorMethod<[SpendPreset], bigint>,
   'createSpend' : ActorMethod<[SpendInput], string>,
   'createTask' : ActorMethod<[TaskCreateInput], TaskId>,
@@ -158,7 +155,6 @@ export interface _SERVICE {
   'getPayrollHistory' : ActorMethod<[], Array<PayrollRecord>>,
   'getPreset' : ActorMethod<[bigint], [] | [SpendPreset]>,
   'getTask' : ActorMethod<[TaskId], Task>,
-  'getUserDisplayMode' : ActorMethod<[], bigint>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'moveTask' : ActorMethod<[TaskId, ListId], undefined>,
@@ -169,11 +165,11 @@ export interface _SERVICE {
   'resetNewDay' : ActorMethod<[], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'saveMonetarySettings' : ActorMethod<[MonetarySettings], undefined>,
-  'setUserDisplayMode' : ActorMethod<[bigint], undefined>,
+  'setUserTier' : ActorMethod<[Principal, UserTier], undefined>,
   'submitPayrollLog' : ActorMethod<[bigint], bigint>,
   'toggleEarningsSystem' : ActorMethod<[boolean], boolean>,
   'updateMorningRoutine' : ActorMethod<
-    [RoutineId, string, RoutineSection, bigint],
+    [RoutineId, string, RoutineSection],
     undefined
   >,
   'updatePreset' : ActorMethod<[bigint, SpendPreset], undefined>,

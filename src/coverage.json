@@ -1,26 +1,37 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-04T14:39:34.789Z",
+  "generatedAt": "2026-02-04T22:34:32.238Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 1,
-    "implemented": 1,
+    "total": 2,
+    "implemented": 2,
     "items": [
       {
-        "id": "REQ-7",
-        "summary": "Update the Plan mode X button behavior so that pressing X does NOT switch the app mode (must not call the existing Plan→Home mode switch). Instead, while remaining in Plan mode, pressing X must ONLY (1) hide the “My Lists” (CustomLists) section and (2) unhide/show the “Morning Routine” and “Evening Routine” sections, to eliminate the current flickering caused by mode switching/unmounting.",
+        "id": "REQ-3",
+        "summary": "Update the Plan Mode tip persistence logic so the “Plan Mode Tips” instruction dialog is tracked per authenticated user (keyed by the user’s Internet Identity principal) rather than a single shared localStorage key for the whole browser/device.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/BottomNavigation.tsx",
+          "frontend/src/hooks/usePlanModeTip.ts",
           "frontend/src/pages/TaskManager.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/BottomNavigation.tsx",
+          "frontend/src/hooks/usePlanModeTip.ts",
           "frontend/src/pages/TaskManager.tsx"
+        ]
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Add a client-side migration/fallback so existing users who previously dismissed the Plan Mode tip under the old shared localStorage key keep it dismissed for their own account after upgrading (without affecting other users on the same device).",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/usePlanModeTip.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/usePlanModeTip.ts"
         ]
       }
     ]
@@ -30,7 +41,7 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/BottomNavigation.tsx",
+    "frontend/src/hooks/usePlanModeTip.ts",
     "frontend/src/pages/TaskManager.tsx",
     "project_state.json",
     "scratch/component-selection.json",

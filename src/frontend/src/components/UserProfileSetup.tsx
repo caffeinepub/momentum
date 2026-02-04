@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User } from 'lucide-react';
+import { User, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,7 +17,14 @@ import { toast } from 'sonner';
 
 export default function UserProfileSetup() {
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const saveProfile = useSaveCallerUserProfile();
+
+  const validateEmail = (email: string): boolean => {
+    if (!email.trim()) return false;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,10 +34,21 @@ export default function UserProfileSetup() {
       return;
     }
 
+    if (!email.trim()) {
+      toast.error('Please enter your email address');
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
     try {
       await saveProfile.mutateAsync({ 
         name: name.trim(),
-        earningsEnabled: true,
+        email: email.trim(),
+        earningsEnabled: false,
         tier: UserTier.basic,
       });
       toast.success('Profile created successfully');
@@ -39,6 +57,8 @@ export default function UserProfileSetup() {
       toast.error('Failed to create profile');
     }
   };
+
+  const isFormValid = name.trim() && email.trim() && validateEmail(email);
 
   return (
     <Card className="w-full max-w-md mx-4">
@@ -64,12 +84,30 @@ export default function UserProfileSetup() {
               autoFocus
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email Address</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="your.email@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={saveProfile.isPending}
+                className="pl-9"
+              />
+            </div>
+            {email && !validateEmail(email) && (
+              <p className="text-xs text-destructive">Please enter a valid email address</p>
+            )}
+          </div>
         </CardContent>
         <CardFooter>
           <Button
             type="submit"
             className="w-full"
-            disabled={saveProfile.isPending || !name.trim()}
+            disabled={saveProfile.isPending || !isFormValid}
           >
             {saveProfile.isPending ? 'Creating Profile...' : 'Continue'}
           </Button>
