@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { DollarSign, TrendingUp, History } from 'lucide-react';
-import type { MonetarySettings, Task, MorningRoutine } from '@/lib/backendTypes';
-import { RoutineSection } from '@/lib/backendTypes';
+import type { MonetarySettings, Task, MorningRoutine } from '@/backend';
+import { RoutineSection } from '@/backend';
 import { toast } from 'sonner';
 import PayrollHistoryDialog from './PayrollHistoryDialog';
 

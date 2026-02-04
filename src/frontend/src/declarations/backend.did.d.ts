@@ -18,6 +18,90 @@ export interface List {
   'quadrant' : boolean,
 }
 export type ListId = bigint;
+export interface MonetarySettings {
+  'maxDailyPriorities' : bigint,
+  'maxMorningRoutine' : bigint,
+  'maxMoneyPerDay' : bigint,
+  'totalBalance' : bigint,
+  'maxEveningRoutine' : bigint,
+}
+export interface MorningRoutine {
+  'id' : RoutineId,
+  'weight' : bigint,
+  'displayMode' : bigint,
+  'order' : bigint,
+  'text' : string,
+  'completed' : boolean,
+  'section' : RoutineSection,
+  'streakCount' : bigint,
+}
+export interface PayrollRecord {
+  'total' : bigint,
+  'submitted' : boolean,
+  'date' : bigint,
+  'details' : { 'morning' : bigint, 'evening' : bigint, 'priorities' : bigint },
+}
+export type RoutineId = bigint;
+export type RoutineSection = { 'top' : null } |
+  { 'bottom' : null };
+export type SpendId = bigint;
+export interface SpendInput {
+  'category' : string,
+  'amount' : number,
+  'spendType' : SpendType,
+}
+export interface SpendPreset {
+  'id' : bigint,
+  'name' : string,
+  'category' : string,
+  'amount' : number,
+}
+export interface SpendRecord {
+  'id' : SpendId,
+  'date' : bigint,
+  'category' : string,
+  'amount' : number,
+  'spendType' : SpendType,
+}
+export type SpendType = { 'normal' : null } |
+  { 'preDeducted' : null };
+export interface Task {
+  'id' : TaskId,
+  'weight' : number,
+  'title' : string,
+  'isLongTask' : boolean,
+  'order' : bigint,
+  'completed' : boolean,
+  'description' : string,
+  'important' : boolean,
+  'urgent' : boolean,
+  'listId' : ListId,
+}
+export interface TaskCreateInput {
+  'title' : string,
+  'isLongTask' : boolean,
+  'order' : bigint,
+  'description' : string,
+  'important' : boolean,
+  'urgent' : boolean,
+  'listId' : ListId,
+}
+export type TaskId = bigint;
+export interface TaskUpdateInput {
+  'title' : string,
+  'isLongTask' : boolean,
+  'order' : bigint,
+  'completed' : boolean,
+  'description' : string,
+  'important' : boolean,
+  'urgent' : boolean,
+  'listId' : ListId,
+}
+export interface UserMetadata {
+  'principal' : Principal,
+  'isAdmin' : boolean,
+  'profile' : [] | [UserProfile],
+}
 export interface UserProfile {
   'earningsEnabled' : boolean,
   'name' : string,
@@ -32,14 +116,70 @@ export type UserTier = { 'gold' : null } |
   { 'silver' : null };
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'addPayroll' : ActorMethod<[bigint], bigint>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'getAllUserLists' : ActorMethod<[], [] | [Array<List>]>,
+  'completeMorningRoutine' : ActorMethod<[RoutineId, boolean], undefined>,
+  'completeTask' : ActorMethod<[TaskId, boolean], undefined>,
+  'createList' : ActorMethod<[string], ListId>,
+  'createMorningRoutine' : ActorMethod<
+    [string, RoutineSection, bigint],
+    RoutineId
+  >,
+  'createPreset' : ActorMethod<[SpendPreset], bigint>,
+  'createSpend' : ActorMethod<[SpendInput], string>,
+  'createTask' : ActorMethod<[TaskCreateInput], TaskId>,
+  'deleteList' : ActorMethod<[ListId], undefined>,
+  'deleteMorningRoutine' : ActorMethod<[RoutineId], undefined>,
+  'deletePreset' : ActorMethod<[bigint], undefined>,
+  'deleteSpend' : ActorMethod<[SpendId], undefined>,
+  'deleteTask' : ActorMethod<[TaskId], undefined>,
+  'editPayrollLog' : ActorMethod<[bigint, bigint], undefined>,
+  'ensureAllQuadrants' : ActorMethod<[], undefined>,
+  'getAllLists' : ActorMethod<[], Array<List>>,
+  'getAllMorningRoutines' : ActorMethod<[], Array<MorningRoutine>>,
+  'getAllSpendPresets' : ActorMethod<[], Array<SpendPreset>>,
+  'getAllSpends' : ActorMethod<[], Array<SpendRecord>>,
+  'getAllTasks' : ActorMethod<[], Array<Task>>,
+  'getAllTasksByList' : ActorMethod<[ListId], Array<Task>>,
+  'getAllUserMetadata' : ActorMethod<[], Array<[Principal, UserProfile]>>,
+  'getAllUserMetadataWithRoles' : ActorMethod<[], Array<UserMetadata>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getDefaultOrder' : ActorMethod<[], bigint>,
+  'getDefaultPosition' : ActorMethod<[], bigint>,
+  'getEarningsEnabled' : ActorMethod<[], boolean>,
+  'getList' : ActorMethod<[ListId], List>,
+  'getMonetarySettings' : ActorMethod<[], MonetarySettings>,
+  'getMorningRoutine' : ActorMethod<[RoutineId], MorningRoutine>,
+  'getMorningRoutinesBySection' : ActorMethod<
+    [RoutineSection],
+    Array<MorningRoutine>
+  >,
+  'getPayrollHistory' : ActorMethod<[], Array<PayrollRecord>>,
+  'getPreset' : ActorMethod<[bigint], [] | [SpendPreset]>,
+  'getTask' : ActorMethod<[TaskId], Task>,
+  'getUserDisplayMode' : ActorMethod<[], bigint>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'maybeInitializeAllQuadrants' : ActorMethod<[], [] | [Array<List>]>,
+  'moveTask' : ActorMethod<[TaskId, ListId], undefined>,
+  'performRoutineDailyResetIfNeeded' : ActorMethod<[], undefined>,
+  'promoteToAdmin' : ActorMethod<[Principal], undefined>,
+  'removeAdmin' : ActorMethod<[Principal], undefined>,
+  'reorderTask' : ActorMethod<[TaskId, bigint], undefined>,
+  'resetNewDay' : ActorMethod<[], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'saveMonetarySettings' : ActorMethod<[MonetarySettings], undefined>,
+  'setUserDisplayMode' : ActorMethod<[bigint], undefined>,
+  'submitPayrollLog' : ActorMethod<[bigint], bigint>,
+  'toggleEarningsSystem' : ActorMethod<[boolean], boolean>,
+  'updateMorningRoutine' : ActorMethod<
+    [RoutineId, string, RoutineSection, bigint],
+    undefined
+  >,
+  'updatePreset' : ActorMethod<[bigint, SpendPreset], undefined>,
+  'updateRoutineItemPosition' : ActorMethod<[RoutineId, bigint], undefined>,
+  'updateTask' : ActorMethod<[TaskId, TaskUpdateInput], undefined>,
+  'updateTaskPosition' : ActorMethod<[TaskId, bigint], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

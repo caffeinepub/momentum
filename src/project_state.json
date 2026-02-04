@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 3,
-  "summary": "Momentum is a mobile-first personal productivity PWA on the Internet Computer with Internet Identity auth. UX centers on Daily Priorities (Eisenhower 2×2) plus Plan mode (My Lists), daily Morning/Evening routines with streaks, drag-and-drop/reorder, and an optional earnings/spend system (Cash Flow settings, Today Earns/Submit Payroll, Spend Plan, Insights). Recent work also adds an Admin Dashboard (moving toward a full page), user tiers (Basic default), and first-run onboarding defaults (Week/Month lists and seeded routine instructions). The project is currently blocked by bootstrap regressions: quadrant initialization can trap/loop (\"initializing quadrant lists\") due to RBAC/admin coupling and/or non-idempotent seeding, which prevents matrix rendering and downstream task creation.",
+  "projectStateVersion": 17,
+  "summary": "Momentum is a full-stack personal productivity PWA on the Internet Computer (Motoko canister backend + React/TypeScript frontend). Authenticated users (Internet Identity) manage daily tasks via an Eisenhower 2×2 quadrant matrix plus custom lists (“Plan mode”), with drag-and-drop and sparse ordering. The app also supports morning/evening routines with streak tracking and reordering. An optional “earnings” system lets users configure daily monetary buckets, calculate today’s earnings from completed tasks/routines, submit payroll to a running balance, view/edit payroll history, and track spending with presets and a special pre-deducted spend type. Admin RBAC exists for user listing and admin promotion/demotion.",
   "existing_features": [
     {
       "id": "IF-1",
@@ -11,440 +11,638 @@
         "AuthClient integration",
         "InternetIdentityProvider"
       ],
-      "description": "Provides a React context around DFINITY AuthClient to load persisted identities, initiate Internet Identity login, and logout/clear identity, exposing login status flags and errors.",
+      "description": "Provides a React context around DFINITY AuthClient to load/persist identities, initiate Internet Identity login, and logout/clear identity with detailed status flags.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-2",
-      "title": "Identity-bound canister actor creation and cache invalidation",
+      "title": "Identity-bound backend actor creation",
       "synonyms": [
         "useActor",
-        "actor factory",
-        "agent identity binding"
+        "agent identity binding",
+        "actor factory"
       ],
-      "description": "Creates a backend actor using the current identity (or anonymous), caches it with React Query keyed by principal, and invalidates/refetches dependent queries when the actor changes.",
+      "description": "Creates a canister actor using the current identity (or anonymous when logged out), caches it via React Query keyed by principal, and invalidates/refetches dependent queries when the actor changes.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-3",
-      "title": "Secret token extraction from URL hash with session persistence",
+      "title": "Secret token extraction for admin bootstrap",
       "synonyms": [
         "getSecretParameter",
-        "hash token",
-        "sessionStorage secret"
+        "hash secret",
+        "session persistence"
       ],
-      "description": "Extracts sensitive parameters from the URL hash fragment, stores them in sessionStorage, and removes them from the URL to reduce leakage; used for admin-token-based access control initialization.",
+      "description": "Extracts sensitive parameters (e.g., caffeineAdminToken) from the URL hash, persists them in sessionStorage, and clears them from the URL to reduce leakage.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-4",
-      "title": "Role-based access control initialization and admin checks (backend)",
+      "title": "Role-based access control (RBAC) initialization and APIs",
       "synonyms": [
         "AccessControl",
         "MixinAuthorization",
-        "_initializeAccessControlWithSecret",
-        "isCallerAdmin"
+        "_initializeAccessControlWithSecret"
       ],
-      "description": "Motoko authorization mixin initializes per-principal roles using an env-provided admin token and a user-provided secret, and exposes role retrieval, admin checks, and admin-only role assignment.",
+      "description": "Motoko authorization mixin initializes per-principal roles using an env-provided admin token, exposes role queries, and enforces admin-only role assignment and admin checks.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-5",
-      "title": "User profile fetch/save with onboarding setup form",
+      "title": "User profile storage and retrieval",
       "synonyms": [
         "UserProfile",
         "getCallerUserProfile",
-        "saveCallerUserProfile",
-        "UserProfileSetup"
+        "saveCallerUserProfile"
       ],
-      "description": "Supports fetching and saving a per-user profile (name, earningsEnabled, tier) and provides a first-run UI for entering a name and creating a default Basic profile.",
+      "description": "Supports fetching and saving a per-user profile (name, earningsEnabled, tier). Client uses this to drive onboarding and display user identity/tier in the UI.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-6",
-      "title": "Backend user initialization (quadrant seeding + default routine seeding)",
+      "title": "User tier label mapping utility",
       "synonyms": [
-        "getOrCreateUserInternal",
-        "initializeAllQuadrantsInternal",
-        "seedIdempotentDefaultRoutines"
+        "getUserTierLabel",
+        "tier display mapping"
       ],
-      "description": "Backend constructs a new user state on first access and ensures quadrant lists exist; it idempotently seeds default morning/evening routines when the user has no routines.",
+      "description": "Maps the backend UserTier enum to user-facing labels (Basic/Silver/Gold/Diamond) with a safe fallback.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-7",
-      "title": "Eisenhower matrix UI with quadrant readiness placeholder",
+      "title": "Admin-only user metadata listing",
       "synonyms": [
-        "Daily Priorities",
-        "EisenhowerMatrix",
-        "2×2 quadrant board"
+        "getAllUserMetadataWithRoles",
+        "admin user directory"
       ],
-      "description": "Renders a collapsible 2×2 quadrant grid; shows a stable loading/placeholder state when fewer than four quadrants are available; supports drop targets for tasks and a Plan button to switch modes.",
+      "description": "Backend provides an admin-only endpoint to list principals, associated user profiles, and whether each principal is an admin.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-8",
-      "title": "Custom lists board UI (Plan mode)",
+      "title": "Admin promotion/demotion APIs with safeguards",
       "synonyms": [
-        "CustomLists",
-        "My Lists board"
+        "promoteToAdmin",
+        "removeAdmin",
+        "MAX_ADMINS"
       ],
-      "description": "Displays non-quadrant lists as horizontally scrollable columns with internal scrolling, supports quick-add per list, and allows list deletion with confirmation when tasks exist.",
+      "description": "Admins can promote users to admin (limited to MAX_ADMINS=3) and demote admins with a safeguard preventing removal of the last remaining admin.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-9",
-      "title": "Task card UI with long-press edit mode and drag-and-drop",
+      "title": "Admin Dashboard UI (search, pagination, copy principal, role actions)",
       "synonyms": [
-        "TaskCard",
-        "mobile drag",
-        "press-and-hold to drag"
+        "AdminDashboardDialog",
+        "admin table",
+        "copy-to-clipboard"
       ],
-      "description": "Task cards support completion toggling, a long-press edit/drag mode, desktop HTML5 drag, and touch-based drop targeting using elementFromPoint. Includes an isLongTask badge and truncation with full-title tooltip.",
+      "description": "Dialog UI to browse users with client-side search and pagination, copy principal IDs, and promote/demote admins with loading states and error toasts.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-10",
+      "title": "Per-user Eisenhower quadrant lists (idempotent ensure)",
+      "synonyms": [
+        "ensureAllQuadrants",
+        "quadrant lists",
+        "Eisenhower matrix lists"
+      ],
+      "description": "Backend ensures each user has four fixed quadrant lists (IDs 1–4) with associated urgent/important semantics, and recreates missing quadrants when needed.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-11",
+      "title": "Robust frontend quadrant bootstrap flow with bounded retry",
+      "synonyms": [
+        "bootstrapQuadrants",
+        "quadrantsReady gating",
+        "initialization polling"
+      ],
+      "description": "Client bootstraps quadrants by calling ensureAllQuadrants and refetching lists with bounded retries until all four quadrant lists exist; surfaces a single friendly error and avoids infinite loading loops.",
+      "reqIds": [
+        "REQ-19"
+      ],
+      "version": 1
+    },
+    {
+      "id": "IF-12",
+      "title": "Task and list retrieval hooks",
+      "synonyms": [
+        "getAllTasks",
+        "getAllLists",
+        "useTaskQueries"
+      ],
+      "description": "Fetches all tasks and lists for the authenticated user via React Query and provides these to the TaskManager UI.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-13",
+      "title": "Task CRUD (create/update/delete) with validation and weighting",
+      "synonyms": [
+        "createTask",
+        "updateTask",
+        "deleteTask",
+        "calculateTaskWeight"
+      ],
+      "description": "Creates, updates, and deletes tasks with backend validation (e.g., title length, list existence) and computes a weight from urgent/important/long-task flags.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-14",
+      "title": "Dedicated task completion endpoint + optimistic toggle",
+      "synonyms": [
+        "completeTask",
+        "toggleTaskCompletion",
+        "optimistic checkbox"
+      ],
+      "description": "Toggles task completion via a dedicated backend endpoint with an optimistic React Query cache patch and rollback on error.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-15",
+      "title": "Move tasks between lists with destination-derived priority flags",
+      "synonyms": [
+        "moveTask",
+        "drag between lists",
+        "quadrant semantics"
+      ],
+      "description": "Moves a task to a destination list and updates urgent/important flags to match the destination list’s semantics; recalculates weight accordingly (with optimistic patch client-side).",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-16",
+      "title": "Sparse ordering and drag reordering for tasks",
+      "synonyms": [
+        "updateTaskPosition",
+        "order midpoint insertion",
+        "START_OFFSET"
+      ],
+      "description": "Reorders tasks using sparse integer orders with midpoint insertion; includes optimistic order calculation client-side and backend renormalization when gaps collapse.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-17",
+      "title": "Custom list management",
+      "synonyms": [
+        "createList",
+        "deleteList",
+        "Plan mode lists"
+      ],
+      "description": "Allows creation of non-quadrant lists and deletion of custom lists; backend prevents deletion of quadrant lists and cascades deletion of tasks in a deleted list.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-18",
+      "title": "Eisenhower Matrix UI (Daily Priorities)",
+      "synonyms": [
+        "EisenhowerMatrix",
+        "2×2 quadrant board",
+        "expand/collapse"
+      ],
+      "description": "Expandable 2×2 matrix rendering tasks by quadrant with drag-and-drop support and a loading placeholder while quadrants are not yet present.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-19",
+      "title": "Plan Mode custom lists board UI",
+      "synonyms": [
+        "CustomLists",
+        "My Lists board",
+        "horizontal list columns"
+      ],
+      "description": "Displays custom lists as horizontally scrollable columns with internal scrolling, per-list quick add, list deletion, and drag-and-drop task movement/reordering.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-20",
+      "title": "TaskCard long-press edit mode + touch drag-and-drop",
+      "synonyms": [
+        "mobile drag",
+        "press-and-hold to drag",
+        "edit mode"
+      ],
+      "description": "Task cards support long-press to enter edit/drag mode and implement touch drop targeting via elementFromPoint and data attributes for list and index.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-21",
       "title": "Stable drag payload serialization",
       "synonyms": [
         "writeDragPayload",
         "readDragPayload",
         "custom MIME type"
       ],
-      "description": "Serializes drag payload JSON into DataTransfer using a custom MIME type with text/plain fallback and robust parsing/validation.",
-      "reqIds": [],
-      "version": 1
-    },
-    {
-      "id": "IF-11",
-      "title": "Universal Add Task dialog (quadrant prediction + add to custom lists)",
-      "synonyms": [
-        "UniversalAddTaskDialog",
-        "Add task modal"
-      ],
-      "description": "Unified task creation modal with a Quadrant tab (urgent/important/long-task toggles with predicted quadrant) and an Other Lists tab (select a custom list; urgent forced false). Supports preselecting a list when opened from a list column.",
-      "reqIds": [],
-      "version": 1
-    },
-    {
-      "id": "IF-12",
-      "title": "Edit Task dialog with list-aware constraints",
-      "synonyms": [
-        "EditTaskDialog",
-        "task property editor"
-      ],
-      "description": "Edits title/description/list assignment and flags; communicates constraints for quadrant lists vs custom lists (urgent disabled for custom lists) and includes a Completed toggle in the UI.",
-      "reqIds": [],
-      "version": 1
-    },
-    {
-      "id": "IF-13",
-      "title": "Create List dialog",
-      "synonyms": [
-        "CreateListDialog",
-        "new list modal"
-      ],
-      "description": "Modal dialog for creating a custom list with validation and loading state handling.",
-      "reqIds": [],
-      "version": 1
-    },
-    {
-      "id": "IF-14",
-      "title": "Morning/evening routine UI (complete, add, delete, reorder)",
-      "synonyms": [
-        "MorningRoutine",
-        "Evening routine",
-        "routine reorder mode"
-      ],
-      "description": "Collapsible routine sections with add dialog, completion toggles, delete confirmation, and long-press activated reorder mode supporting mouse and touch drag interactions. Includes a two-column display mode toggle.",
-      "reqIds": [],
-      "version": 1
-    },
-    {
-      "id": "IF-15",
-      "title": "React Query hook layer for backend domain operations",
-      "synonyms": [
-        "useQueries",
-        "data hooks"
-      ],
-      "description": "Provides a central set of React Query hooks for profiles, admin state, tasks/lists, routines, and monetary/spend data with consistent query keys, invalidation patterns, and selective optimistic updates (e.g., completion and reordering).",
-      "reqIds": [],
-      "version": 1
-    },
-    {
-      "id": "IF-16",
-      "title": "Workspace bootstrap flow in TaskManager",
-      "synonyms": [
-        "quadrant bootstrap",
-        "initialization state machine"
-      ],
-      "description": "TaskManager coordinates authentication gating, profile setup gating, and a bounded-retry quadrant bootstrap step followed by a daily reset call, with loading screens and a single user-friendly failure toast.",
-      "reqIds": [],
-      "version": 1
-    },
-    {
-      "id": "IF-17",
-      "title": "Settings dialog for earnings configuration (UI + validation)",
-      "synonyms": [
-        "SettingsDialog",
-        "monetary settings"
-      ],
-      "description": "Configures Max Money Per Day and bucket distribution via sliders, validates bucket totals, and includes an earnings enable/disable toggle with a configuration prompt when enabling with a zero max value.",
-      "reqIds": [],
-      "version": 1
-    },
-    {
-      "id": "IF-18",
-      "title": "Today Earns calculation UI",
-      "synonyms": [
-        "TodayEarnsDialog",
-        "daily income breakdown"
-      ],
-      "description": "Calculates and displays a daily earnings breakdown from completed quadrant tasks and routines using bucket caps; allows submitting payroll and opening payroll history.",
-      "reqIds": [],
-      "version": 1
-    },
-    {
-      "id": "IF-19",
-      "title": "Payroll history UI (view, edit, submit)",
-      "synonyms": [
-        "PayrollHistoryDialog",
-        "payroll log editor"
-      ],
-      "description": "Displays payroll records sorted by date, supports inline editing of totals for unsubmitted entries, and provides a submit action with toast feedback.",
-      "reqIds": [],
-      "version": 1
-    },
-    {
-      "id": "IF-20",
-      "title": "Spend plan UI with presets and confirmation flow",
-      "synonyms": [
-        "SpendPlanDialog",
-        "SpendPreset quick add"
-      ],
-      "description": "Tracks spend records with categories (including a pre-deducted type), supports quick-add presets, preset CRUD UI, and a confirmation dialog before creating a spend.",
-      "reqIds": [],
-      "version": 1
-    },
-    {
-      "id": "IF-21",
-      "title": "Insights dialog (Spend Insights)",
-      "synonyms": [
-        "InsightsDialog",
-        "Recharts spend chart"
-      ],
-      "description": "Provides a modal with Spend Insights including daily/weekly/all-time filtering, aggregation of spend totals by date, a bar chart visualization, summary tiles, and a balance status indicator.",
+      "description": "Serializes drag payload JSON into DataTransfer using a custom MIME type with text/plain fallback for cross-browser reliability.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-22",
-      "title": "Bottom navigation with gestures and mode switching UI",
+      "title": "Universal Add Task dialog (quadrant prediction + custom list add)",
       "synonyms": [
-        "BottomNavigation",
-        "swipe-up menu",
-        "long-press to Plan"
+        "UniversalAddTaskDialog",
+        "Add task modal"
       ],
-      "description": "Implements a fixed bottom navigation with quick tap to add, swipe-up to reveal an action menu, long-press to switch to Plan mode, and a Plan-mode exit button.",
+      "description": "Unified task creation dialog with a Quadrant tab (urgent/important/long-task toggles with predicted quadrant) and an Other Lists tab (select custom list; urgent forced false). Supports pre-selecting a target list.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-23",
-      "title": "Theme toggle (light/dark) with next-themes",
+      "title": "Edit Task dialog with list-aware constraints",
       "synonyms": [
-        "ThemeToggle",
-        "dark mode"
+        "EditTaskDialog",
+        "task property editor"
       ],
-      "description": "Toggles light/dark themes using next-themes with class-based theming and animated sun/moon icons.",
+      "description": "Edits task title/description/list and flags with constraints: quadrant list semantics constrain priority flags; custom lists disable urgent and allow editing importance; includes long-task and completed toggles.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-24",
-      "title": "Offline indicator overlay",
+      "title": "Morning and evening routines with streak tracking",
       "synonyms": [
-        "OfflineIndicator",
-        "navigator.onLine guard"
+        "MorningRoutine",
+        "Evening routine",
+        "streakCount"
       ],
-      "description": "Displays a full-screen overlay when the browser reports offline status, blocking app interaction until connectivity returns.",
+      "description": "Supports creating, listing, completing, and deleting routine items across two sections; displays streak counters and milestone-based visual effects.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-25",
-      "title": "PWA manifest + service worker offline caching",
+      "title": "Routine reorder mode with long-press activation",
       "synonyms": [
-        "manifest.json",
-        "sw.js",
-        "standalone install"
+        "routine reorder",
+        "drag handles",
+        "Done button"
       ],
-      "description": "Includes a web app manifest with icons/theme colors and a service worker that caches essential resources and caches fetched responses for offline support.",
+      "description": "Long-press activates reorder mode for routines, enabling mouse/touch drag-and-drop reordering and a Done button to exit reorder mode.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-26",
-      "title": "Admin dashboard UI (search, pagination, promote/demote controls)",
+      "title": "Routine layout toggle persisted in backend",
       "synonyms": [
-        "AdminDashboardDialog",
-        "admin user table"
+        "displayMode",
+        "two-column routines",
+        "layout switch"
       ],
-      "description": "Admin-only dialog UI to browse users with search and pagination, copy principal IDs, and trigger promote/demote mutations (backend wiring not shown in the canister code provided).",
+      "description": "Toggles routine rendering between single and two-column layouts and persists the setting using getUserDisplayMode/setUserDisplayMode.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-27",
-      "title": "Local wrapper types for stable React keys",
+      "title": "Daily rollover/reset workflow",
       "synonyms": [
-        "LocalTask",
-        "LocalList"
+        "resetNewDay",
+        "performRoutineDailyResetIfNeeded",
+        "daily reset"
       ],
-      "description": "Adds deterministic localId fields to backend Task/List objects for stable React rendering and provides helpers to convert between backend and local representations.",
+      "description": "Backend supports a new-day reset that archives unsubmitted today earnings to payroll history, clears quadrant tasks (keeps custom list tasks), resets routine completion while updating streaks/weights, and clears today earnings.",
       "reqIds": [],
       "version": 1
     },
     {
-      "id": "feature-frontend-make-actor-initialization-resilient-when-no-admin-secret-is-present-by-preventing-bootstrap-from-failing-due-to-access-control-secret-initialization-errors-the-app-must-still-allow-standard-non-admin-users-to-log-in-and-initialize-their-workspace",
-      "title": "Frontend: Make actor initialization resilient when no admin secret is present by preventing bootstrap from failing due to access-control secret initialization errors; the app must still allow standard (non-admin) users to log in and initialize their workspace.",
-      "reqIds": [
-        "REQ-4"
+      "id": "IF-28",
+      "title": "App mode switching (Home vs Plan) persisted in backend",
+      "synonyms": [
+        "useAppMode",
+        "Home mode",
+        "Plan mode"
       ],
+      "description": "Stores and retrieves an integer app mode from the backend; UI conditionally renders Home (matrix + routines) or Plan (custom lists) experiences.",
+      "reqIds": [],
       "version": 1
     },
     {
-      "id": "feature-frontend-ensure-the-quadrant-bootstrap-flow-reliably-transitions-out-of-the-loading-state-when-the-backend-successfully-returns-4-quadrants-if-quadrant-creation-fails-show-a-single-actionable-english-error-and-allow-retry-via-refresh-without-looping",
-      "title": "Frontend: Ensure the quadrant bootstrap flow reliably transitions out of the loading state when the backend successfully returns 4 quadrants; if quadrant creation fails, show a single actionable English error and allow retry via refresh without looping.",
-      "reqIds": [
-        "REQ-5"
+      "id": "IF-29",
+      "title": "Bottom navigation with gestures and quick menu",
+      "synonyms": [
+        "BottomNavigation",
+        "swipe-up menu",
+        "long-press to Plan"
       ],
+      "description": "Mobile bottom navigation supports tap-to-add-task, swipe-up to open a quick menu (Plan/Spend/Settings/Insights/Today Earns), and long-press to switch into Plan mode; Plan mode shows an exit (X) control and dedicated Add buttons.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-30",
+      "title": "Earnings system enable/disable toggle",
+      "synonyms": [
+        "earningsEnabled",
+        "toggleEarningsSystem",
+        "useEarningsEnabled"
+      ],
+      "description": "Allows enabling/disabling the earnings system with optimistic UI updates; backend prevents enabling when maxMoneyPerDay is zero.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-31",
+      "title": "Monetary settings configuration with validation",
+      "synonyms": [
+        "MonetarySettings",
+        "saveMonetarySettings",
+        "bucket distribution"
+      ],
+      "description": "Configures maxMoneyPerDay and bucket allocations (morning/priorities/evening) with client and server validation that the bucket sum equals maxMoneyPerDay.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-32",
+      "title": "Today Earns calculation and payroll submission",
+      "synonyms": [
+        "TodayEarnsDialog",
+        "addPayroll",
+        "income breakdown"
+      ],
+      "description": "Calculates today’s income based on completed quadrant tasks (weight-based) and routine completion (weight-based), displays breakdown and total, and submits payroll to increase total balance.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-33",
+      "title": "Payroll history management (view, edit, submit)",
+      "synonyms": [
+        "PayrollHistoryDialog",
+        "getPayrollHistory",
+        "submitPayrollLog",
+        "editPayrollLog"
+      ],
+      "description": "Displays payroll records sorted by date; supports inline editing of unsubmitted entries and submitting pending records to apply them to the running balance.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-34",
+      "title": "Spend tracking with presets and confirmation flow",
+      "synonyms": [
+        "SpendPlanDialog",
+        "SpendRecord",
+        "SpendPreset",
+        "pre-deducted spends"
+      ],
+      "description": "Users can create/delete spend records with confirmation; supports a pre-deducted type that logs spending without reducing balance. Presets can be created/updated/deleted and used for quick-add spends.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-35",
+      "title": "Insights dialog (Spend Insights v1)",
+      "synonyms": [
+        "InsightsDialog",
+        "recharts spend chart",
+        "time period selector"
+      ],
+      "description": "Provides an Insights modal with Spend Insights: aggregates spending by day for daily/weekly/all-time views, renders a bar chart, shows totals and a balance status indicator. Earning/Task insights are present as disabled placeholders.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-36",
+      "title": "Theme toggle (light/dark)",
+      "synonyms": [
+        "ThemeToggle",
+        "next-themes",
+        "dark mode"
+      ],
+      "description": "Toggles light/dark themes using next-themes with class-based theming and icon transitions.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-37",
+      "title": "PWA installability and offline UX",
+      "synonyms": [
+        "manifest",
+        "service worker",
+        "OfflineIndicator"
+      ],
+      "description": "Includes a PWA manifest and service worker for offline caching, plus an in-app full-screen offline overlay when the browser reports loss of connectivity.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-38",
+      "title": "LocalTask/LocalList wrapper types for stable React keys",
+      "synonyms": [
+        "LocalTask",
+        "LocalList",
+        "toLocalTask/toLocalList"
+      ],
+      "description": "Extends backend Task/List objects with deterministic localId fields for stable React list rendering and provides conversion helpers.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-39",
+      "title": "Default order retrieval endpoint",
+      "synonyms": [
+        "getDefaultOrder",
+        "START_OFFSET query"
+      ],
+      "description": "Exposes the backend START_OFFSET value as a default ordering constant retrievable by the client.",
+      "reqIds": [],
       "version": 1
     }
   ],
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Fix quadrant bootstrap so all users (fresh accounts) can initialize 4 per-user quadrant lists idempotently without any admin/RBAC dependency; unblock matrix rendering and task creation.",
+      "summary": "One-time per-user onboarding initializer: seed Morning Routine with instructional routine items; create empty default custom lists 'Week' and 'Month' on first registration only (no auto-recreate if deleted).",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "Admin Dashboard as a dedicated page with user table columns [Username][Principal ID copy][Email][Tier dropdown][Role][Actions] plus search and pagination; first user admin bootstrap; max 3 admins; (optional) demotion voting workflow.",
+      "summary": "Phase onboarding initializer: on first registration only, create default custom lists 'Week' and 'Month' (empty, user-owned, deletable; do not auto-recreate if deleted). Implement this before seeding onboarding routine instruction items.",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-3",
-      "summary": "User identity/profile enhancements: require unique username, collect/edit email, display tier (Basic default) and allow admin tier assignment.",
-      "reqIds": [],
+      "summary": "Create two default onboarding custom lists named exactly “Week” and “Month” for each user on first registration only. These lists must be normal non-quadrant lists (quadrant=false, urgent=false, important=false) and must start empty (no tasks created).",
+      "reqIds": [
+        "REQ-20"
+      ],
       "status": "pending"
     },
     {
       "id": "AR-4",
-      "summary": "First-run onboarding defaults for all new users: create default custom lists Week/Month once; seed Morning/Evening routine instruction items with exact provided text and correct ordering/IDs, using a bootstrap-safe seeding approach that behaves like manually created routines.",
-      "reqIds": [],
+      "summary": "Ensure the onboarding list creation runs only one time per user and is never auto-recreated later. If the user deletes or renames “Week” and/or “Month”, the backend must not recreate them on subsequent logins, boots, or list fetches.",
+      "reqIds": [
+        "REQ-21"
+      ],
       "status": "pending"
     },
     {
       "id": "AR-5",
-      "summary": "Earnings/Cash Flow UX split and gating: separate Settings (monetary buckets) vs Today Earns/Submit Payroll; earningsEnabled toggle that prompts for MaxMoneyPerDay+buckets before enabling; persist settings per user.",
-      "reqIds": [],
+      "summary": "Keep onboarding list creation logic separate from quadrant initialization and separate from any Morning Routine seeding logic (do not seed routine items in this step).",
+      "reqIds": [
+        "REQ-22"
+      ],
       "status": "pending"
     },
     {
       "id": "AR-6",
-      "summary": "Payroll Phase 2 completion: persist todayEarns, payrollHistory logs, one-submit-per-day enforcement, edit/submit unsubmitted logs, correct balance updates with decimal precision.",
+      "summary": "Admin Dashboard as a dedicated page (not modal) with searchable/paginated user table showing: [Username] [Principal ID w/ copy] [Email] [Tier dropdown] [Role] [Actions].",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-7",
-      "summary": "Spend Plan: phase 1/2 spending tracker with categories (including Pre-deducted non-deduct), quick-add presets (customizable), compact custom spend row, confirmation before add, and Spend Insights integration.",
+      "summary": "User profile enhancements: require globally-unique username at registration; collect/store email and allow user to update it later; all users start at Basic tier (admin can change tier).",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-8",
-      "summary": "Insights Hub popup with tabs (Spend/Earn/Task) starting with Spend Insights charts; later expand to earn/task analytics.",
+      "summary": "Earnings system enablement UX: if user toggles earnings on while maxMoneyPerDay==0, intercept and prompt user to set MaxMoneyPerDay + bucket distribution before enabling (no dead-end disabled settings).",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-9",
-      "summary": "Bottom navigation/expand menu interaction improvements: consistent open/close gestures across mobile (swipe up) and desktop (click-drag), glass shine effects, plus/X separation by mode, and stable Plan entry/exit behavior.",
+      "summary": "Phase 2 payroll/today-earnings flow: compute/store todayEarns; if not submitted by next day, log to payrollHistory as unsubmitted; allow edit + late submit (adds to balance, marks submitted); enforce one submission per day; add submitted logs to history.",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-10",
-      "summary": "PWA polish: manifest/icons/offline screen and consistent theming (green-blue gradient) across app.",
+      "summary": "Spend Plan (Phase 1+2): per-user spend tracking with categories + special 'Pre-deducted' category that logs but does not deduct balance; quick-add presets; customizable presets; compact single-row custom spend input; confirmation before adding spends.",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-11",
-      "summary": "Backend: Add idempotent, per-user quadrant initialization endpoints so that a newly authenticated user can always obtain exactly 4 quadrant lists (IDs 1–4) without requiring admin privileges or any RBAC/admin-secret dependency.",
-      "reqIds": [
-        "REQ-1"
-      ],
+      "summary": "Insights Hub popup/page launched from expanded menu: tabbed insights (Spend Insights active first; Earn/Task Insights placeholders for later).",
+      "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-12",
-      "summary": "Backend: Implement the list read endpoint used by the frontend bootstrap so the frontend can reliably verify quadrant readiness (i.e., return all user lists including quadrants).",
-      "reqIds": [
-        "REQ-2"
-      ],
+      "summary": "PWA installability: manifest + correctly served icons + fullscreen mode + offline screen UX for add-to-home-screen native-like experience.",
+      "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-13",
-      "summary": "Backend: Remove the fresh-user deadlock where user/quadrant seeding is only reachable after passing an RBAC check; ensure that fresh authenticated users can be granted/recognized as a normal \"user\" (non-admin) and proceed with profile + data initialization without requiring an admin token.",
+      "summary": "Add Task 'Other Lists' UX: replace dropdown with horizontal swipeable list pills (custom lists only); per-list plus button opens Add Task with that list preselected; no quadrants in this selector.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-14",
+      "summary": "Routine progression: start streakCount at 1; add routine weight derived from streak ranges (<2→1, 2–7→3, 7–30→4, >30→5); add subtle streak visual effects by range with rule that 1-day shows streak only when completed.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-15",
+      "summary": "Automatic ResetNewDay (no manual user trigger): once-per-day rollover that clears quadrant tasks only and reuses existing routine daily reset logic (streak update + checkbox reset) without duplicate work.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-16",
+      "summary": "Admin demotion requires 2-admin vote system: any admin (except target) can cast a persistent demotion vote; only the voter can cancel their vote; when 2 distinct votes exist for a target, demotion executes and votes clear; keep MAX_ADMINS=3 and last-admin safety.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-17",
+      "summary": "Add Task UX updates: In Other Lists tab, replace dropdown with horizontal swipeable custom-list pills (no quadrants). Per-list (+) button opens Add Task with that list preselected. Collapse Description field by default for cleaner UI.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-18",
+      "summary": "Unauthenticated screen must always show a clear Internet Identity login button (no dead-end), with branded Momentum header/tagline; properly gate app so matrix/nav do not render while logged out.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-19",
+      "summary": "Update the backend new-user creation lifecycle so that, when a Principal is seen for the first time (i.e., the user record does not yet exist), the canister automatically creates two empty, normal custom lists owned by that user named exactly “Week” and “Month” (non-quadrant: quadrant=false, urgent=false, important=false). This must run for all authenticated users (not admin-only) and must be part of the one-time user creation path (not invoked on subsequent app loads).",
       "reqIds": [
-        "REQ-3"
+        "REQ-23"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-20",
+      "summary": "Ensure the backend never auto-recreates “Week” and/or “Month” for an existing user after initial creation. Specifically: if the user later deletes or renames either list, subsequent logins, quadrant bootstrap calls, or list fetches must not recreate them automatically.",
+      "reqIds": [
+        "REQ-24"
       ],
       "status": "pending"
     }
   ],
   "architectural_notes": [
-    "Frontend is React + TypeScript using TailwindCSS and shadcn/ui components; most flows are modal/dialog-driven and mobile-first.",
-    "State/data fetching is centralized with @tanstack/react-query; query keys are consistent and mutations often invalidate or optimistically patch cached data.",
-    "Authentication uses DFINITY Internet Identity via AuthClient; an InternetIdentityProvider exposes identity and login status flags to the app.",
-    "A per-identity backend actor is created with agent identity binding; on actor creation, the frontend calls a backend access-control initialization method using a secret token extracted from the URL hash.",
-    "Backend authorization is implemented via an AccessControl module and included into the main actor using a Motoko mixin (MixinAuthorization).",
-    "Backend user initialization logic (getOrCreateUserInternal) seeds the 4 quadrant lists and default routines idempotently and stores per-user state in in-memory Map structures.",
-    "Drag-and-drop supports desktop HTML5 DataTransfer and mobile/touch drop targeting using elementFromPoint; a custom MIME type with text/plain fallback is used for stability.",
-    "PWA support includes a web manifest and a custom service worker implementing a network-first strategy with caching.",
-    "Bootstrap currently depends on per-user seeding (quadrants/routines/lists) and is sensitive to RBAC/role-assignment side effects; initialization endpoints must be idempotent and callable by any authenticated user without admin privileges.",
-    "Plan/Home mode switching and bottom-nav expand state should be decoupled from persisted backend fields to avoid state-collision flicker."
+    "Frontend is React + TypeScript using TailwindCSS and shadcn/ui components; UX is heavily dialog/modal-driven.",
+    "Frontend data access is centralized in custom hooks built on @tanstack/react-query with query-key based caching, invalidation, and selective optimistic updates (notably task completion/move/reorder and routine completion/reorder).",
+    "Authentication uses Internet Identity via @dfinity/auth-client; identity is stored/persisted by AuthClient and exposed through a React context provider.",
+    "Backend is a single Motoko canister maintaining per-user state in in-memory Map structures keyed by Principal (lists, tasks, routines, payroll history, monetary settings, spends, presets).",
+    "Authorization is implemented via an AccessControl module and a Motoko mixin; role initialization depends on a shared secret compared against the CAFFEINE_ADMIN_TOKEN environment variable.",
+    "Quadrant lists are caller-scoped and created idempotently via ensureAllQuadrants; client has a bounded-retry bootstrap flow to confirm all four quadrants exist before proceeding.",
+    "Tasks and routines use sparse integer ordering (START_OFFSET=1000) with midpoint insertion for drag reordering; backend can renormalize orders when gaps collapse.",
+    "Drag-and-drop supports desktop HTML5 DnD and touch interactions (long-press to enter edit/reorder modes, elementFromPoint-based drop targeting).",
+    "PWA support includes a manifest + service worker caching plus an in-app offline overlay triggered by navigator.onLine.",
+    "Add a dedicated per-user one-time initializer (guarded by a hasInitializedDefaults flag) separate from quadrant initialization to seed onboarding routines and default lists.",
+    "Quadrant list initialization must be per-user, idempotent, and must not depend on admin/RBAC role assignment; missing quadrants should be auto-healed for any user on bootstrap.",
+    "Earnings system toggle should gate all monetary queries/UI; enabling must be intercepted when maxMoneyPerDay==0 to collect settings before flipping the flag.",
+    "Quadrant bootstrap/ensureAllQuadrants must not depend on RBAC or any admin-only role assignment; it must be per-caller idempotent and callable by any authenticated user without triggering role assignment APIs.",
+    "Onboarding defaults (e.g., empty custom lists “Week” and “Month”, later routine instruction items) should be created only inside a single new-user registration/creation initializer. After this one-time initializer runs, it must never be re-checked or re-run on login/bootstrap/list fetch; deleted/renamed onboarding defaults must not be auto-recreated.",
+    "Onboarding default lists initializer (\"Week\" and \"Month\") must run for all users (not admin-gated) exactly once at first registration/user-creation, creating normal deletable custom lists; must never be invoked during login/bootstrap/list fetch and must not auto-recreate if deleted/renamed.",
+    "Onboarding default custom lists (\"Week\" and \"Month\") must be created for every user (not admin-gated) as part of one-time new-user registration/creation, and must never be auto-recreated if later deleted/renamed."
   ],
   "known_issues": [
-    "Backend main canister (backend/main.mo) does not implement most of the task/list/routine/monetary/spend endpoints that the frontend calls (e.g., getAllTasks, createTask, getAllLists, createMorningRoutine, getMonetarySettings). The frontend suppresses type errors with @ts-ignore and uses optional chaining, which can make features appear present in UI but not function end-to-end.",
-    "Frontend creates an anonymous actor and still enables some user-only queries (e.g., getCallerUserProfile) when not authenticated; the backend will trap with Unauthorized for anonymous callers, producing query errors before login.",
-    "backend/main.mo exposes updateUserData but it contains `assert false` and is unusable; any future wiring to this endpoint will trap.",
-    "All backend state (usersOld, userProfiles, accessControlState) is held in non-stable variables; data will be lost on canister upgrade unless stable storage is added.",
-    "Service worker caches every successful fetch (cache.put for any request) with no allowlist/eviction policy, risking unbounded cache growth and caching of dynamic/authenticated responses.",
-    "Environment dependency: _initializeAccessControlWithSecret traps if CAFFEINE_ADMIN_TOKEN is not set, which can prevent the app from functioning in misconfigured deployments.",
-    "Two different global CSS files are present in the repository listing (frontend/index.css and frontend/src/index.css) with different theme token sets; this can cause styling inconsistencies depending on which one is actually imported/bundled.",
-    "Some UI flows (earnings, payroll, spend tracking, insights) assume particular units/precision (e.g., dollars vs cents) but the backend types store monetary fields as Nat/Int/Float without an explicit shared contract in the shown code, increasing risk of display/calculation mismatches.",
-    "Fresh users can get stuck at \"initializing quadrant lists\"; bootstrapQuadrants throws \"Failed to initialize all quadrants\" and/or Unauthorized errors when quadrant initialization is coupled to admin-only role assignment. This blocks matrix rendering and downstream flows (e.g., Add Task).",
-    "Payroll submission frequently fails with errors like \"No earnings data available for this date\" / \"No active earnings for today\" despite Today Earns displaying, indicating backend validation/state persistence mismatch between todayEarns and submitPayrollLog.",
-    "Onboarding/seeded routines may not behave like manually created routines (unstable ordering/IDs, cannot delete, checkbox state reverts) if seeding uses a different data path than manual creation."
+    "Anonymous-actor querying: useActor returns an anonymous actor when logged out, but some queries (e.g., getCallerUserProfile) are still enabled and can trap/throw “Unauthorized” in React Query; queries should be gated by authentication state.",
+    "Access control bootstrap fragility: _initializeAccessControlWithSecret traps if CAFFEINE_ADMIN_TOKEN is not set; additionally, if the first caller registers without the correct token, they cannot later become admin because initialize() won’t upgrade an existing role entry.",
+    "displayMode conflation: a single backend field (User.displayMode) is used for multiple unrelated UI settings (app mode vs routine layout), so toggling one can affect the other.",
+    "Backend updateTask ignores TaskUpdateInput.completed (it preserves oldTask.completed). The UI’s Edit Task dialog exposes “Completed”, but persistence requires the separate completeTask endpoint.",
+    "Monetary precision mismatch: spends use Float amounts but balance adjustments use amount.toInt(), truncating cents and causing drift vs UI values rendered with 2 decimals.",
+    "Potential unit inconsistency: payroll/today earns and UI formatting mix integers and cent-style formatting (UI divides payroll totals by 100 in PayrollHistoryDialog), risking incorrect display/precision depending on intended units.",
+    "Insights date grouping/sorting uses locale date strings without year and sorts via new Date(\"Mon DD\"), which is locale-dependent and can misorder across months/years.",
+    "Service worker caches every successful fetch response (cache.put for any request) without allowlist/eviction, risking unbounded cache growth and caching of dynamic/authenticated responses.",
+    "No stable variables are used in the Motoko canister; state may be lost across canister upgrades.",
+    "Empty/stub component files exist (frontend/src/components/CreateTaskDialog.tsx and frontend/src/components/MonetarySettingsDialog.tsx), suggesting dead or unfinished code paths.",
+    "Quadrant bootstrap can get stuck on 'initializing quadrant lists' due to Unauthorized errors when ensureAllQuadrants/initialization path incorrectly requires admin-only role assignment; results in missing 2×2 grid and blocked task creation.",
+    "Payroll submission frequently fails (e.g., 'No earnings data available for this date' / 'No active earnings for today') despite UI showing Today Earns; indicates todayEarns persistence/lookup and submitPayroll validation mismatch.",
+    "Monetary values/balance rounding: balance stored/updated as Int causes truncation/rounding; should support decimal precision consistently.",
+    "Task drag-and-drop ghost/preview behavior can prevent dropping after the ghost effect appears (can only drop if moved quickly), suggesting event/overlay/drop-target interference.",
+    "Quadrant initialization stuck due to Unauthorized: ensureAllQuadrants (or its call path) attempts admin-only role assignment ('Only admins can assign user roles'), preventing any user (including first user) from creating/rehydrating quadrant list IDs and leaving UI stuck on 'initializing quadrant lists'.",
+    "Logged-out UX regression: unauthenticated screen can show 'Please log in' without rendering any Internet Identity login button, dead-ending onboarding across browsers/devices."
   ],
-  "isFixRequest": true,
+  "isFixRequest": false,
   "gameProjectType": "none",
   "projectName": "Momentum",
-  "clarification_mode": "instant",
+  "clarification_mode": "pro",
   "clarification_rounds": 0
 }

@@ -1,115 +1,55 @@
 {
   "kind": "build_request",
-  "title": "Fix fresh-account bootstrap: quadrant initialization no longer blocks after Internet Identity login",
-  "priority": "high",
+  "title": "Seed default onboarding custom lists “Week” and “Month” for every new user (non-admin-gated)",
+  "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-1",
-      "text": "Backend: Add idempotent, per-user quadrant initialization endpoints so that a newly authenticated user can always obtain exactly 4 quadrant lists (IDs 1–4) without requiring admin privileges or any RBAC/admin-secret dependency.",
+      "id": "REQ-23",
+      "text": "Update the backend new-user creation lifecycle so that, when a Principal is seen for the first time (i.e., the user record does not yet exist), the canister automatically creates two empty, normal custom lists owned by that user named exactly “Week” and “Month” (non-quadrant: quadrant=false, urgent=false, important=false). This must run for all authenticated users (not admin-only) and must be part of the one-time user creation path (not invoked on subsequent app loads).",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-6",
-          "msg-7"
+          "msg-1"
         ],
         "quotes": [
-          "stuck at initializing quadrant list?",
-          "fix it"
+          "build it, ensure it will apply for all users not only admins"
         ]
       },
       "acceptanceCriteria": [
-        "A fresh account (new principal) can call the quadrant initialization endpoint successfully without being an admin.",
-        "Calling the quadrant initialization endpoint multiple times does not create duplicates and always results in 4 quadrant lists for that user.",
-        "Quadrant lists are created/ensured with the existing backend quadrant IDs and attributes (1..4, quadrant=true, urgent/important flags) as defined in backend/main.mo."
+        "When a brand-new authenticated user first triggers backend user creation, getAllLists() returns the 4 quadrant lists plus two additional lists named exactly “Week” and “Month”.",
+        "“Week” and “Month” are created with quadrant=false, urgent=false, important=false and contain no tasks at creation time.",
+        "The onboarding list creation runs for any authenticated user regardless of admin status/role."
       ]
     },
     {
-      "id": "REQ-2",
-      "text": "Backend: Implement the list read endpoint used by the frontend bootstrap so the frontend can reliably verify quadrant readiness (i.e., return all user lists including quadrants).",
+      "id": "REQ-24",
+      "text": "Ensure the backend never auto-recreates “Week” and/or “Month” for an existing user after initial creation. Specifically: if the user later deletes or renames either list, subsequent logins, quadrant bootstrap calls, or list fetches must not recreate them automatically.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-6"
+          "msg-1"
         ],
         "quotes": [
-          "Bootstrap error: Error: Failed to initialize all quadrants. Please refresh the page to try again."
+          "show it will never need to check the flag again?"
         ]
       },
       "acceptanceCriteria": [
-        "After quadrant initialization, the lists read endpoint returns the 4 quadrants (and any custom lists) for the caller.",
-        "The returned list data includes the fields required by the frontend (id, name, quadrant, urgent, important).",
-        "The endpoint does not trap for fresh authenticated users."
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "text": "Backend: Remove the fresh-user deadlock where user/quadrant seeding is only reachable after passing an RBAC check; ensure that fresh authenticated users can be granted/recognized as a normal \"user\" (non-admin) and proceed with profile + data initialization without requiring an admin token.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-5",
-          "msg-6"
-        ],
-        "quotes": [
-          "both admin and regular user have this issues => everyone",
-          "This points to a systemic bootstrap/initialization failure in the quadrant seeding or access-control init path"
-        ]
-      },
-      "acceptanceCriteria": [
-        "A fresh authenticated user can successfully reach a state where profile fetch returns either an existing profile or null (for onboarding) without trapping with Unauthorized.",
-        "A fresh authenticated user can successfully initialize quadrants and load lists/tasks after login.",
-        "The change does not require CAFFEINE_ADMIN_TOKEN to be configured for normal user login/bootstrap."
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Frontend: Make actor initialization resilient when no admin secret is present by preventing bootstrap from failing due to access-control secret initialization errors; the app must still allow standard (non-admin) users to log in and initialize their workspace.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-6",
-          "msg-7"
-        ],
-        "quotes": [
-          "after login",
-          "fix it"
-        ]
-      },
-      "acceptanceCriteria": [
-        "After Internet Identity login, the app does not get stuck on \"Initializing workspace...\" for fresh accounts when no admin token/secret is provided.",
-        "If admin-secret initialization fails, the app still creates an authenticated actor and continues with non-admin flows.",
-        "Any user-facing error messages shown during bootstrap are in English."
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Frontend: Ensure the quadrant bootstrap flow reliably transitions out of the loading state when the backend successfully returns 4 quadrants; if quadrant creation fails, show a single actionable English error and allow retry via refresh without looping.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-4",
-          "msg-6"
-        ],
-        "quotes": [
-          "stuck at initializing quadrant list?",
-          "Failed to initialize all quadrants. Please refresh the page to try again."
-        ]
-      },
-      "acceptanceCriteria": [
-        "On a fresh account, after login the Eisenhower Matrix renders with 4 quadrant columns (no indefinite bootstrap spinner).",
-        "If quadrant initialization fails, the app shows one toast error and stops the bootstrap loop (bootstrapState becomes failed).",
-        "A successful retry after refresh results in quadrantsReady=true and normal app rendering."
+        "If an existing user deletes the “Week” list, then calls getAllLists() again, the “Week” list does not reappear unless the user manually creates a new list named “Week”.",
+        "If an existing user renames “Month” to another name, then calls getAllLists() again, there is no newly-created list named “Month”.",
+        "Quadrant initialization (ensureAllQuadrants / implicit quadrant ensure during getOrCreate) does not create or restore “Week”/“Month”."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single-actor Motoko canister; keep all logic in backend/main.mo and only add migration.mo changes if state migration is truly required.",
-    "Do not edit files under frontend/src/components/ui or any paths listed as immutable in SYSTEM_CONTEXT.",
-    "Use English for any user-facing text."
+    "Backend must remain a single-actor Motoko canister with all logic implemented in backend/main.mo.",
+    "Do not introduce admin-only gating for onboarding list creation; it must apply to all authenticated users uniformly.",
+    "Do not add recurring per-login/per-fetch checks or ‘repair’ logic that recreates deleted onboarding lists."
   ],
   "nonGoals": [
-    "Do not implement the full tasks/routines/monetary/spend API surface unless it is required to fix the quadrant bootstrap/login blocker.",
-    "Do not add new product features unrelated to fresh-user workspace initialization."
+    "Do not seed Morning Routine instructional items in this step.",
+    "Do not change the existing quadrant list initialization behavior (IDs 1–4) beyond keeping it independent from onboarding list seeding.",
+    "Do not create any tasks inside “Week” or “Month”.",
+    "Do not add new UI screens specifically for onboarding; the lists should appear naturally wherever custom lists are rendered."
   ],
   "imageRequirements": {
     "required": [],

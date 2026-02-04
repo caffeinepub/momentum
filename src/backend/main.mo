@@ -165,32 +165,6 @@ actor {
   };
 
   public type User = {
-    lists : [List];
-    tasks : [Task];
-    routines : [MorningRoutine];
-    payrollHistory : [PayrollRecord];
-    spendRecords : [SpendRecord];
-    nextTaskId : TaskId;
-    nextListId : ListId;
-    nextRoutineId : RoutineId;
-    nextSpendId : SpendId;
-    lastResetDate : Int;
-    displayMode : Nat;
-    monetarySettings : MonetarySettings;
-    todayEarns : ?TodayEarns;
-    principal : PrincipalId;
-    earningsEnabled : Bool;
-    spendPresets : [SpendPreset];
-    nextPresetId : Nat;
-  };
-
-  public type SpendInput = {
-    amount : Float;
-    category : Text;
-    spendType : SpendType;
-  };
-
-  public type UserOld = {
     lists : Map.Map<ListId, List>;
     tasks : Map.Map<TaskId, Task>;
     routines : Map.Map<RoutineId, MorningRoutine>;
@@ -204,27 +178,15 @@ actor {
     displayMode : Nat;
     monetarySettings : MonetarySettings;
     todayEarns : ?TodayEarns;
-    principal : Principal;
+    principal : PrincipalId;
     earningsEnabled : Bool;
     spendPresets : Map.Map<Nat, SpendPreset>;
     nextPresetId : Nat;
   };
 
-  let usersOld = Map.empty<Principal, UserOld>();
+  let users = Map.empty<Principal, User>();
 
-  func convertUserDataToImmutable(userData : UserOld) : User {
-    {
-      userData with
-      lists = userData.lists.values().toArray();
-      tasks = userData.tasks.values().toArray();
-      routines = userData.routines.values().toArray();
-      payrollHistory = userData.payrollHistory.values().toArray();
-      spendRecords = userData.spendRecords.values().toArray();
-      spendPresets = userData.spendPresets.values().toArray();
-    };
-  };
-
-  func addQuadrantIfMissing(user : UserOld, id : ListId, name : Text, urgent : Bool, important : Bool) {
+  func addQuadrantIfMissing(user : User, id : ListId, name : Text, urgent : Bool, important : Bool) {
     if (not user.lists.containsKey(id)) {
       let quadrant : List = {
         id;
@@ -237,189 +199,1125 @@ actor {
     };
   };
 
-  func initializeAllQuadrantsInternal(user : UserOld) {
+  func initializeAllQuadrantsInternal(user : User) {
     addQuadrantIfMissing(user, 1, "Must Do", true, true);
     addQuadrantIfMissing(user, 2, "Should Do", false, true);
     addQuadrantIfMissing(user, 3, "Delegate / Could Do", true, false);
     addQuadrantIfMissing(user, 4, "May Do", false, false);
   };
 
-  // Helper function to ensure caller is authenticated (not anonymous) and auto-assign user role
-  func ensureAuthenticatedUser(caller : Principal) {
-    if (caller.isAnonymous()) {
-      Runtime.trap("Unauthorized: Anonymous principals cannot access this resource");
-    };
-    // Auto-assign user role if not already assigned
-    let currentRole = AccessControl.getUserRole(accessControlState, caller);
-    switch (currentRole) {
-      case (#guest) {
-        // Auto-promote guest to user for authenticated principals
-        AccessControl.assignRole(accessControlState, caller, caller, #user);
-      };
-      case (_) {
-        // Already has a role (user or admin), no action needed
-      };
-    };
-  };
-
-  // Helper function to create a fresh user with default settings
-  func createFreshUser(caller : Principal) : UserOld {
-    let defaultMonetarySettings : MonetarySettings = {
-      maxMoneyPerDay = 100;
-      maxMorningRoutine = 30;
-      maxDailyPriorities = 50;
-      maxEveningRoutine = 20;
-      totalBalance = 0;
-    };
-
-    let freshUser : UserOld = {
+  func createEmptyUser(principal : PrincipalId) : User {
+    {
       lists = Map.empty<ListId, List>();
       tasks = Map.empty<TaskId, Task>();
       routines = Map.empty<RoutineId, MorningRoutine>();
       payrollHistory = Map.empty<Int, PayrollRecord>();
       spendRecords = Map.empty<SpendId, SpendRecord>();
-      nextTaskId = START_OFFSET;
-      nextListId = 5; // Quadrants use IDs 1-4
-      nextRoutineId = START_OFFSET;
-      nextSpendId = START_OFFSET;
-      lastResetDate = Time.now();
+      nextTaskId = 0;
+      nextListId = 5;
+      nextRoutineId = 0;
+      nextSpendId = 1;
+      lastResetDate = 0;
       displayMode = 0;
-      monetarySettings = defaultMonetarySettings;
+      monetarySettings = {
+        maxMoneyPerDay = 0;
+        maxMorningRoutine = 0;
+        maxDailyPriorities = 0;
+        maxEveningRoutine = 0;
+        totalBalance = 0;
+      };
       todayEarns = null;
-      principal = caller;
-      earningsEnabled = false;
+      principal;
+      earningsEnabled = true;
       spendPresets = Map.empty<Nat, SpendPreset>();
       nextPresetId = 1;
     };
-
-    // Initialize quadrants for fresh user
-    initializeAllQuadrantsInternal(freshUser);
-    freshUser;
   };
 
-  // Helper function to get or create user
-  func getOrCreateUser(caller : Principal) : UserOld {
-    switch (usersOld.get(caller)) {
-      case (?existingUser) { existingUser };
+  func getOrCreateUserInternal(caller : Principal) : User {
+    switch (users.get(caller)) {
+      case (?user) {
+        initializeAllQuadrantsInternal(user);
+        user;
+      };
       case (null) {
-        let newUser = createFreshUser(caller);
-        usersOld.add(caller, newUser);
-        newUser;
+        let newUser = createEmptyUser(caller);
+
+        let weekList : List = {
+          id = newUser.nextListId;
+          name = "Week";
+          quadrant = false;
+          urgent = false;
+          important = false;
+        };
+        newUser.lists.add(newUser.nextListId, weekList);
+
+        let monthList : List = {
+          id = newUser.nextListId + 1;
+          name = "Month";
+          quadrant = false;
+          urgent = false;
+          important = false;
+        };
+        newUser.lists.add(newUser.nextListId + 1, monthList);
+
+        let updatedUser = {
+          newUser with
+          nextListId = newUser.nextListId + 2;
+        };
+
+        users.add(caller, updatedUser);
+        initializeAllQuadrantsInternal(updatedUser);
+
+        if (userProfiles.get(caller) == null) {
+          let defaultProfile : UserProfile = {
+            name = "";
+            earningsEnabled = true;
+            tier = #basic;
+          };
+          userProfiles.add(caller, defaultProfile);
+        };
+
+        updatedUser;
       };
     };
   };
 
-  // Profile management functions
-  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (caller.isAnonymous()) {
-      Runtime.trap("Unauthorized: Anonymous principals cannot access profiles");
+  func getUser(caller : Principal) : User {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can access user data");
     };
-    ensureAuthenticatedUser(caller);
+    getOrCreateUserInternal(caller);
+  };
+
+  func withUser(caller : Principal, f : User -> ()) {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can access user data");
+    };
+    switch (users.get(caller)) {
+      case (null) { Runtime.trap("User not found") };
+      case (?user) { f(user) };
+    };
+  };
+
+  public shared ({ caller }) func ensureAllQuadrants() : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getOrCreateUserInternal(caller);
+    initializeAllQuadrantsInternal(user);
+  };
+
+  func needsRecalculation(tasks : [Task]) : Bool {
+    if (tasks.size() < 2) { return false };
+    var i = 1;
+    while (i < tasks.size()) {
+      let prev = tasks[i - 1];
+      let curr = tasks[i];
+      if (curr.order <= prev.order or (Int.abs(curr.order.toInt() - prev.order.toInt()) < 1)) {
+        return true;
+      };
+      i += 1;
+    };
+    false;
+  };
+
+  func recalculateOrders(user : User, listId : ListId) {
+    let tasksArray = user.tasks.values().toArray().filter(func(t) { t.listId == listId }).sort(
+      func(a : Task, b : Task) : Order.Order { Nat.compare(a.order, b.order) }
+    );
+    let numTasks = tasksArray.size();
+    if (numTasks <= 1) { return };
+
+    var i = 0;
+    while (i < numTasks) {
+      let newOrder = (i + 1) * START_OFFSET;
+      let task = tasksArray[i];
+      let updatedTask = { task with order = newOrder };
+      user.tasks.add(task.id, updatedTask);
+      i += 1;
+    };
+  };
+
+  public shared ({ caller }) func updateTaskPosition(taskId : TaskId, positionIndex : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    withUser(
+      caller,
+      func(user) {
+        switch (user.tasks.get(taskId)) {
+          case (null) { Runtime.trap("Task not found") };
+          case (?task) {
+            let sortedTasks = user.tasks.values().toArray().filter(func(t) { t.listId == task.listId }).sort(
+              func(a : Task, b : Task) : Order.Order { Nat.compare(a.order, b.order) }
+            );
+            let numTasks = sortedTasks.size();
+
+            let newOrder = if (numTasks == 0) {
+              START_OFFSET;
+            } else if (positionIndex >= numTasks) {
+              let lastTask = sortedTasks[numTasks - 1];
+              lastTask.order + START_OFFSET;
+            } else if (positionIndex == 0) {
+              let firstTask = sortedTasks[0];
+              if (firstTask.order > 1) {
+                firstTask.order / 2;
+              } else {
+                START_OFFSET;
+              };
+            } else {
+              let beforeTask = sortedTasks[positionIndex - 1];
+              let afterTask = sortedTasks[positionIndex];
+              (beforeTask.order + afterTask.order) / 2;
+            };
+
+            if (numTasks > 1 and needsRecalculation(sortedTasks)) {
+              recalculateOrders(user, task.listId);
+            };
+
+            let updatedTask = { task with order = newOrder };
+            user.tasks.add(taskId, updatedTask);
+          };
+        };
+      },
+    );
+  };
+
+  public shared ({ caller }) func reorderTask(taskId : TaskId, newPosition : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    await updateTaskPosition(taskId, newPosition);
+  };
+
+  func calculateTaskWeight(important : Bool, urgent : Bool, isLongTask : Bool) : Float {
+    var weight : Float = 1.0;
+    if (important) { weight += 2.0 };
+    if (urgent) { weight += 1.5 };
+    if (isLongTask) { weight += 2.0 };
+    weight;
+  };
+
+  public shared ({ caller }) func createTask(input : TaskCreateInput) : async TaskId {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getUser(caller);
+    if (input.title.size() > MAX_TITLE_LENGTH) {
+      Runtime.trap("Title can't exceed " # MAX_TITLE_LENGTH.toText() # " characters");
+    };
+    if (not user.lists.containsKey(input.listId)) {
+      Runtime.trap("List does not exist");
+    };
+    let task : Task = {
+      input with
+      id = user.nextTaskId;
+      completed = false;
+      weight = calculateTaskWeight(input.important, input.urgent, input.isLongTask);
+    };
+    user.tasks.add(user.nextTaskId, task);
+    let updatedUser = { user with nextTaskId = user.nextTaskId + 1 };
+    users.add(caller, updatedUser);
+    task.id;
+  };
+
+  public shared ({ caller }) func updateTask(id : TaskId, updatedTask : TaskUpdateInput) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    if (updatedTask.title.size() > MAX_TITLE_LENGTH) {
+      Runtime.trap("Title can't exceed " # MAX_TITLE_LENGTH.toText() # " characters");
+    };
+    withUser(
+      caller,
+      func(user) {
+        if (not user.lists.containsKey(updatedTask.listId)) {
+          Runtime.trap("List does not exist");
+        };
+        switch (user.tasks.get(id)) {
+          case (null) { Runtime.trap("Task not found") };
+          case (?oldTask) {
+            let task : Task = {
+              updatedTask with
+              id;
+              completed = oldTask.completed;
+              weight = calculateTaskWeight(updatedTask.important, updatedTask.urgent, updatedTask.isLongTask);
+            };
+            user.tasks.add(id, task);
+          };
+        };
+      },
+    );
+  };
+
+  public shared ({ caller }) func deleteTask(id : TaskId) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    withUser(
+      caller,
+      func(user) {
+        switch (user.tasks.get(id)) {
+          case (null) { Runtime.trap("Task not found") };
+          case (?_) { user.tasks.remove(id) };
+        };
+      },
+    );
+  };
+
+  public shared ({ caller }) func moveTask(taskId : TaskId, destinationListId : ListId) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    withUser(
+      caller,
+      func(user) {
+        switch (user.tasks.get(taskId)) {
+          case (null) { Runtime.trap("Task not found") };
+          case (?task) {
+            switch (user.lists.get(destinationListId)) {
+              case (null) { Runtime.trap("Destination list does not exist") };
+              case (?destList) {
+                let updatedTask = {
+                  task with
+                  listId = destinationListId;
+                  urgent = destList.urgent;
+                  important = destList.important;
+                  weight = calculateTaskWeight(destList.important, destList.urgent, task.isLongTask);
+                };
+                user.tasks.add(taskId, updatedTask);
+              };
+            };
+          };
+        };
+      },
+    );
+  };
+
+  public shared ({ caller }) func completeTask(id : TaskId, completed : Bool) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    withUser(
+      caller,
+      func(user) {
+        switch (user.tasks.get(id)) {
+          case (null) { Runtime.trap("Task not found") };
+          case (?task) {
+            let updatedTask = { task with completed };
+            user.tasks.add(id, updatedTask);
+          };
+        };
+      },
+    );
+  };
+
+  public shared ({ caller }) func createList(name : Text) : async ListId {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getUser(caller);
+    let list : List = {
+      id = user.nextListId;
+      name;
+      quadrant = false;
+      urgent = false;
+      important = false;
+    };
+    user.lists.add(user.nextListId, list);
+    let updatedUser = { user with nextListId = user.nextListId + 1 };
+    users.add(caller, updatedUser);
+    list.id;
+  };
+
+  public shared ({ caller }) func deleteList(id : ListId) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    withUser(
+      caller,
+      func(user) {
+        switch (user.lists.get(id)) {
+          case (null) { Runtime.trap("List not found") };
+          case (?list) {
+            if (list.quadrant) { Runtime.trap("Cannot delete quadrant lists") };
+            user.lists.remove(id);
+            let taskIds = user.tasks.entries().toArray().filter(func((_, task)) { task.listId == id }).map(
+              func((taskId, _)) { taskId }
+            );
+            for (taskId in taskIds.vals()) { user.tasks.remove(taskId) };
+          };
+        };
+      },
+    );
+  };
+
+  public query ({ caller }) func getTask(id : TaskId) : async Task {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getUser(caller);
+    switch (user.tasks.get(id)) {
+      case (null) { Runtime.trap("Task not found") };
+      case (?task) { task };
+    };
+  };
+
+  public query ({ caller }) func getAllTasks() : async [Task] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    getUser(caller).tasks.values().toArray();
+  };
+
+  public query ({ caller }) func getAllTasksByList(listId : ListId) : async [Task] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getUser(caller);
+    if (not user.lists.containsKey(listId)) {
+      Runtime.trap("List not found");
+    };
+    user.tasks.values().toArray().filter(func(task) { task.listId == listId });
+  };
+
+  public query ({ caller }) func getList(id : ListId) : async List {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getUser(caller);
+    switch (user.lists.get(id)) {
+      case (null) { Runtime.trap("List not found") };
+      case (?list) { list };
+    };
+  };
+
+  public query ({ caller }) func getAllLists() : async [List] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    getUser(caller).lists.values().toArray().sort();
+  };
+
+  public query ({ caller }) func getDefaultOrder() : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    START_OFFSET;
+  };
+
+  public query ({ caller }) func getDefaultPosition() : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    START_OFFSET;
+  };
+
+  func calculateRoutineWeight(streakCount : Nat) : Int {
+    var weight : Int = 0;
+    if (streakCount < 2) {
+      weight := 1;
+    } else if (streakCount <= 7) {
+      weight := 3;
+    } else if (streakCount <= 30) {
+      weight := 4;
+    } else {
+      weight := 5;
+    };
+    weight;
+  };
+
+  public shared ({ caller }) func createMorningRoutine(text : Text, section : RoutineSection, displayMode : Nat) : async RoutineId {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getUser(caller);
+    let routine : MorningRoutine = {
+      id = user.nextRoutineId;
+      text;
+      completed = false;
+      section;
+      order = START_OFFSET;
+      streakCount = 1;
+      weight = 1;
+      displayMode;
+    };
+    user.routines.add(user.nextRoutineId, routine);
+    let updatedUser = { user with nextRoutineId = user.nextRoutineId + 1 };
+    users.add(caller, updatedUser);
+    routine.id;
+  };
+
+  public shared ({ caller }) func updateMorningRoutine(id : RoutineId, text : Text, section : RoutineSection, displayMode : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    withUser(
+      caller,
+      func(user) {
+        switch (user.routines.get(id)) {
+          case (null) { Runtime.trap("Routine not found") };
+          case (?routine) {
+            let newWeight = calculateRoutineWeight(routine.streakCount);
+            let updatedRoutine = {
+              routine with
+              text;
+              section;
+              displayMode;
+              weight = newWeight;
+            };
+            user.routines.add(id, updatedRoutine);
+          };
+        };
+      },
+    );
+  };
+
+  public shared ({ caller }) func completeMorningRoutine(id : RoutineId, completed : Bool) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    withUser(
+      caller,
+      func(user) {
+        switch (user.routines.get(id)) {
+          case (null) { Runtime.trap("Routine not found") };
+          case (?routine) {
+            let newWeight = calculateRoutineWeight(routine.streakCount);
+            let updatedRoutine = { routine with completed; weight = newWeight };
+            user.routines.add(id, updatedRoutine);
+          };
+        };
+      },
+    );
+  };
+
+  public shared ({ caller }) func deleteMorningRoutine(id : RoutineId) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    withUser(
+      caller,
+      func(user) {
+        switch (user.routines.get(id)) {
+          case (null) { Runtime.trap("Routine not found") };
+          case (?_) { user.routines.remove(id) };
+        };
+      },
+    );
+  };
+
+  public query ({ caller }) func getMorningRoutine(id : RoutineId) : async MorningRoutine {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getUser(caller);
+    switch (user.routines.get(id)) {
+      case (null) { Runtime.trap("Routine not found") };
+      case (?routine) { routine };
+    };
+  };
+
+  public query ({ caller }) func getMorningRoutinesBySection(section : RoutineSection) : async [MorningRoutine] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getUser(caller);
+    user.routines.values().toArray().filter(func(routine) { routine.section == section });
+  };
+
+  public query ({ caller }) func getAllMorningRoutines() : async [MorningRoutine] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getUser(caller);
+    user.routines.values().toArray();
+  };
+
+  public shared ({ caller }) func setUserDisplayMode(displayMode : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    withUser(
+      caller,
+      func(user) {
+        let updatedUser = {
+          user with
+          displayMode;
+        };
+        users.add(caller, updatedUser);
+      },
+    );
+  };
+
+  public query ({ caller }) func getUserDisplayMode() : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getUser(caller);
+    user.displayMode;
+  };
+
+  public shared ({ caller }) func updateRoutineItemPosition(routineId : RoutineId, positionIndex : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+
+    let user = getUser(caller);
+    switch (user.routines.get(routineId)) {
+      case (null) { Runtime.trap("Routine item not found") };
+      case (?routine) {
+        let sortedRoutines = user.routines.values().toArray().filter(func(r) { r.section == routine.section }).sort(
+          func(a, b) { Nat.compare(a.order, b.order) }
+        );
+        let numRoutines = sortedRoutines.size();
+
+        let newOrder = if (numRoutines == 0) {
+          START_OFFSET;
+        } else if (positionIndex >= numRoutines) {
+          let lastRoutine = sortedRoutines[numRoutines - 1];
+          lastRoutine.order + START_OFFSET;
+        } else if (positionIndex == 0) {
+          let firstRoutine = sortedRoutines[0];
+          if (firstRoutine.order > 1) {
+            firstRoutine.order / 2;
+          } else {
+            START_OFFSET;
+          };
+        } else {
+          let beforeRoutine = sortedRoutines[positionIndex - 1];
+          let afterRoutine = sortedRoutines[positionIndex];
+          (beforeRoutine.order + afterRoutine.order) / 2;
+        };
+
+        if (needsRoutineRecalculation(sortedRoutines)) {
+          recalculateRoutineOrders(user, routine.section);
+        };
+
+        let updatedRoutine = { routine with order = newOrder };
+        user.routines.add(routineId, updatedRoutine);
+      };
+    };
+  };
+
+  func needsRoutineRecalculation(routines : [MorningRoutine]) : Bool {
+    if (routines.size() < 2) { return false };
+    var i = 1;
+    while (i < routines.size()) {
+      let prev = routines[i - 1];
+      let curr = routines[i];
+      if (curr.order <= prev.order or (Int.abs(curr.order.toInt() - prev.order.toInt()) < 1)) {
+        return true;
+      };
+      i += 1;
+    };
+    false;
+  };
+
+  func recalculateRoutineOrders(user : User, section : RoutineSection) {
+    let routinesArray = user.routines.values().toArray().filter(func(r) { r.section == section }).sort(
+      func(a, b) { Nat.compare(a.order, b.order) }
+    );
+    let numRoutines = routinesArray.size();
+    if (numRoutines <= 1) { return };
+
+    var i = 0;
+    while (i < numRoutines) {
+      let newOrder = (i + 1) * START_OFFSET;
+      let routine = routinesArray[i];
+      let updatedRoutine = { routine with order = newOrder };
+      user.routines.add(routine.id, updatedRoutine);
+      i += 1;
+    };
+  };
+
+  public shared ({ caller }) func performRoutineDailyResetIfNeeded() : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+
+    let currentTimeNanos = Time.now();
+    let currentDayEpoch = currentTimeNanos / (24 * 3600 * 1000000000);
+
+    let user = getOrCreateUserInternal(caller);
+
+    if (user.lastResetDate == currentDayEpoch) {
+      return;
+    };
+
+    let updatedRoutines = user.routines.map<RoutineId, MorningRoutine, MorningRoutine>(
+      func(_, routine) {
+        var newStreak = routine.streakCount;
+
+        if (routine.completed) {
+          newStreak += 1;
+        } else {
+          newStreak := 0;
+        };
+        {
+          routine with
+          completed = false;
+          streakCount = newStreak;
+          weight = calculateRoutineWeight(newStreak);
+        };
+      }
+    );
+
+    let newUser = {
+      user with routines = updatedRoutines;
+      lastResetDate = currentDayEpoch;
+    };
+    users.add(caller, newUser);
+  };
+
+  public shared ({ caller }) func resetNewDay() : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+
+    let currentTimeNanos = Time.now();
+    let currentDayEpoch = currentTimeNanos / (24 * 3600 * 1000000000);
+
+    let user = getOrCreateUserInternal(caller);
+
+    if (user.lastResetDate == currentDayEpoch) { return };
+
+    switch (user.todayEarns) {
+      case (null) {};
+      case (?todayEarns) {
+        if (not todayEarns.submitted) {
+          let payrollRecord : PayrollRecord = {
+            date = currentDayEpoch;
+            total = todayEarns.total;
+            submitted = false;
+            details = todayEarns.details;
+          };
+          user.payrollHistory.add(currentDayEpoch, payrollRecord);
+        };
+      };
+    };
+
+    let updatedTasks = user.tasks.filter(
+      func(_id, task) {
+        task.listId > 4;
+      }
+    );
+
+    let updatedRoutines = user.routines.map<RoutineId, MorningRoutine, MorningRoutine>(
+      func(_, routine) {
+        var newStreak = routine.streakCount;
+        if (routine.completed) { newStreak += 1 } else {
+          newStreak := 0 : Nat;
+        };
+        {
+          routine with
+          completed = false;
+          streakCount = newStreak;
+          weight = calculateRoutineWeight(newStreak);
+        };
+      }
+    );
+
+    let newUser = {
+      user with
+      tasks = updatedTasks;
+      routines = updatedRoutines;
+      lastResetDate = currentDayEpoch;
+      todayEarns = null;
+    };
+    users.add(caller, newUser);
+  };
+
+  public query ({ caller }) func getPayrollHistory() : async [PayrollRecord] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+
+    let user = getUser(caller);
+
+    user.payrollHistory.values().toArray();
+  };
+
+  public shared ({ caller }) func submitPayrollLog(date : Int) : async Int {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+
+    let user = getUser(caller);
+
+    switch (user.payrollHistory.get(date)) {
+      case (null) { Runtime.trap("Payroll record not found") };
+      case (?record) {
+        if (record.submitted) {
+          Runtime.trap("Payroll record already submitted");
+        };
+
+        let updatedRecord = { record with submitted = true };
+        user.payrollHistory.add(date, updatedRecord);
+
+        let newTotalBalance = user.monetarySettings.totalBalance + record.total;
+        let newSettings = {
+          user.monetarySettings with
+          totalBalance = newTotalBalance;
+        };
+        let newUser = { user with monetarySettings = newSettings };
+        users.add(caller, newUser);
+
+        newTotalBalance;
+      };
+    };
+  };
+
+  public shared ({ caller }) func editPayrollLog(date : Int, updatedTotal : Int) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+
+    let user = getUser(caller);
+
+    switch (user.payrollHistory.get(date)) {
+      case (null) { Runtime.trap("Payroll record not found") };
+      case (?record) {
+        if (record.submitted) {
+          Runtime.trap("Cannot edit submitted payroll record");
+        };
+
+        let updatedRecord = { record with total = updatedTotal };
+        user.payrollHistory.add(date, updatedRecord);
+      };
+    };
+  };
+
+  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
     userProfiles.get(caller);
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller.isAnonymous()) {
-      Runtime.trap("Unauthorized: Anonymous principals cannot access profiles");
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
     };
     if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
+      Runtime.trap("Unauthorized: Can only view your own profile unless admin");
     };
     userProfiles.get(user);
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (caller.isAnonymous()) {
-      Runtime.trap("Unauthorized: Anonymous principals cannot save profiles");
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
     };
-    ensureAuthenticatedUser(caller);
-    userProfiles.add(caller, profile);
-  };
 
-  // List read endpoint for frontend bootstrap - auto-creates user if needed
-  public query ({ caller }) func getAllUserLists() : async ?[List] {
-    if (caller.isAnonymous()) {
-      return null;
-    };
-    // Note: In query context we cannot modify state, so we check if user exists
-    // If user doesn't exist, frontend should call maybeInitializeAllQuadrants first
-    switch (usersOld.get(caller)) {
-      case (?user) {
-        let lists = user.lists.values().toArray();
-        ?lists;
+    switch (userProfiles.get(caller)) {
+      case (null) {
+        userProfiles.add(caller, profile);
       };
-      case (null) { 
-         // Return empty array to signal that initialization is needed
-         ?([] : [List]);
-       };
+      case (?existingProfile) {
+        let updatedProfile = {
+          profile with
+          tier = existingProfile.tier;
+        };
+        userProfiles.add(caller, updatedProfile);
+      };
     };
   };
 
-  // Idempotent quadrant initialization - creates user if needed
-  func needQuadrant(user : UserOld, id : ListId, name : Text, urgent : Bool, important : Bool) : Bool {
-    not user.lists.containsKey(id);
-  };
-
-  func initializeQuadrant(user : UserOld, id : ListId, name : Text, urgent : Bool, important : Bool) : UserOld {
-    let quadrant : List = {
-      id;
-      name;
-      quadrant = true;
-      urgent;
-      important;
+  public query ({ caller }) func getMonetarySettings() : async MonetarySettings {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
     };
-    user.lists.add(id, quadrant);
-    user;
+    let user = getUser(caller);
+    user.monetarySettings;
   };
 
-  func needAllQuadrants(user : UserOld) : Bool {
-    needQuadrant(user, 1, "Must Do", true, true) or
-    needQuadrant(user, 2, "Should Do", false, true) or
-    needQuadrant(user, 3, "Delegate / Could Do", true, false) or
-    needQuadrant(user, 4, "May Do", false, false);
-  };
-
-  func initializeAllQuadrants(user : UserOld) : UserOld {
-    let userWithMustDo = if (needQuadrant(user, 1, "Must Do", true, true)) {
-      initializeQuadrant(user, 1, "Must Do", true, true);
-    } else { user };
-    let userWithShouldDo = if (needQuadrant(userWithMustDo, 2, "Should Do", false, true)) {
-      initializeQuadrant(userWithMustDo, 2, "Should Do", false, true);
-    } else { userWithMustDo };
-    let userWithDelegate = if (needQuadrant(userWithShouldDo, 3, "Delegate / Could Do", true, false)) {
-      initializeQuadrant(
-        userWithShouldDo,
-        3,
-        "Delegate / Could Do",
-        true,
-        false,
-      );
-    } else { userWithShouldDo };
-    if (needQuadrant(userWithDelegate, 4, "May Do", false, false)) {
-      initializeQuadrant(userWithDelegate, 4, "May Do", false, false);
-    } else { userWithDelegate };
-  };
-
-  // Public endpoint for idempotent quadrant initialization
-  // Auto-creates user and assigns role if needed - no admin privileges required
-  public shared ({ caller }) func maybeInitializeAllQuadrants() : async ?[List] {
-    if (caller.isAnonymous()) {
-      Runtime.trap("Unauthorized: Anonymous principals cannot initialize quadrants");
+  public shared ({ caller }) func saveMonetarySettings(settings : MonetarySettings) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
     };
-    
-    // Ensure user role is assigned
-    ensureAuthenticatedUser(caller);
-    
-    // Get or create user
-    let user = getOrCreateUser(caller);
-    
-    // Initialize quadrants if needed
-    if (needAllQuadrants(user)) {
-      let updatedUser = initializeAllQuadrants(user);
-      usersOld.add(caller, updatedUser);
-      ?updatedUser.lists.values().toArray();
-    } else {
-      ?user.lists.values().toArray();
+
+    let bucketSum = settings.maxMorningRoutine + settings.maxDailyPriorities + settings.maxEveningRoutine;
+    if (bucketSum != settings.maxMoneyPerDay) {
+      Runtime.trap("Invalid monetary settings: bucket sum must equal maxMoneyPerDay");
     };
+
+    switch (users.get(caller)) {
+      case (null) { Runtime.trap("User not found") };
+      case (?user) {
+        if (user.earningsEnabled and settings.maxMoneyPerDay == 0) {
+          Runtime.trap("Earnings system cannot be enabled with Max Money Per Day set to 0. Please set a positive value and redistribute buckets.");
+        };
+        let userSettings = {
+          maxMoneyPerDay = settings.maxMoneyPerDay;
+          maxMorningRoutine = settings.maxMorningRoutine;
+          maxDailyPriorities = settings.maxDailyPriorities;
+          maxEveningRoutine = settings.maxEveningRoutine;
+          totalBalance = user.monetarySettings.totalBalance;
+        };
+        let newUser = { user with monetarySettings = userSettings };
+        users.add(caller, newUser);
+      };
+    };
+  };
+
+  public shared ({ caller }) func addPayroll(dailyIncome : Int) : async Int {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+
+    let user = getUser(caller);
+    if (not user.earningsEnabled) {
+      Runtime.trap("Earnings system is currently disabled. Payroll cannot be added.");
+    };
+
+    let newTotalBalance = user.monetarySettings.totalBalance + dailyIncome;
+    let newSettings = {
+      user.monetarySettings with
+      totalBalance = newTotalBalance;
+    };
+    let newUser = { user with monetarySettings = newSettings };
+    users.add(caller, newUser);
+
+    newTotalBalance;
+  };
+
+  public shared ({ caller }) func toggleEarningsSystem(enabled : Bool) : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+
+    let user = getUser(caller);
+
+    if (enabled and user.monetarySettings.maxMoneyPerDay == 0) {
+      Runtime.trap("Cannot enable earnings system with Max Money Per Day set to 0.");
+    };
+
+    let updatedUser = { user with earningsEnabled = enabled };
+    users.add(caller, updatedUser);
+    enabled;
+  };
+
+  public query ({ caller }) func getEarningsEnabled() : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getUser(caller);
+    user.earningsEnabled;
+  };
+
+  public type SpendInput = {
+    amount : Float;
+    category : Text;
+    spendType : SpendType;
+  };
+
+  public shared ({ caller }) func createSpend(input : SpendInput) : async Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+
+    switch (users.get(caller)) {
+      case (null) { Runtime.trap("User not found") };
+      case (?user) {
+        let spend : SpendRecord = {
+          id = user.nextSpendId;
+          date = Time.now() / 1_000_000_000 : Int;
+          amount = input.amount;
+          category = input.category;
+          spendType = if (Text.equal(input.category, "Pre-deducted")) {
+            #preDeducted;
+          } else {
+            input.spendType;
+          };
+        };
+
+        user.spendRecords.add(user.nextSpendId, spend);
+
+        if (spend.spendType == #normal) {
+          let newSettings = {
+            user.monetarySettings with
+            totalBalance = user.monetarySettings.totalBalance - input.amount.toInt();
+          };
+          let newUser = {
+            user with
+            nextSpendId = user.nextSpendId + 1;
+            monetarySettings = newSettings;
+          };
+          users.add(caller, newUser);
+          return "Spend created successfully";
+        } else {
+          let newUser = { user with nextSpendId = user.nextSpendId + 1 };
+          users.add(caller, newUser);
+          return "This spending won't reduce your balance — it's already covered in your fixed plan.";
+        };
+      };
+    };
+  };
+
+  public query ({ caller }) func getAllSpends() : async [SpendRecord] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getUser(caller);
+    let spendsArray = user.spendRecords.values().toArray();
+    spendsArray.sort(
+      func(a, b) {
+        Nat.compare(b.id, a.id);
+      }
+    );
+  };
+
+  public shared ({ caller }) func deleteSpend(spendId : SpendId) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+
+    switch (users.get(caller)) {
+      case (null) { Runtime.trap("User not found") };
+      case (?user) {
+        switch (user.spendRecords.get(spendId)) {
+          case (null) { Runtime.trap("Spend record not found") };
+          case (?spend) {
+            user.spendRecords.remove(spendId);
+
+            if (spend.spendType == #normal) {
+              let newSettings = {
+                user.monetarySettings with
+                totalBalance = user.monetarySettings.totalBalance + spend.amount.toInt();
+              };
+              let newUser = { user with monetarySettings = newSettings };
+              users.add(caller, newUser);
+            };
+          };
+        };
+      };
+    };
+  };
+
+  public query ({ caller }) func getAllSpendPresets() : async [SpendPreset] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getUser(caller);
+    user.spendPresets.values().toArray();
+  };
+
+  public query ({ caller }) func getPreset(id : Nat) : async ?SpendPreset {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getUser(caller);
+    user.spendPresets.get(id);
+  };
+
+  public shared ({ caller }) func createPreset(preset : SpendPreset) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getUser(caller);
+    let newPreset = { preset with id = user.nextPresetId };
+    user.spendPresets.add(user.nextPresetId, newPreset);
+
+    let newUser = { user with nextPresetId = user.nextPresetId + 1 };
+    users.add(caller, newUser);
+
+    newPreset.id;
+  };
+
+  public shared ({ caller }) func updatePreset(id : Nat, updatedPreset : SpendPreset) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getUser(caller);
+    if (not user.spendPresets.containsKey(id)) {
+      Runtime.trap("Preset not found");
+    };
+    let newPreset = { updatedPreset with id };
+    user.spendPresets.add(id, newPreset);
+  };
+
+  public shared ({ caller }) func deletePreset(id : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+    let user = getUser(caller);
+    if (not user.spendPresets.containsKey(id)) {
+      Runtime.trap("Preset not found");
+    };
+    user.spendPresets.remove(id);
+  };
+
+  public query ({ caller }) func getAllUserMetadata() : async [(Principal, UserProfile)] {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Only admins can retrieve all user metadata. Prompt the user to have the operations admin promote you to admin if necessary");
+    };
+    userProfiles.toArray();
+  };
+
+  public type UserMetadata = {
+    principal : Principal;
+    profile : ?UserProfile;
+    isAdmin : Bool;
+  };
+
+  public query ({ caller }) func getAllUserMetadataWithRoles() : async [UserMetadata] {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Only admins can retrieve user metadata with roles. Prompt the user to have the operations admin promote you to admin if necessary");
+    };
+    users.keys().toArray().map(func(principal) {
+      {
+        principal;
+        profile = userProfiles.get(principal);
+        isAdmin = AccessControl.isAdmin(accessControlState, principal);
+      };
+    });
+  };
+
+  public shared ({ caller }) func promoteToAdmin(target : Principal) : async () {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Only existing admins can promote new admins");
+    };
+
+    let allPrincipals = users.keys().toArray();
+    let adminCount = allPrincipals.foldLeft(
+      0,
+      func(count, principal) { if (AccessControl.isAdmin(accessControlState, principal)) { count + 1 } else { count } },
+    );
+
+    if (adminCount >= MAX_ADMINS) {
+      Runtime.trap("Cannot promote new admin: Maximum number of admins already reached (" # MAX_ADMINS.toText() # ")");
+    };
+
+    AccessControl.assignRole(accessControlState, caller, target, #admin);
+
+    if (userProfiles.get(target) == null) {
+      let defaultProfile : UserProfile = {
+        name = "";
+        earningsEnabled = true;
+        tier = #basic;
+      };
+      userProfiles.add(target, defaultProfile);
+    };
+  };
+
+  public shared ({ caller }) func removeAdmin(target : Principal) : async () {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Only existing admins can remove admin privileges");
+    };
+
+    let allPrincipals = users.keys().toArray();
+    let adminCount = allPrincipals.foldLeft(
+      0,
+      func(count, principal) { if (AccessControl.isAdmin(accessControlState, principal)) { count + 1 } else { count } },
+    );
+
+    if (adminCount <= 1) {
+      Runtime.trap("Cannot remove last remaining admin");
+    };
+
+    AccessControl.assignRole(accessControlState, caller, target, #user);
   };
 };
+

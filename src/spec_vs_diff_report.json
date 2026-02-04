@@ -1,109 +1,30 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-04T12:33:38.436Z",
-  "summary": "Diff shows broad frontend UI/feature work (earnings/spend dialogs, drag-and-drop, styling, admin dashboard hooks) and some frontend bootstrap-related mentions (using `maybeInitializeAllQuadrants()` / `getAllUserLists()` and improved bootstrap state machine). The backend diff excerpt is truncated and does not show the required new quadrant/list/profile endpoints or RBAC decoupling changes, so backend requirements cannot be confirmed from the provided evidence.",
+  "generatedAt": "2026-02-04T00:57:15.963Z",
+  "summary": "Diff shows modifications to backend/main.mo and project_state.json, but the provided truncated excerpts do not include any evidence of one-time new-user seeding of non-quadrant custom lists named exactly “Week” and “Month”, nor any safeguards ensuring they are not recreated later. No unrequested features are clearly evidenced in the truncated diff summary.",
   "missing_requirements": [
     {
-      "id": "REQ-1",
-      "requirement": "Backend: Add idempotent, per-user quadrant initialization endpoints so newly authenticated users can always obtain exactly 4 quadrant lists (IDs 1–4) without admin/RBAC/admin-secret dependency.",
-      "reason": "The backend diff is truncated and does not include any shown public endpoint additions/changes for quadrant initialization, nor evidence that quadrant seeding is callable by fresh non-admin users without secret/RBAC coupling.",
+      "id": "REQ-23",
+      "requirement": "On first-time user creation (principal seen for the first time), automatically create two empty, normal (non-quadrant) custom lists owned by the user named exactly “Week” and “Month” with quadrant=false, urgent=false, important=false; applies to all authenticated users and runs only on one-time user creation.",
+      "reason": "The truncated backend/main.mo diff excerpt only shows existing types and an addQuadrantIfMissing helper; it does not show any new-user creation lifecycle changes or list-seeding logic for “Week”/“Month”.",
       "evidence": [
-        "backend/main.mo (truncated; no shown quadrant init endpoint changes)"
+        "backend/main.mo (truncated excerpt shows addQuadrantIfMissing only; no onboarding list seeding visible)"
       ]
     },
     {
-      "id": "REQ-2",
-      "requirement": "Backend: Implement the list read endpoint used by frontend bootstrap to return all user lists including quadrants with fields (id, name, quadrant, urgent, important) and not trap for fresh users.",
-      "reason": "No backend evidence is shown that a lists-read endpoint (e.g., `getAllUserLists`) is implemented/updated to satisfy the required fields and fresh-user non-trap behavior; frontend summary mentions `getAllUserLists()` but backend implementation is not evidenced in the diff excerpt.",
+      "id": "REQ-24",
+      "requirement": "Ensure backend never auto-recreates “Week” and/or “Month” for existing users after initial creation (no per-login/per-fetch repair; deletion/rename persists; quadrant initialization does not restore them).",
+      "reason": "No evidence in the truncated diff excerpt of logic preventing recreation or ensuring onboarding lists are only created during initial user creation.",
       "evidence": [
-        "backend/main.mo (truncated; no shown list read endpoint implementation)",
-        "frontend-file-summaries.txt (mentions `getAllUserLists()` usage but not backend implementation)"
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "requirement": "Backend: Remove fresh-user deadlock where seeding is only reachable after RBAC check; fresh users must be recognized as normal users without requiring CAFFEINE_ADMIN_TOKEN for login/bootstrap; profile fetch returns existing profile or null without Unauthorized traps.",
-      "reason": "No visible backend changes demonstrate removal of RBAC gating or unauthorized traps for fresh users; backend section shown contains types/imports but not authorization logic changes.",
-      "evidence": [
-        "backend/main.mo (truncated; no shown RBAC/authorization flow changes)"
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "requirement": "Frontend: Make actor initialization resilient when no admin secret is present; bootstrap must not fail/stall due to admin-secret initialization errors; continue with non-admin flows.",
-      "reason": "While the TaskManager summary mentions 'proper error handling for actor initialization', the actual diff content provided for actor initialization / admin-secret handling is not shown (TaskManager/useActor changes are truncated or not included), so the required resilience behavior cannot be confirmed from evidence.",
-      "evidence": [
-        "frontend/src/pages/TaskManager.tsx (truncated)",
-        "frontend/src/hooks/useQueries.ts (truncated)",
-        "frontend-file-summaries.txt (claims resilience, but underlying code evidence not shown)"
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "requirement": "Frontend: Ensure quadrant bootstrap exits loading when backend returns 4 quadrants; on failure show a single actionable English error, stop bootstrap loop (bootstrapState=failed), allow retry via refresh without looping.",
-      "reason": "TaskManager diff is truncated around the bootstrap effect/state machine; EisenhowerMatrix summary mentions placeholder when <4 quadrants, but there is no concrete evidence of the specified single-toast error behavior, loop stopping, and retry semantics.",
-      "evidence": [
-        "frontend/src/pages/TaskManager.tsx (truncated)",
-        "frontend-file-summaries.txt (describes behavior but does not show code proving the AC details)"
+        "backend/main.mo (truncated; no logic shown about avoiding recreation of Week/Month)"
       ]
     }
   ],
-  "hallucinated_features": [
-    {
-      "description": "Added/expanded earnings, payroll history editing/submission flows and related dialogs/toasts.",
-      "reason": "BuildRequest explicitly states non-goal to implement broader monetary/payroll APIs/features unless required for quadrant bootstrap/login blocker; these UI changes are unrelated to quadrant initialization/bootstrap based on provided diff summary.",
-      "evidence": [
-        "frontend/src/components/PayrollHistoryDialog.tsx",
-        "frontend/src/components/TodayEarnsDialog.tsx",
-        "frontend/src/components/SettingsDialog.tsx"
-      ]
-    },
-    {
-      "description": "Spend planning, presets management, and insights chart UI.",
-      "reason": "Not requested for fixing fresh-account quadrant bootstrap/login blocker and falls under non-goal monetary/spend surface expansion.",
-      "evidence": [
-        "frontend/src/components/SpendPlanDialog.tsx",
-        "frontend/src/components/InsightsDialog.tsx"
-      ]
-    },
-    {
-      "description": "Routine UI enhancements including long-press reorder mode and additional interaction patterns.",
-      "reason": "Not requested; unrelated to quadrant bootstrap/login unblocker.",
-      "evidence": [
-        "frontend/src/components/MorningRoutine.tsx"
-      ]
-    },
-    {
-      "description": "Admin dashboard-related query hooks (admin user list/promote/remove) and associated frontend support.",
-      "reason": "Not requested; BuildRequest goal is explicitly to remove admin-secret dependency for normal bootstrap, not to add admin management features.",
-      "evidence": [
-        "frontend/src/hooks/useQueries.ts (useAdminUserList/usePromoteToAdmin/useRemoveAdmin)"
-      ]
-    },
-    {
-      "description": "Local type mirroring/expansion for many backend types (tasks/routines/spend/presets) beyond quadrant bootstrap needs.",
-      "reason": "Not requested and appears to broaden app surface beyond the quadrant bootstrap fix.",
-      "evidence": [
-        "frontend/src/lib/backendTypes.ts",
-        "frontend/src/lib/types.ts"
-      ]
-    }
-  ],
-  "confidence": 0.62,
+  "hallucinated_features": [],
+  "confidence": 0.46,
   "changed_files": [
     "backend/main.mo",
-    "frontend-file-summaries.txt",
-    "frontend/src/components/InsightsDialog.tsx",
-    "frontend/src/components/MorningRoutine.tsx",
-    "frontend/src/components/PayrollHistoryDialog.tsx",
-    "frontend/src/components/SettingsDialog.tsx",
-    "frontend/src/components/SpendPlanDialog.tsx",
-    "frontend/src/components/TodayEarnsDialog.tsx",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/lib/backendTypes.ts",
-    "frontend/src/lib/types.ts",
-    "frontend/src/pages/TaskManager.tsx",
     "project_state.json"
   ]
 }

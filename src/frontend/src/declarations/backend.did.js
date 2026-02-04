@@ -13,13 +13,73 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const RoutineId = IDL.Nat;
+export const TaskId = IDL.Nat;
 export const ListId = IDL.Nat;
+export const RoutineSection = IDL.Variant({
+  'top' : IDL.Null,
+  'bottom' : IDL.Null,
+});
+export const SpendPreset = IDL.Record({
+  'id' : IDL.Nat,
+  'name' : IDL.Text,
+  'category' : IDL.Text,
+  'amount' : IDL.Float64,
+});
+export const SpendType = IDL.Variant({
+  'normal' : IDL.Null,
+  'preDeducted' : IDL.Null,
+});
+export const SpendInput = IDL.Record({
+  'category' : IDL.Text,
+  'amount' : IDL.Float64,
+  'spendType' : SpendType,
+});
+export const TaskCreateInput = IDL.Record({
+  'title' : IDL.Text,
+  'isLongTask' : IDL.Bool,
+  'order' : IDL.Nat,
+  'description' : IDL.Text,
+  'important' : IDL.Bool,
+  'urgent' : IDL.Bool,
+  'listId' : ListId,
+});
+export const SpendId = IDL.Nat;
 export const List = IDL.Record({
   'id' : ListId,
   'name' : IDL.Text,
   'important' : IDL.Bool,
   'urgent' : IDL.Bool,
   'quadrant' : IDL.Bool,
+});
+export const MorningRoutine = IDL.Record({
+  'id' : RoutineId,
+  'weight' : IDL.Int,
+  'displayMode' : IDL.Nat,
+  'order' : IDL.Nat,
+  'text' : IDL.Text,
+  'completed' : IDL.Bool,
+  'section' : RoutineSection,
+  'streakCount' : IDL.Nat,
+});
+export const SpendRecord = IDL.Record({
+  'id' : SpendId,
+  'date' : IDL.Int,
+  'category' : IDL.Text,
+  'amount' : IDL.Float64,
+  'spendType' : SpendType,
+});
+export const Task = IDL.Record({
+  'id' : TaskId,
+  'weight' : IDL.Float64,
+  'title' : IDL.Text,
+  'isLongTask' : IDL.Bool,
+  'order' : IDL.Nat,
+  'completed' : IDL.Bool,
+  'description' : IDL.Text,
+  'important' : IDL.Bool,
+  'urgent' : IDL.Bool,
+  'listId' : ListId,
 });
 export const UserTier = IDL.Variant({
   'gold' : IDL.Null,
@@ -32,21 +92,120 @@ export const UserProfile = IDL.Record({
   'name' : IDL.Text,
   'tier' : UserTier,
 });
+export const UserMetadata = IDL.Record({
+  'principal' : IDL.Principal,
+  'isAdmin' : IDL.Bool,
+  'profile' : IDL.Opt(UserProfile),
+});
+export const MonetarySettings = IDL.Record({
+  'maxDailyPriorities' : IDL.Nat,
+  'maxMorningRoutine' : IDL.Nat,
+  'maxMoneyPerDay' : IDL.Nat,
+  'totalBalance' : IDL.Int,
+  'maxEveningRoutine' : IDL.Nat,
+});
+export const PayrollRecord = IDL.Record({
+  'total' : IDL.Int,
+  'submitted' : IDL.Bool,
+  'date' : IDL.Int,
+  'details' : IDL.Record({
+    'morning' : IDL.Int,
+    'evening' : IDL.Int,
+    'priorities' : IDL.Int,
+  }),
+});
+export const TaskUpdateInput = IDL.Record({
+  'title' : IDL.Text,
+  'isLongTask' : IDL.Bool,
+  'order' : IDL.Nat,
+  'completed' : IDL.Bool,
+  'description' : IDL.Text,
+  'important' : IDL.Bool,
+  'urgent' : IDL.Bool,
+  'listId' : ListId,
+});
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'addPayroll' : IDL.Func([IDL.Int], [IDL.Int], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-  'getAllUserLists' : IDL.Func([], [IDL.Opt(IDL.Vec(List))], ['query']),
+  'completeMorningRoutine' : IDL.Func([RoutineId, IDL.Bool], [], []),
+  'completeTask' : IDL.Func([TaskId, IDL.Bool], [], []),
+  'createList' : IDL.Func([IDL.Text], [ListId], []),
+  'createMorningRoutine' : IDL.Func(
+      [IDL.Text, RoutineSection, IDL.Nat],
+      [RoutineId],
+      [],
+    ),
+  'createPreset' : IDL.Func([SpendPreset], [IDL.Nat], []),
+  'createSpend' : IDL.Func([SpendInput], [IDL.Text], []),
+  'createTask' : IDL.Func([TaskCreateInput], [TaskId], []),
+  'deleteList' : IDL.Func([ListId], [], []),
+  'deleteMorningRoutine' : IDL.Func([RoutineId], [], []),
+  'deletePreset' : IDL.Func([IDL.Nat], [], []),
+  'deleteSpend' : IDL.Func([SpendId], [], []),
+  'deleteTask' : IDL.Func([TaskId], [], []),
+  'editPayrollLog' : IDL.Func([IDL.Int, IDL.Int], [], []),
+  'ensureAllQuadrants' : IDL.Func([], [], []),
+  'getAllLists' : IDL.Func([], [IDL.Vec(List)], ['query']),
+  'getAllMorningRoutines' : IDL.Func([], [IDL.Vec(MorningRoutine)], ['query']),
+  'getAllSpendPresets' : IDL.Func([], [IDL.Vec(SpendPreset)], ['query']),
+  'getAllSpends' : IDL.Func([], [IDL.Vec(SpendRecord)], ['query']),
+  'getAllTasks' : IDL.Func([], [IDL.Vec(Task)], ['query']),
+  'getAllTasksByList' : IDL.Func([ListId], [IDL.Vec(Task)], ['query']),
+  'getAllUserMetadata' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(IDL.Principal, UserProfile))],
+      ['query'],
+    ),
+  'getAllUserMetadataWithRoles' : IDL.Func(
+      [],
+      [IDL.Vec(UserMetadata)],
+      ['query'],
+    ),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getDefaultOrder' : IDL.Func([], [IDL.Nat], ['query']),
+  'getDefaultPosition' : IDL.Func([], [IDL.Nat], ['query']),
+  'getEarningsEnabled' : IDL.Func([], [IDL.Bool], ['query']),
+  'getList' : IDL.Func([ListId], [List], ['query']),
+  'getMonetarySettings' : IDL.Func([], [MonetarySettings], ['query']),
+  'getMorningRoutine' : IDL.Func([RoutineId], [MorningRoutine], ['query']),
+  'getMorningRoutinesBySection' : IDL.Func(
+      [RoutineSection],
+      [IDL.Vec(MorningRoutine)],
+      ['query'],
+    ),
+  'getPayrollHistory' : IDL.Func([], [IDL.Vec(PayrollRecord)], ['query']),
+  'getPreset' : IDL.Func([IDL.Nat], [IDL.Opt(SpendPreset)], ['query']),
+  'getTask' : IDL.Func([TaskId], [Task], ['query']),
+  'getUserDisplayMode' : IDL.Func([], [IDL.Nat], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'maybeInitializeAllQuadrants' : IDL.Func([], [IDL.Opt(IDL.Vec(List))], []),
+  'moveTask' : IDL.Func([TaskId, ListId], [], []),
+  'performRoutineDailyResetIfNeeded' : IDL.Func([], [], []),
+  'promoteToAdmin' : IDL.Func([IDL.Principal], [], []),
+  'removeAdmin' : IDL.Func([IDL.Principal], [], []),
+  'reorderTask' : IDL.Func([TaskId, IDL.Nat], [], []),
+  'resetNewDay' : IDL.Func([], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'saveMonetarySettings' : IDL.Func([MonetarySettings], [], []),
+  'setUserDisplayMode' : IDL.Func([IDL.Nat], [], []),
+  'submitPayrollLog' : IDL.Func([IDL.Int], [IDL.Int], []),
+  'toggleEarningsSystem' : IDL.Func([IDL.Bool], [IDL.Bool], []),
+  'updateMorningRoutine' : IDL.Func(
+      [RoutineId, IDL.Text, RoutineSection, IDL.Nat],
+      [],
+      [],
+    ),
+  'updatePreset' : IDL.Func([IDL.Nat, SpendPreset], [], []),
+  'updateRoutineItemPosition' : IDL.Func([RoutineId, IDL.Nat], [], []),
+  'updateTask' : IDL.Func([TaskId, TaskUpdateInput], [], []),
+  'updateTaskPosition' : IDL.Func([TaskId, IDL.Nat], [], []),
 });
 
 export const idlInitArgs = [];
@@ -57,13 +216,70 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
+  const RoutineId = IDL.Nat;
+  const TaskId = IDL.Nat;
   const ListId = IDL.Nat;
+  const RoutineSection = IDL.Variant({ 'top' : IDL.Null, 'bottom' : IDL.Null });
+  const SpendPreset = IDL.Record({
+    'id' : IDL.Nat,
+    'name' : IDL.Text,
+    'category' : IDL.Text,
+    'amount' : IDL.Float64,
+  });
+  const SpendType = IDL.Variant({
+    'normal' : IDL.Null,
+    'preDeducted' : IDL.Null,
+  });
+  const SpendInput = IDL.Record({
+    'category' : IDL.Text,
+    'amount' : IDL.Float64,
+    'spendType' : SpendType,
+  });
+  const TaskCreateInput = IDL.Record({
+    'title' : IDL.Text,
+    'isLongTask' : IDL.Bool,
+    'order' : IDL.Nat,
+    'description' : IDL.Text,
+    'important' : IDL.Bool,
+    'urgent' : IDL.Bool,
+    'listId' : ListId,
+  });
+  const SpendId = IDL.Nat;
   const List = IDL.Record({
     'id' : ListId,
     'name' : IDL.Text,
     'important' : IDL.Bool,
     'urgent' : IDL.Bool,
     'quadrant' : IDL.Bool,
+  });
+  const MorningRoutine = IDL.Record({
+    'id' : RoutineId,
+    'weight' : IDL.Int,
+    'displayMode' : IDL.Nat,
+    'order' : IDL.Nat,
+    'text' : IDL.Text,
+    'completed' : IDL.Bool,
+    'section' : RoutineSection,
+    'streakCount' : IDL.Nat,
+  });
+  const SpendRecord = IDL.Record({
+    'id' : SpendId,
+    'date' : IDL.Int,
+    'category' : IDL.Text,
+    'amount' : IDL.Float64,
+    'spendType' : SpendType,
+  });
+  const Task = IDL.Record({
+    'id' : TaskId,
+    'weight' : IDL.Float64,
+    'title' : IDL.Text,
+    'isLongTask' : IDL.Bool,
+    'order' : IDL.Nat,
+    'completed' : IDL.Bool,
+    'description' : IDL.Text,
+    'important' : IDL.Bool,
+    'urgent' : IDL.Bool,
+    'listId' : ListId,
   });
   const UserTier = IDL.Variant({
     'gold' : IDL.Null,
@@ -76,21 +292,124 @@ export const idlFactory = ({ IDL }) => {
     'name' : IDL.Text,
     'tier' : UserTier,
   });
+  const UserMetadata = IDL.Record({
+    'principal' : IDL.Principal,
+    'isAdmin' : IDL.Bool,
+    'profile' : IDL.Opt(UserProfile),
+  });
+  const MonetarySettings = IDL.Record({
+    'maxDailyPriorities' : IDL.Nat,
+    'maxMorningRoutine' : IDL.Nat,
+    'maxMoneyPerDay' : IDL.Nat,
+    'totalBalance' : IDL.Int,
+    'maxEveningRoutine' : IDL.Nat,
+  });
+  const PayrollRecord = IDL.Record({
+    'total' : IDL.Int,
+    'submitted' : IDL.Bool,
+    'date' : IDL.Int,
+    'details' : IDL.Record({
+      'morning' : IDL.Int,
+      'evening' : IDL.Int,
+      'priorities' : IDL.Int,
+    }),
+  });
+  const TaskUpdateInput = IDL.Record({
+    'title' : IDL.Text,
+    'isLongTask' : IDL.Bool,
+    'order' : IDL.Nat,
+    'completed' : IDL.Bool,
+    'description' : IDL.Text,
+    'important' : IDL.Bool,
+    'urgent' : IDL.Bool,
+    'listId' : ListId,
+  });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'addPayroll' : IDL.Func([IDL.Int], [IDL.Int], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-    'getAllUserLists' : IDL.Func([], [IDL.Opt(IDL.Vec(List))], ['query']),
+    'completeMorningRoutine' : IDL.Func([RoutineId, IDL.Bool], [], []),
+    'completeTask' : IDL.Func([TaskId, IDL.Bool], [], []),
+    'createList' : IDL.Func([IDL.Text], [ListId], []),
+    'createMorningRoutine' : IDL.Func(
+        [IDL.Text, RoutineSection, IDL.Nat],
+        [RoutineId],
+        [],
+      ),
+    'createPreset' : IDL.Func([SpendPreset], [IDL.Nat], []),
+    'createSpend' : IDL.Func([SpendInput], [IDL.Text], []),
+    'createTask' : IDL.Func([TaskCreateInput], [TaskId], []),
+    'deleteList' : IDL.Func([ListId], [], []),
+    'deleteMorningRoutine' : IDL.Func([RoutineId], [], []),
+    'deletePreset' : IDL.Func([IDL.Nat], [], []),
+    'deleteSpend' : IDL.Func([SpendId], [], []),
+    'deleteTask' : IDL.Func([TaskId], [], []),
+    'editPayrollLog' : IDL.Func([IDL.Int, IDL.Int], [], []),
+    'ensureAllQuadrants' : IDL.Func([], [], []),
+    'getAllLists' : IDL.Func([], [IDL.Vec(List)], ['query']),
+    'getAllMorningRoutines' : IDL.Func(
+        [],
+        [IDL.Vec(MorningRoutine)],
+        ['query'],
+      ),
+    'getAllSpendPresets' : IDL.Func([], [IDL.Vec(SpendPreset)], ['query']),
+    'getAllSpends' : IDL.Func([], [IDL.Vec(SpendRecord)], ['query']),
+    'getAllTasks' : IDL.Func([], [IDL.Vec(Task)], ['query']),
+    'getAllTasksByList' : IDL.Func([ListId], [IDL.Vec(Task)], ['query']),
+    'getAllUserMetadata' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Principal, UserProfile))],
+        ['query'],
+      ),
+    'getAllUserMetadataWithRoles' : IDL.Func(
+        [],
+        [IDL.Vec(UserMetadata)],
+        ['query'],
+      ),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getDefaultOrder' : IDL.Func([], [IDL.Nat], ['query']),
+    'getDefaultPosition' : IDL.Func([], [IDL.Nat], ['query']),
+    'getEarningsEnabled' : IDL.Func([], [IDL.Bool], ['query']),
+    'getList' : IDL.Func([ListId], [List], ['query']),
+    'getMonetarySettings' : IDL.Func([], [MonetarySettings], ['query']),
+    'getMorningRoutine' : IDL.Func([RoutineId], [MorningRoutine], ['query']),
+    'getMorningRoutinesBySection' : IDL.Func(
+        [RoutineSection],
+        [IDL.Vec(MorningRoutine)],
+        ['query'],
+      ),
+    'getPayrollHistory' : IDL.Func([], [IDL.Vec(PayrollRecord)], ['query']),
+    'getPreset' : IDL.Func([IDL.Nat], [IDL.Opt(SpendPreset)], ['query']),
+    'getTask' : IDL.Func([TaskId], [Task], ['query']),
+    'getUserDisplayMode' : IDL.Func([], [IDL.Nat], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'maybeInitializeAllQuadrants' : IDL.Func([], [IDL.Opt(IDL.Vec(List))], []),
+    'moveTask' : IDL.Func([TaskId, ListId], [], []),
+    'performRoutineDailyResetIfNeeded' : IDL.Func([], [], []),
+    'promoteToAdmin' : IDL.Func([IDL.Principal], [], []),
+    'removeAdmin' : IDL.Func([IDL.Principal], [], []),
+    'reorderTask' : IDL.Func([TaskId, IDL.Nat], [], []),
+    'resetNewDay' : IDL.Func([], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'saveMonetarySettings' : IDL.Func([MonetarySettings], [], []),
+    'setUserDisplayMode' : IDL.Func([IDL.Nat], [], []),
+    'submitPayrollLog' : IDL.Func([IDL.Int], [IDL.Int], []),
+    'toggleEarningsSystem' : IDL.Func([IDL.Bool], [IDL.Bool], []),
+    'updateMorningRoutine' : IDL.Func(
+        [RoutineId, IDL.Text, RoutineSection, IDL.Nat],
+        [],
+        [],
+      ),
+    'updatePreset' : IDL.Func([IDL.Nat, SpendPreset], [], []),
+    'updateRoutineItemPosition' : IDL.Func([RoutineId, IDL.Nat], [], []),
+    'updateTask' : IDL.Func([TaskId, TaskUpdateInput], [], []),
+    'updateTaskPosition' : IDL.Func([TaskId, IDL.Nat], [], []),
   });
 };
 

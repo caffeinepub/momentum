@@ -1,49 +1,6 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Resilient post-login bootstrap: non-admin actor init + reliable quadrant readiness",
-  "requirements": [
-    {
-      "id": "REQ-4",
-      "summary": "Make authenticated actor creation resilient when no admin secret is present so standard users can bootstrap after Internet Identity login.",
-      "acceptanceCriteria": [
-        "After Internet Identity login, the app does not get stuck on \"Initializing workspace...\" for fresh accounts when no admin token/secret is provided.",
-        "If admin-secret initialization fails, the app still creates an authenticated actor and continues with non-admin flows.",
-        "Any user-facing error messages shown during bootstrap are in English."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/hooks/useActor.ts",
-          "operation": "modify",
-          "description": "Update actor initialization to avoid failing authenticated actor creation when the admin secret is missing/invalid: only attempt admin-secret initialization when a secret is present, and/or catch and swallow initialization errors so the actor is still returned for non-admin use. Expose an error state (e.g., isError/error) so the UI can react if actor creation itself fails. Use the selected components: core-infrastructure (createActorWithConfig wiring) and authorization (access-control bootstrap behavior) to support resilient login/actor creation; verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/pages/TaskManager.tsx",
-          "operation": "modify",
-          "description": "Wire the updated useActor error/loading signals into the authenticated rendering path so the UI does not hang indefinitely if actor creation fails unexpectedly (show a single English, actionable error and do not proceed into workspace bootstrap without an actor)."
-        }
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "summary": "Make the quadrant bootstrap flow confirm readiness from backend-returned lists and exit loading reliably; on failure, show one English error and stop retry looping until refresh.",
-      "acceptanceCriteria": [
-        "On a fresh account, after login the Eisenhower Matrix renders with 4 quadrant columns (no indefinite bootstrap spinner).",
-        "If quadrant initialization fails, the app shows one toast error and stops the bootstrap loop (bootstrapState becomes failed).",
-        "A successful retry after refresh results in quadrantsReady=true and normal app rendering."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Align list loading + quadrant bootstrap to the backend interface used by the frontend bootstrap: read lists via actor.getAllUserLists() and initialize/ensure quadrants via actor.maybeInitializeAllQuadrants(). Update quadrantsReady derivation to treat null list responses as empty and to consider readiness only when exactly 4 quadrant=true lists are present. Keep bootstrap retry bounded and ensure errors bubble up as a single actionable English error (no internal toasts) so TaskManager can mark bootstrapState='failed' without looping."
-        },
-        {
-          "path": "frontend/src/pages/TaskManager.tsx",
-          "operation": "modify",
-          "description": "Ensure bootstrap state transitions are strictly one-way (idle -> running -> complete/failed) based on the updated quadrantsReady signal from lists returned by getAllUserLists(). Confirm that on success the loading UI exits and EisenhowerMatrix receives 4 quadrant lists; on failure, show exactly one English toast and do not re-run bootstrap automatically until refresh."
-        }
-      ]
-    }
-  ]
+  "title": "Frontend plan: no changes required for backend-only onboarding list seeding",
+  "requirements": []
 }

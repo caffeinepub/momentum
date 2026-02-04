@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import type { SpendRecord, MonetarySettings } from '@/lib/backendTypes';
+import type { SpendRecord, MonetarySettings } from '@/backend';
 
 interface InsightsDialogProps {
   open: boolean;

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Settings, AlertCircle } from 'lucide-react';
-import type { MonetarySettings } from '@/lib/backendTypes';
+import type { MonetarySettings } from '@/backend';
 import { toast } from 'sonner';
 
 interface SettingsDialogProps {

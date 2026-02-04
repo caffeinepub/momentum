@@ -1,44 +1,4 @@
 {
   "kind": "feature_evidence_report",
-  "features": [
-    {
-      "featureId": "feature-frontend-make-actor-initialization-resilient-when-no-admin-secret-is-present-by-preventing-bootstrap-from-failing-due-to-access-control-secret-initialization-errors-the-app-must-still-allow-standard-non-admin-users-to-log-in-and-initialize-their-workspace",
-      "featureTitle": "Frontend: Make actor initialization resilient when no admin secret is present by preventing bootstrap from failing due to access-control secret initialization errors; the app must still allow standard (non-admin) users to log in and initialize their workspace.",
-      "files": [
-        "frontend/src/pages/TaskManager.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "authorization@4.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-4"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-frontend-ensure-the-quadrant-bootstrap-flow-reliably-transitions-out-of-the-loading-state-when-the-backend-successfully-returns-4-quadrants-if-quadrant-creation-fails-show-a-single-actionable-english-error-and-allow-retry-via-refresh-without-looping",
-      "featureTitle": "Frontend: Ensure the quadrant bootstrap flow reliably transitions out of the loading state when the backend successfully returns 4 quadrants; if quadrant creation fails, show a single actionable English error and allow retry via refresh without looping.",
-      "files": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/pages/TaskManager.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "authorization@4.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-5"
-      ],
-      "confidence": "high"
-    }
-  ]
+  "features": []
 }

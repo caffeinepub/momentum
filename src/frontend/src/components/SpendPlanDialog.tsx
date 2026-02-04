@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Trash2, DollarSign, Plus, Edit2, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { SpendType, type SpendRecord, type MonetarySettings, type SpendPreset, type SpendInput } from '@/lib/backendTypes';
+import { SpendType, type SpendRecord, type SpendInput, type MonetarySettings, type SpendPreset } from '@/backend';
 
 interface SpendPlanDialogProps {
   open: boolean;

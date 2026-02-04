@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import type { Task, List, TaskId, ListId, UserProfile, MorningRoutine, RoutineSection, RoutineId, MonetarySettings, PayrollRecord, SpendRecord, SpendId, SpendPreset, TaskCreateInput, TaskUpdateInput, SpendInput, UserMetadata } from '@/lib/backendTypes';
+import type { Task, List, TaskCreateInput, TaskUpdateInput, TaskId, ListId, UserProfile, MorningRoutine, RoutineSection, RoutineId, MonetarySettings, PayrollRecord, SpendRecord, SpendInput, SpendId, SpendPreset, UserMetadata } from '@/backend';
 import type { Principal } from '@icp-sdk/core/principal';
 
 export function useGetCallerUserProfile() {
@@ -58,8 +58,7 @@ export function useAdminUserList() {
     queryKey: ['adminUserList'],
     queryFn: async () => {
       if (!actor) return [];
-      // @ts-ignore - Method not yet in backend interface
-      return actor.getAllUserMetadataWithRoles?.() || [];
+      return actor.getAllUserMetadataWithRoles();
     },
     enabled: !!actor && !isFetching,
   });
@@ -72,8 +71,7 @@ export function usePromoteToAdmin() {
   return useMutation({
     mutationFn: async (targetPrincipal: Principal) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.promoteToAdmin?.(targetPrincipal);
+      return actor.promoteToAdmin(targetPrincipal);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminUserList'] });
@@ -89,8 +87,7 @@ export function useRemoveAdmin() {
   return useMutation({
     mutationFn: async (targetPrincipal: Principal) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.removeAdmin?.(targetPrincipal);
+      return actor.removeAdmin(targetPrincipal);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminUserList'] });
@@ -106,8 +103,7 @@ export function useGetDefaultOrder() {
     queryKey: ['defaultOrder'],
     queryFn: async () => {
       if (!actor) return BigInt(1000);
-      // @ts-ignore - Method not yet in backend interface
-      return actor.getDefaultOrder?.() || BigInt(1000);
+      return actor.getDefaultOrder();
     },
     enabled: !!actor && !isFetching,
   });
@@ -121,9 +117,8 @@ export function useAppMode() {
     queryKey: ['appMode'],
     queryFn: async () => {
       if (!actor) return 0;
-      // @ts-ignore - Method not yet in backend interface
-      const mode = await actor.getUserDisplayMode?.();
-      return Number(mode || 0);
+      const mode = await actor.getUserDisplayMode();
+      return Number(mode);
     },
     enabled: !!actor && !isFetching,
   });
@@ -131,8 +126,7 @@ export function useAppMode() {
   const setAppModeMutation = useMutation({
     mutationFn: async (mode: number) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.setUserDisplayMode?.(BigInt(mode));
+      return actor.setUserDisplayMode(BigInt(mode));
     },
     onMutate: async (newMode) => {
       await queryClient.cancelQueries({ queryKey: ['appMode'] });
@@ -165,8 +159,7 @@ export function useEarningsEnabled() {
     queryKey: ['earningsEnabled'],
     queryFn: async () => {
       if (!actor) return true;
-      // @ts-ignore - Method not yet in backend interface
-      return actor.getEarningsEnabled?.() || true;
+      return actor.getEarningsEnabled();
     },
     enabled: !!actor && !isFetching,
   });
@@ -174,8 +167,7 @@ export function useEarningsEnabled() {
   const toggleEarningsSystemMutation = useMutation({
     mutationFn: async (enabled: boolean) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.toggleEarningsSystem?.(enabled);
+      return actor.toggleEarningsSystem(enabled);
     },
     onMutate: async (newEnabled) => {
       await queryClient.cancelQueries({ queryKey: ['earningsEnabled'] });
@@ -209,8 +201,7 @@ export function useMonetarySettings() {
     queryKey: ['monetarySettings'],
     queryFn: async () => {
       if (!actor) throw new Error('Actor not available');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.getMonetarySettings?.();
+      return actor.getMonetarySettings();
     },
     enabled: !!actor && !isFetching,
   });
@@ -218,8 +209,7 @@ export function useMonetarySettings() {
   const saveMonetarySettingsMutation = useMutation({
     mutationFn: async (settings: MonetarySettings) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.saveMonetarySettings?.(settings);
+      return actor.saveMonetarySettings(settings);
     },
     onMutate: async (newSettings) => {
       await queryClient.cancelQueries({ queryKey: ['monetarySettings'] });
@@ -240,8 +230,7 @@ export function useMonetarySettings() {
   const addPayrollMutation = useMutation({
     mutationFn: async (dailyIncome: bigint) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.addPayroll?.(dailyIncome);
+      return actor.addPayroll(dailyIncome);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['monetarySettings'] });
@@ -264,8 +253,7 @@ export function usePayrollHistory() {
     queryKey: ['payrollHistory'],
     queryFn: async () => {
       if (!actor) return [];
-      // @ts-ignore - Method not yet in backend interface
-      return actor.getPayrollHistory?.() || [];
+      return actor.getPayrollHistory();
     },
     enabled: !!actor && !isFetching,
   });
@@ -273,8 +261,7 @@ export function usePayrollHistory() {
   const submitPayrollLogMutation = useMutation({
     mutationFn: async (date: bigint) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.submitPayrollLog?.(date);
+      return actor.submitPayrollLog(date);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payrollHistory'] });
@@ -285,8 +272,7 @@ export function usePayrollHistory() {
   const editPayrollLogMutation = useMutation({
     mutationFn: async ({ date, updatedTotal }: { date: bigint; updatedTotal: bigint }) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.editPayrollLog?.(date, updatedTotal);
+      return actor.editPayrollLog(date, updatedTotal);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payrollHistory'] });
@@ -309,8 +295,7 @@ export function useSpendRecords() {
     queryKey: ['spends'],
     queryFn: async () => {
       if (!actor) return [];
-      // @ts-ignore - Method not yet in backend interface
-      return actor.getAllSpends?.() || [];
+      return actor.getAllSpends();
     },
     enabled: !!actor && !isFetching,
   });
@@ -318,8 +303,7 @@ export function useSpendRecords() {
   const createSpendMutation = useMutation({
     mutationFn: async (input: SpendInput) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.createSpend?.(input);
+      return actor.createSpend(input);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['spends'] });
@@ -330,8 +314,7 @@ export function useSpendRecords() {
   const deleteSpendMutation = useMutation({
     mutationFn: async (spendId: SpendId) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.deleteSpend?.(spendId);
+      return actor.deleteSpend(spendId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['spends'] });
@@ -355,8 +338,7 @@ export function useSpendPresets() {
     queryKey: ['spendPresets'],
     queryFn: async () => {
       if (!actor) return [];
-      // @ts-ignore - Method not yet in backend interface
-      return actor.getAllSpendPresets?.() || [];
+      return actor.getAllSpendPresets();
     },
     enabled: !!actor && !isFetching,
   });
@@ -364,8 +346,7 @@ export function useSpendPresets() {
   const createPresetMutation = useMutation({
     mutationFn: async (preset: SpendPreset) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.createPreset?.(preset);
+      return actor.createPreset(preset);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['spendPresets'] });
@@ -375,8 +356,7 @@ export function useSpendPresets() {
   const updatePresetMutation = useMutation({
     mutationFn: async ({ id, preset }: { id: bigint; preset: SpendPreset }) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.updatePreset?.(id, preset);
+      return actor.updatePreset(id, preset);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['spendPresets'] });
@@ -386,8 +366,7 @@ export function useSpendPresets() {
   const deletePresetMutation = useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.deletePreset?.(id);
+      return actor.deletePreset(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['spendPresets'] });
@@ -411,8 +390,7 @@ export function useTaskQueries() {
     queryKey: ['tasks'],
     queryFn: async () => {
       if (!actor) return [];
-      // @ts-ignore - Method not yet in backend interface
-      return actor.getAllTasks?.() || [];
+      return actor.getAllTasks();
     },
     enabled: !!actor && !isFetching,
   });
@@ -421,8 +399,7 @@ export function useTaskQueries() {
     queryKey: ['lists'],
     queryFn: async () => {
       if (!actor) return [];
-      const result = await actor.getAllUserLists();
-      return result || [];
+      return actor.getAllLists();
     },
     enabled: !!actor && !isFetching,
   });
@@ -430,8 +407,7 @@ export function useTaskQueries() {
   const createTaskMutation = useMutation({
     mutationFn: async (input: TaskCreateInput) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.createTask?.(input);
+      return actor.createTask(input);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -441,8 +417,7 @@ export function useTaskQueries() {
   const updateTaskMutation = useMutation({
     mutationFn: async ({ id, input }: { id: TaskId; input: TaskUpdateInput }) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.updateTask?.(id, input);
+      return actor.updateTask(id, input);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -452,8 +427,7 @@ export function useTaskQueries() {
   const toggleTaskCompletionMutation = useMutation({
     mutationFn: async ({ id, completed }: { id: TaskId; completed: boolean }) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.completeTask?.(id, completed);
+      return actor.completeTask(id, completed);
     },
     onMutate: async ({ id, completed }) => {
       await queryClient.cancelQueries({ queryKey: ['tasks'] });
@@ -487,8 +461,7 @@ export function useTaskQueries() {
   const deleteTaskMutation = useMutation({
     mutationFn: async (id: TaskId) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.deleteTask?.(id);
+      return actor.deleteTask(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -498,8 +471,7 @@ export function useTaskQueries() {
   const moveTaskMutation = useMutation({
     mutationFn: async ({ taskId, destinationListId }: { taskId: TaskId; destinationListId: ListId }) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.moveTask?.(taskId, destinationListId);
+      return actor.moveTask(taskId, destinationListId);
     },
     onMutate: async ({ taskId, destinationListId }) => {
       await queryClient.cancelQueries({ queryKey: ['tasks'] });
@@ -540,8 +512,7 @@ export function useTaskQueries() {
   const updateTaskPositionMutation = useMutation({
     mutationFn: async ({ taskId, positionIndex }: { taskId: TaskId; positionIndex: bigint }) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.updateTaskPosition?.(taskId, positionIndex);
+      return actor.updateTaskPosition(taskId, positionIndex);
     },
     onMutate: async ({ taskId, positionIndex }) => {
       await queryClient.cancelQueries({ queryKey: ['tasks'] });
@@ -598,8 +569,7 @@ export function useTaskQueries() {
   const createListMutation = useMutation({
     mutationFn: async (name: string) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.createList?.(name);
+      return actor.createList(name);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lists'] });
@@ -609,12 +579,21 @@ export function useTaskQueries() {
   const deleteListMutation = useMutation({
     mutationFn: async (id: ListId) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.deleteList?.(id);
+      return actor.deleteList(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lists'] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
+  const ensureAllQuadrantsMutation = useMutation({
+    mutationFn: async () => {
+      if (!actor) throw new Error('Actor not initialized');
+      return actor.ensureAllQuadrants();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lists'] });
     },
   });
 
@@ -637,8 +616,8 @@ export function useTaskQueries() {
     
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        // Call backend to ensure quadrants exist using the correct method
-        await actor.maybeInitializeAllQuadrants();
+        // Call backend to ensure quadrants exist
+        await actor.ensureAllQuadrants();
         
         // Refetch lists and wait for the query to complete
         await queryClient.invalidateQueries({ queryKey: ['lists'] });
@@ -646,8 +625,7 @@ export function useTaskQueries() {
           queryKey: ['lists'],
           queryFn: async () => {
             if (!actor) return [];
-            const lists = await actor.getAllUserLists();
-            return lists || [];
+            return actor.getAllLists();
           },
         });
         
@@ -662,11 +640,9 @@ export function useTaskQueries() {
           await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
         }
       } catch (error: any) {
-        console.error(`Bootstrap attempt ${attempt + 1} failed:`, error);
-        
         // If we get an authorization error, fail immediately without retrying
-        if (error?.message?.includes('Unauthorized') || error?.message?.includes('Anonymous')) {
-          throw new Error('Unable to initialize workspace. Please log in and try again.');
+        if (error?.message?.includes('Unauthorized') || error?.message?.includes('Only admins')) {
+          throw new Error('Unable to initialize workspace. Please refresh the page and try again.');
         }
         
         // For other errors, continue retrying
@@ -696,6 +672,7 @@ export function useTaskQueries() {
     updateTaskPosition: updateTaskPositionMutation,
     createList: createListMutation,
     deleteList: deleteListMutation,
+    initializeQuadrants: ensureAllQuadrantsMutation,
   };
 }
 
@@ -707,8 +684,7 @@ export function useMorningRoutineQueries() {
     queryKey: ['morningRoutines'],
     queryFn: async () => {
       if (!actor) return [];
-      // @ts-ignore - Method not yet in backend interface
-      return actor.getAllMorningRoutines?.() || [];
+      return actor.getAllMorningRoutines();
     },
     enabled: !!actor && !isFetching,
   });
@@ -717,8 +693,7 @@ export function useMorningRoutineQueries() {
     queryKey: ['displayMode'],
     queryFn: async () => {
       if (!actor) return BigInt(0);
-      // @ts-ignore - Method not yet in backend interface
-      return actor.getUserDisplayMode?.() || BigInt(0);
+      return actor.getUserDisplayMode();
     },
     enabled: !!actor && !isFetching,
   });
@@ -726,8 +701,7 @@ export function useMorningRoutineQueries() {
   const createRoutineMutation = useMutation({
     mutationFn: async ({ text, section }: { text: string; section: RoutineSection }) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.createMorningRoutine?.(text, section, BigInt(0));
+      return actor.createMorningRoutine(text, section, BigInt(0));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['morningRoutines'] });
@@ -737,8 +711,7 @@ export function useMorningRoutineQueries() {
   const completeRoutineMutation = useMutation({
     mutationFn: async ({ id, completed }: { id: RoutineId; completed: boolean }) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.completeMorningRoutine?.(id, completed);
+      return actor.completeMorningRoutine(id, completed);
     },
     onMutate: async ({ id, completed }) => {
       await queryClient.cancelQueries({ queryKey: ['morningRoutines'] });
@@ -770,8 +743,7 @@ export function useMorningRoutineQueries() {
   const deleteRoutineMutation = useMutation({
     mutationFn: async (id: RoutineId) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.deleteMorningRoutine?.(id);
+      return actor.deleteMorningRoutine(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['morningRoutines'] });
@@ -781,8 +753,7 @@ export function useMorningRoutineQueries() {
   const updateRoutinePositionMutation = useMutation({
     mutationFn: async ({ routineId, positionIndex }: { routineId: RoutineId; positionIndex: bigint }) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.updateRoutineItemPosition?.(routineId, positionIndex);
+      return actor.updateRoutineItemPosition(routineId, positionIndex);
     },
     onMutate: async ({ routineId, positionIndex }) => {
       await queryClient.cancelQueries({ queryKey: ['morningRoutines'] });
@@ -839,8 +810,7 @@ export function useMorningRoutineQueries() {
   const setDisplayModeMutation = useMutation({
     mutationFn: async (displayMode: number) => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.setUserDisplayMode?.(BigInt(displayMode));
+      return actor.setUserDisplayMode(BigInt(displayMode));
     },
     onMutate: async (newMode) => {
       await queryClient.cancelQueries({ queryKey: ['displayMode'] });
@@ -861,8 +831,7 @@ export function useMorningRoutineQueries() {
   const performDailyResetMutation = useMutation({
     mutationFn: async () => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.performRoutineDailyResetIfNeeded?.();
+      return actor.performRoutineDailyResetIfNeeded();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['morningRoutines'] });
@@ -872,8 +841,7 @@ export function useMorningRoutineQueries() {
   const resetNewDayMutation = useMutation({
     mutationFn: async () => {
       if (!actor) throw new Error('Actor not initialized');
-      // @ts-ignore - Method not yet in backend interface
-      return actor.resetNewDay?.();
+      return actor.resetNewDay();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
