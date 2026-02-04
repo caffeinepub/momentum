@@ -5,6 +5,7 @@ import { X, Plus, ListPlus, ChevronDown } from 'lucide-react';
 interface BottomNavigationProps {
   isPlanMode: boolean;
   onSwitchMode: (mode: number) => void;
+  onPlanModeX?: () => void;
   onAddTask: () => void;
   onAddList: () => void;
   onOpenSettings: () => void;
@@ -17,6 +18,7 @@ interface BottomNavigationProps {
 export default function BottomNavigation({ 
   isPlanMode, 
   onSwitchMode, 
+  onPlanModeX,
   onAddTask, 
   onAddList, 
   onOpenSettings,
@@ -261,15 +263,12 @@ export default function BottomNavigation({
   };
 
   const handleXButtonClick = () => {
-    if (!isPlanMode || isModeSwitching.current) return;
+    if (!isPlanMode) return;
     
-    isModeSwitching.current = true;
-    onSwitchMode(0);
-    
-    clearModeSwitchDebounce();
-    modeSwitchDebounceTimer.current = setTimeout(() => {
-      isModeSwitching.current = false;
-    }, 200);
+    // Call the Plan-mode X callback instead of switching modes
+    if (onPlanModeX) {
+      onPlanModeX();
+    }
   };
 
   const handlePlanClick = () => {
@@ -458,14 +457,13 @@ export default function BottomNavigation({
           ) : (
             <button
               onClick={handleXButtonClick}
-              disabled={isModeSwitching.current}
               className={`absolute bottom-2 left-1/2 -translate-x-1/2 h-14 w-14 rounded-full shadow-xl flex items-center justify-center z-10 border-4 border-background bg-gradient-to-br from-gray-400 to-gray-500 hover:shadow-2xl hover:scale-105`}
               style={{
                 transform: 'translateX(-50%) translateY(0px) scale(1)',
                 transition: 'transform 175ms cubic-bezier(0.33, 1, 0.68, 1), box-shadow 150ms ease-out',
                 willChange: 'transform, opacity',
               }}
-              aria-label="Exit Plan Mode"
+              aria-label="Hide My Lists and show routines"
             >
               <X className="h-6 w-6 text-white" strokeWidth={2.5} />
             </button>

@@ -8,6 +8,7 @@
   "description": "Personal task management with Daily Priorities matrix",
   "orientation": "portrait-primary",
   "lang": "en",
+  "scope": "/",
   "icons": [
     {
       "src": "/assets/generated/momentum-icon-192.png",

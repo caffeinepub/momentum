@@ -1,57 +1,37 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-04T12:58:40.861Z",
+  "generatedAt": "2026-02-04T14:39:34.789Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 2,
+    "total": 1,
+    "implemented": 1,
     "items": [
       {
-        "id": "REQ-1",
-        "summary": "Add the uploaded Momentum logo image (Momentum.png) to the frontend as a static asset so it loads instantly without any backend fetch, and ensure it can be referenced via a stable path in the UI (e.g., under frontend/public/assets/...).",
-        "status": "missing",
-        "plannedFiles": [
-          "frontend/public/assets/Momentum.png"
-        ],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-2",
-        "summary": "Update the global app header (frontend/src/components/Header.tsx) to display the Momentum logo using the new static asset, and ensure the logo renders cleanly (no stretching/cropping) across common screen sizes.",
+        "id": "REQ-7",
+        "summary": "Update the Plan mode X button behavior so that pressing X does NOT switch the app mode (must not call the existing Plan→Home mode switch). Instead, while remaining in Plan mode, pressing X must ONLY (1) hide the “My Lists” (CustomLists) section and (2) unhide/show the “Morning Routine” and “Evening Routine” sections, to eliminate the current flickering caused by mode switching/unmounting.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/Header.tsx"
+          "frontend/src/components/BottomNavigation.tsx",
+          "frontend/src/pages/TaskManager.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/Header.tsx"
-        ]
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Update the unauthenticated/login page (frontend/src/components/UnauthenticatedScreen.tsx) to display the Momentum logo at full uploaded resolution (or the maximum practical size without distortion), centered, and styled so it looks visually balanced with the rest of the card layout.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/UnauthenticatedScreen.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/UnauthenticatedScreen.tsx"
+          "frontend/src/components/BottomNavigation.tsx",
+          "frontend/src/pages/TaskManager.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
     "build-request.json",
-    "caffeine.lock.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/public/assets/logo1.png",
-    "frontend/src/components/Header.tsx",
-    "frontend/src/components/UnauthenticatedScreen.tsx",
+    "frontend/src/components/BottomNavigation.tsx",
+    "frontend/src/pages/TaskManager.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

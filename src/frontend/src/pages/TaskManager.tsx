@@ -75,6 +75,9 @@ export default function TaskManager() {
   const [isEveningExpanded, setIsEveningExpanded] = useState(true);
   const [bootstrapState, setBootstrapState] = useState<'idle' | 'running' | 'complete' | 'failed'>('idle');
 
+  // Plan mode subview state: 'lists' shows CustomLists, 'routines' shows Morning/Evening routines
+  const [planSubview, setPlanSubview] = useState<'lists' | 'routines'>('lists');
+
   const showProfileSetup = isAuthenticated && !profileLoading && isFetched && userProfile === null;
 
   // Bootstrap quadrants and reset new day after profile load
@@ -109,6 +112,13 @@ export default function TaskManager() {
       setBootstrapState('complete');
     }
   }, [isAuthenticated, userProfile, quadrantsReady, bootstrapState, bootstrapQuadrants, resetNewDay]);
+
+  // Reset planSubview to 'lists' when entering Plan mode
+  useEffect(() => {
+    if (appMode === 1) {
+      setPlanSubview('lists');
+    }
+  }, [appMode]);
 
   // Show loading screen while Internet Identity is initializing
   if (isInitializing) {
@@ -309,12 +319,42 @@ export default function TaskManager() {
     setAppMode.mutate(1);
   };
 
+  const handlePlanModeX = () => {
+    // In Plan mode, X button toggles between 'lists' and 'routines' subview
+    // When showing lists, X switches to routines
+    // When showing routines, X switches back to lists
+    setPlanSubview(prev => prev === 'lists' ? 'routines' : 'lists');
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted">
       {isHomeMode && <Header />}
 
       <main className="flex-1 flex flex-col overflow-hidden">
         {isHomeMode && (
+          <MorningRoutine
+            section={RoutineSection.top}
+            routines={morningRoutines}
+            onCreateRoutine={async (text, section) => {
+              await createRoutine.mutateAsync({ text, section });
+            }}
+            onToggleComplete={async (id, completed) => {
+              await completeRoutine.mutateAsync({ id, completed });
+            }}
+            onDeleteRoutine={async (id) => {
+              await deleteRoutine.mutateAsync(id);
+            }}
+            onReorderRoutine={async (routineId, positionIndex) => {
+              await updateRoutinePosition.mutateAsync({ routineId, positionIndex });
+            }}
+            displayMode={Number(displayMode || BigInt(0))}
+            onToggleDisplayMode={(mode) => setDisplayMode.mutate(mode)}
+            isExpanded={isMorningExpanded}
+            onToggleExpand={() => setIsMorningExpanded(!isMorningExpanded)}
+          />
+        )}
+
+        {isPlanMode && planSubview === 'routines' && (
           <MorningRoutine
             section={RoutineSection.top}
             routines={morningRoutines}
@@ -376,7 +416,30 @@ export default function TaskManager() {
           />
         )}
 
-        {isPlanMode && (
+        {isPlanMode && planSubview === 'routines' && (
+          <MorningRoutine
+            section={RoutineSection.bottom}
+            routines={eveningRoutines}
+            onCreateRoutine={async (text, section) => {
+              await createRoutine.mutateAsync({ text, section });
+            }}
+            onToggleComplete={async (id, completed) => {
+              await completeRoutine.mutateAsync({ id, completed });
+            }}
+            onDeleteRoutine={async (id) => {
+              await deleteRoutine.mutateAsync(id);
+            }}
+            onReorderRoutine={async (routineId, positionIndex) => {
+              await updateRoutinePosition.mutateAsync({ routineId, positionIndex });
+            }}
+            displayMode={Number(displayMode || BigInt(0))}
+            onToggleDisplayMode={(mode) => setDisplayMode.mutate(mode)}
+            isExpanded={isEveningExpanded}
+            onToggleExpand={() => setIsEveningExpanded(!isEveningExpanded)}
+          />
+        )}
+
+        {isPlanMode && planSubview === 'lists' && (
           <CustomLists
             tasks={localTasks}
             lists={customLists}
@@ -391,7 +454,7 @@ export default function TaskManager() {
             onCreateTask={() => handleOpenAddTask()}
             onCreateList={() => setCreateListOpen(true)}
             onQuickAddTask={(listId) => handleOpenAddTask(listId)}
-            isHidden={!isPlanMode}
+            isHidden={false}
             isPlanMode={isPlanMode}
           />
         )}
@@ -400,6 +463,7 @@ export default function TaskManager() {
       <BottomNavigation
         isPlanMode={isPlanMode}
         onSwitchMode={(mode) => setAppMode.mutate(mode)}
+        onPlanModeX={handlePlanModeX}
         onAddTask={() => handleOpenAddTask()}
         onAddList={() => setCreateListOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}

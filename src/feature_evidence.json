@@ -2,10 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-the-global-app-header-frontend-src-components-header-tsx-to-display-the-momentum-logo-using-the-new-static-asset-and-ensure-the-logo-renders-cleanly-no-stretching-cropping-across-common-screen-sizes",
-      "featureTitle": "Update the global app header (frontend/src/components/Header.tsx) to display the Momentum logo using the new static asset, and ensure the logo renders cleanly (no stretching/cropping) across common screen sizes.",
+      "featureId": "feature-update-the-plan-mode-x-button-behavior-so-that-pressing-x-does-not-switch-the-app-mode-must-not-call-the-existing-plan-home-mode-switch-instead-while-remaining-in-plan-mode-pressing-x-must-only-1-hide-the-my-lists-customlists-section-and-2-unhide-show-the-morning-routine-and-evening-routine-sections-to-eliminate-the-current-flickering-caused-by-mode-switching-unmounting",
+      "featureTitle": "Update the Plan mode X button behavior so that pressing X does NOT switch the app mode (must not call the existing Plan→Home mode switch). Instead, while remaining in Plan mode, pressing X must ONLY (1) hide the “My Lists” (CustomLists) section and (2) unhide/show the “Morning Routine” and “Evening Routine” sections, to eliminate the current flickering caused by mode switching/unmounting.",
       "files": [
-        "frontend/src/components/Header.tsx"
+        "frontend/src/components/BottomNavigation.tsx",
+        "frontend/src/pages/TaskManager.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -16,26 +17,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-2"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-update-the-unauthenticated-login-page-frontend-src-components-unauthenticatedscreen-tsx-to-display-the-momentum-logo-at-full-uploaded-resolution-or-the-maximum-practical-size-without-distortion-centered-and-styled-so-it-looks-visually-balanced-with-the-rest-of-the-card-layout",
-      "featureTitle": "Update the unauthenticated/login page (frontend/src/components/UnauthenticatedScreen.tsx) to display the Momentum logo at full uploaded resolution (or the maximum practical size without distortion), centered, and styled so it looks visually balanced with the rest of the card layout.",
-      "files": [
-        "frontend/src/components/UnauthenticatedScreen.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "authorization@4.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-3"
+        "REQ-7"
       ],
       "confidence": "high"
     }

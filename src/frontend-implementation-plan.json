@@ -1,52 +1,27 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Add Momentum logo static asset and render in header + login screen",
+  "title": "Plan mode X button hides My Lists and reveals routines without switching mode",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Store Momentum.png as a frontend static asset under frontend/public so it loads instantly and can be referenced via a stable UI path.",
+      "id": "REQ-7",
+      "summary": "In Plan mode, change the X button to only toggle section visibility (hide CustomLists and show Morning/Evening routines) without changing the persisted app mode, eliminating flicker from mode switching.",
       "acceptanceCriteria": [
-        "The Momentum logo is stored as a frontend static file under frontend/public (or a subfolder such as frontend/public/assets/...)",
-        "The logo is served by the frontend at a stable URL path and does not require any backend call to load"
+        "In Plan mode, tapping the X button does not change the underlying app mode value (Plan mode remains active).",
+        "After tapping X in Plan mode, the “My Lists” UI is not visible.",
+        "After tapping X in Plan mode, both “Morning Routine” and “Evening Routine” UIs are visible.",
+        "Pressing the X button no longer causes visible flicker/jitter from rapid section unmount/mount during the transition."
       ],
       "file_operations": [
         {
-          "path": "frontend/public/assets/Momentum.png",
-          "operation": "create",
-          "description": "Add the uploaded Momentum logo as a static public asset so the UI can reference it via a stable path (e.g., /assets/Momentum.png) with no backend fetch."
-        }
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "summary": "Update the global header to display the Momentum logo from the new static asset without distortion across screen sizes.",
-      "acceptanceCriteria": [
-        "The global header shows the Momentum logo on all authenticated screens where the header is used",
-        "The logo uses object-fit styling (or equivalent) so it does not appear distorted",
-        "The logo path in Header.tsx points to the new stored Momentum logo asset (not a placeholder/old filename)"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/Header.tsx",
+          "path": "frontend/src/components/BottomNavigation.tsx",
           "operation": "modify",
-          "description": "Replace the current header logo image source with the new static asset path (/assets/Momentum.png) and adjust sizing classes to remain responsive and undistorted (use object-fit/object-contain; avoid cropping)."
-        }
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "summary": "Update the unauthenticated/login screen to show the Momentum logo centered at a large, high-quality size without distortion and without overflowing the card layout.",
-      "acceptanceCriteria": [
-        "The login/unauthenticated screen displays the Momentum logo above the login button",
-        "The logo is displayed without distortion and at a large, high-quality size (not forced into a small fixed square like an icon)",
-        "The layout remains responsive on mobile and desktop (logo does not overflow the card or cause horizontal scrolling)"
-      ],
-      "file_operations": [
+          "description": "Replace the Plan-mode X button behavior so it no longer calls onSwitchMode(0). Add a dedicated Plan-mode X callback prop (e.g., onPlanModeX) and invoke it when isPlanMode is true, ensuring no app mode mutation occurs from the X button. Verify the component's usage instructions before implementing."
+        },
         {
-          "path": "frontend/src/components/UnauthenticatedScreen.tsx",
+          "path": "frontend/src/pages/TaskManager.tsx",
           "operation": "modify",
-          "description": "Update the logo rendering to use the new static asset path (/assets/Momentum.png) and revise layout/styles so the image is centered and shown large (prefer natural aspect ratio with object-contain and responsive max dimensions) while staying within the shadcn-ui Card layout. Verify the component's usage instructions before implementing."
+          "description": "Introduce Plan-mode-only UI state to control which Plan subview is shown (e.g., 'lists' vs 'routines'). Default to showing CustomLists when entering Plan mode, and when the Plan-mode X callback fires: keep appMode unchanged, set CustomLists to hidden (via its existing isHidden prop) and render/unhide both MorningRoutine sections while still in Plan mode. Wire the new BottomNavigation Plan-mode X callback to this state transition. Verify the component's usage instructions before implementing."
         }
       ]
     }
