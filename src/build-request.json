@@ -1,0 +1,73 @@
+{
+  "kind": "build_request",
+  "title": "Seed one-time onboarding Morning/Evening routine instructions on first registration",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "text": "Update the backend new-user provisioning flow so that, on first user registration only, the canister seeds initial onboarding instruction items into the user’s routines: 3 items in the Morning Routine section and 3 items in the Evening Routine section. These seeded routine items must be normal routine items (user can complete/edit/delete) and must never be auto-recreated on later logins if the user deletes them.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "just add this for the first initial script for first user register",
+          "since this is for initiali user first register do it only 1 time",
+          "build it"
+        ]
+      },
+      "acceptanceCriteria": [
+        "When a principal is seen for the first time (new user branch), the backend creates 3 routine items with section=#top and 3 routine items with section=#bottom.",
+        "Seeded routine items are created only in the new-user creation path; existing users do not receive any new routine items.",
+        "If a user deletes any/all seeded routine items and logs out/in again, the deleted items are not re-created."
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Seed the following exact English onboarding routine texts (brief, gesture-based, with one playful line) into the routines created on first registration:\n- Morning Routine (section=#top):\n  1) \"Create your first routine\"\n  2) \"Tap Plan to organize\"\n  3) \"Hold items to reorder\"\n- Evening Routine (section=#bottom):\n  1) \"Press + to add task\"\n  2) \"Swipe + up... it's shy\"\n  3) \"Hold + to open Plan\"",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "Morning Routine : (routine)  +Create the first Routine + Click on [Plan]",
+          "Evening Routine: (routine) + Press (+) circle to create task + Swipe (+) up to expand .... (help me with this, something funny) + Hold (+) for Plan"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A newly registered user sees exactly the 6 seeded routine items above (3 in Morning Routine, 3 in Evening Routine) when the frontend loads routines.",
+        "The seeded Evening Routine includes a funny but clear swipe instruction: \"Swipe + up... it's shy\"."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Ensure seeded routine items have deterministic ordering within each section by assigning increasing `order` values (e.g., START_OFFSET, 2*START_OFFSET, 3*START_OFFSET) so that they render in the intended sequence on first load.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ]
+      },
+      "acceptanceCriteria": [
+        "For a new user, the 3 Morning Routine seeded items appear in the intended order and remain stable across refreshes.",
+        "For a new user, the 3 Evening Routine seeded items appear in the intended order and remain stable across refreshes."
+      ]
+    }
+  ],
+  "constraints": [
+    "Backend must remain a single-actor Motoko canister (all logic in backend/main.mo).",
+    "Do not change or regress the existing one-time Week/Month list creation behavior for new users.",
+    "Use English for all user-facing seeded routine text."
+  ],
+  "nonGoals": [
+    "Do not add new authentication providers or third-party onboarding tooling.",
+    "Do not implement multi-day onboarding schedules (Day 3/5/7 injections); only seed the initial script once at first registration.",
+    "Do not add new UI screens or tooltips for onboarding beyond the seeded routine items."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

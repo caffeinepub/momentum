@@ -1,0 +1,46 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-04T01:53:09.745Z",
+  "summary": "The diff summary is truncated and does not show any changes to the new-user provisioning flow or routine seeding logic in backend/main.mo. There is also an unrelated modification to project_state.json. Based on the provided evidence, the onboarding routine seeding requirements are not verifiably implemented.",
+  "missing_requirements": [
+    {
+      "id": "REQ-1",
+      "requirement": "On first user registration only, seed 3 routine items in Morning Routine (section=#top) and 3 in Evening Routine (section=#bottom) as normal routine items that are not auto-recreated on later logins.",
+      "reason": "The diff snippet for backend/main.mo does not include the new-user creation/provisioning branch or any routine-item seeding logic; therefore this behavior is not evidenced as implemented.",
+      "evidence": [
+        "backend/main.mo (truncated)"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "requirement": "Seed the exact six English onboarding routine texts (3 morning, 3 evening including \"Swipe + up... it's shy\") on first registration.",
+      "reason": "The diff snippet does not show any of the specified strings being added anywhere in backend/main.mo; no evidence of exact-text seeding is present.",
+      "evidence": [
+        "backend/main.mo (truncated)"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "requirement": "Ensure deterministic ordering of seeded routine items within each section by assigning increasing order values (e.g., START_OFFSET, 2*START_OFFSET, 3*START_OFFSET).",
+      "reason": "Although START_OFFSET appears in backend/main.mo, the diff snippet does not show it being used to set routine-item order for seeded onboarding items; deterministic seeding order is not evidenced.",
+      "evidence": [
+        "backend/main.mo (truncated)"
+      ]
+    }
+  ],
+  "hallucinated_features": [
+    {
+      "description": "Project metadata/state update in project_state.json unrelated to onboarding routine seeding.",
+      "reason": "The BuildRequest constraints emphasize backend changes in backend/main.mo for onboarding seeding and does not request updates to project_state.json; this change is not requested by the spec.",
+      "evidence": [
+        "project_state.json (truncated)"
+      ]
+    }
+  ],
+  "confidence": 0.56,
+  "changed_files": [
+    "backend/main.mo",
+    "project_state.json"
+  ]
+}
