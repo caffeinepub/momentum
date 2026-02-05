@@ -13,6 +13,7 @@ interface BottomNavigationProps {
   onOpenTodayEarns: () => void;
   onOpenSpendPlan: () => void;
   onOpenInsights: () => void;
+  onOpenUserInfo: () => void;
   earningsEnabled: boolean;
 }
 
@@ -27,6 +28,7 @@ export default function BottomNavigation({
   onOpenTodayEarns,
   onOpenSpendPlan,
   onOpenInsights,
+  onOpenUserInfo,
   earningsEnabled,
 }: BottomNavigationProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -359,6 +361,14 @@ export default function BottomNavigation({
                 Today Earns
               </Button>
             )}
+
+            <Button 
+              onClick={onOpenUserInfo}
+              variant="outline" 
+              className="col-span-2 h-12 text-base font-semibold bg-background/50 backdrop-blur-sm hover:bg-background/70 transition-colors"
+            >
+              Account
+            </Button>
           </div>
         </div>
       )}

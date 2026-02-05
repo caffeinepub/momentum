@@ -13,6 +13,7 @@ import MorningRoutine from '../components/MorningRoutine';
 import UserProfileSetup from '../components/UserProfileSetup';
 import BottomNavigation from '../components/BottomNavigation';
 import SettingsDialog from '../components/SettingsDialog';
+import UserInfoDialog from '../components/UserInfoDialog';
 import TodayEarnsDialog from '../components/TodayEarnsDialog';
 import SpendPlanDialog from '../components/SpendPlanDialog';
 import InsightsDialog from '../components/InsightsDialog';
@@ -25,7 +26,11 @@ import UnauthenticatedScreen from '../components/UnauthenticatedScreen';
 import { RoutineSection, type TaskCreateInput, type TaskUpdateInput } from '@/backend';
 import { toast } from 'sonner';
 
-export default function TaskManager() {
+interface TaskManagerProps {
+  onOpenAdminDashboard: () => void;
+}
+
+export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) {
   const { identity, login, loginStatus, isInitializing } = useInternetIdentity();
   const isAuthenticated = !!identity;
   const isLoggingIn = loginStatus === 'logging-in';
@@ -69,6 +74,7 @@ export default function TaskManager() {
   const { shouldShow: shouldShowPlanTip, isChecking: isCheckingPlanTip, markAsShown: markPlanTipAsShown } = usePlanModeTip(principalString);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [userInfoOpen, setUserInfoOpen] = useState(false);
   const [todayEarnsOpen, setTodayEarnsOpen] = useState(false);
   const [spendPlanOpen, setSpendPlanOpen] = useState(false);
   const [insightsOpen, setInsightsOpen] = useState(false);
@@ -343,7 +349,9 @@ export default function TaskManager() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted">
-      {(isHomeMode || (isPlanMode && planLayout === 'homeLike')) && <Header />}
+      {(isHomeMode || (isPlanMode && planLayout === 'homeLike')) && (
+        <Header onOpenAdminDashboard={onOpenAdminDashboard} />
+      )}
 
       <main className="flex-1 flex flex-col overflow-hidden">
         {(isHomeMode || (isPlanMode && planLayout === 'homeLike')) && (
@@ -436,6 +444,7 @@ export default function TaskManager() {
         onOpenTodayEarns={() => setTodayEarnsOpen(true)}
         onOpenSpendPlan={() => setSpendPlanOpen(true)}
         onOpenInsights={() => setInsightsOpen(true)}
+        onOpenUserInfo={() => setUserInfoOpen(true)}
         earningsEnabled={earningsEnabled}
       />
 
@@ -448,6 +457,11 @@ export default function TaskManager() {
         earningsEnabled={earningsEnabled}
         onToggleEarnings={handleToggleEarnings}
         isTogglingEarnings={toggleEarningsSystem.isPending}
+      />
+
+      <UserInfoDialog
+        open={userInfoOpen}
+        onOpenChange={setUserInfoOpen}
         userProfile={userProfile}
         onSaveProfile={saveProfile.mutateAsync}
         isSavingProfile={saveProfile.isPending}

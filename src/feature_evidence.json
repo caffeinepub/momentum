@@ -2,10 +2,33 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-the-plan-mode-tip-persistence-logic-so-the-plan-mode-tips-instruction-dialog-is-tracked-per-authenticated-user-keyed-by-the-user-s-internet-identity-principal-rather-than-a-single-shared-localstorage-key-for-the-whole-browser-device",
-      "featureTitle": "Update the Plan Mode tip persistence logic so the “Plan Mode Tips” instruction dialog is tracked per authenticated user (keyed by the user’s Internet Identity principal) rather than a single shared localStorage key for the whole browser/device.",
+      "featureId": "feature-replace-the-current-modal-based-admin-dashboard-ui-with-a-dedicated-full-screen-admin-dashboard-page-not-a-popup-modal-preserving-existing-functionality-user-list-display-search-pagination-promote-demote-admin-and-tier-updates",
+      "featureTitle": "Replace the current modal-based Admin Dashboard UI with a dedicated, full-screen Admin Dashboard page (not a popup/modal), preserving existing functionality (user list display, search, pagination, promote/demote admin, and tier updates).",
       "files": [
-        "frontend/src/hooks/usePlanModeTip.ts",
+        "frontend/src/components/admin/AdminDashboardDialog.tsx",
+        "frontend/src/components/admin/AdminUserDirectory.tsx",
+        "frontend/src/pages/AdminDashboard.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "authorization@4.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-9"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-in-app-navigation-to-access-the-admin-dashboard-as-a-standalone-page-view-e-g-via-a-simple-route-like-mechanism-or-internal-view-state-and-provide-an-obvious-way-to-return-to-the-main-task-manager-screen",
+      "featureTitle": "Add in-app navigation to access the Admin Dashboard as a standalone page view (e.g., via a simple route-like mechanism or internal view state) and provide an obvious way to return to the main Task Manager screen.",
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/components/Header.tsx",
+        "frontend/src/pages/AdminDashboard.tsx",
         "frontend/src/pages/TaskManager.tsx"
       ],
       "components": [
@@ -17,15 +40,17 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-3"
+        "REQ-10"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-add-a-client-side-migration-fallback-so-existing-users-who-previously-dismissed-the-plan-mode-tip-under-the-old-shared-localstorage-key-keep-it-dismissed-for-their-own-account-after-upgrading-without-affecting-other-users-on-the-same-device",
-      "featureTitle": "Add a client-side migration/fallback so existing users who previously dismissed the Plan Mode tip under the old shared localStorage key keep it dismissed for their own account after upgrading (without affecting other users on the same device).",
+      "featureId": "feature-ensure-the-admin-dashboard-page-is-access-controlled-in-the-ui-if-the-caller-is-not-an-admin-do-not-show-the-user-directory-instead-show-an-english-language-unauthorized-message-and-a-way-to-navigate-back",
+      "featureTitle": "Ensure the Admin Dashboard page is access-controlled in the UI: if the caller is not an admin, do not show the user directory; instead show an English-language unauthorized message and a way to navigate back.",
       "files": [
-        "frontend/src/hooks/usePlanModeTip.ts"
+        "frontend/src/components/admin/AdminUserDirectory.tsx",
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/AdminDashboard.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -36,7 +61,27 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-4"
+        "REQ-11"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-eliminate-render-time-side-effects-in-the-admin-user-list-pagination-logic-by-removing-the-state-setting-usememo-pattern-and-using-an-appropriate-effect-based-approach-so-page-clamping-does-not-occur-during-render",
+      "featureTitle": "Eliminate render-time side effects in the admin user list pagination logic by removing the state-setting useMemo pattern and using an appropriate effect-based approach so page clamping does not occur during render.",
+      "files": [
+        "frontend/src/components/admin/AdminUserDirectory.tsx",
+        "frontend/src/pages/AdminDashboard.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "authorization@4.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-12"
       ],
       "confidence": "high"
     }

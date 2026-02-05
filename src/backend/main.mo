@@ -9,6 +9,7 @@ import Text "mo:core/Text";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
 
+
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
@@ -179,7 +180,6 @@ actor {
     monetarySettings : MonetarySettings;
     todayEarns : ?TodayEarns;
     principal : PrincipalId;
-    earningsEnabled : Bool;
     spendPresets : Map.Map<Nat, SpendPreset>;
     nextPresetId : Nat;
   };
@@ -191,7 +191,6 @@ actor {
     maxRoutines : ?Nat; // null means unlimited
     maxCustomLists : ?Nat;
     maxTasks : ?Nat;
-    earningsAllowed : Bool;
   };
 
   func getTierLimits(tier : UserTier) : TierLimits {
@@ -201,7 +200,6 @@ actor {
           maxRoutines = ?5;
           maxCustomLists = ?2;
           maxTasks = ?20;
-          earningsAllowed = false;
         };
       };
       case (#silver) {
@@ -209,7 +207,6 @@ actor {
           maxRoutines = ?10;
           maxCustomLists = ?5;
           maxTasks = ?50;
-          earningsAllowed = true;
         };
       };
       case (#gold) {
@@ -217,7 +214,6 @@ actor {
           maxRoutines = ?20;
           maxCustomLists = ?10;
           maxTasks = ?100;
-          earningsAllowed = true;
         };
       };
       case (#diamond) {
@@ -225,7 +221,6 @@ actor {
           maxRoutines = null; // unlimited
           maxCustomLists = null;
           maxTasks = null;
-          earningsAllowed = true;
         };
       };
     };
@@ -283,14 +278,6 @@ actor {
     };
   };
 
-  func checkEarningsAccess(caller : Principal) {
-    let tier = getUserTier(caller);
-    let limits = getTierLimits(tier);
-    if (not limits.earningsAllowed) {
-      Runtime.trap("The earnings system is not available for your tier. Please upgrade to Silver tier or higher to access earnings features.");
-    };
-  };
-
   func addQuadrantIfMissing(user : User, id : ListId, name : Text, urgent : Bool, important : Bool) {
     if (not user.lists.containsKey(id)) {
       let quadrant : List = {
@@ -332,7 +319,6 @@ actor {
       };
       todayEarns = null;
       principal;
-      earningsEnabled = false;
       spendPresets = Map.empty<Nat, SpendPreset>();
       nextPresetId = 1;
     };
@@ -509,10 +495,10 @@ actor {
       Runtime.trap("Unauthorized: Only users can perform this action");
     };
     let user = getUser(caller);
-    
+
     // Enforce tier-based task limit
     checkTaskLimit(caller, user);
-    
+
     if (input.title.size() > MAX_TITLE_LENGTH) {
       Runtime.trap("Title can't exceed " # MAX_TITLE_LENGTH.toText() # " characters");
     };
@@ -627,10 +613,10 @@ actor {
       Runtime.trap("Unauthorized: Only users can perform this action");
     };
     let user = getUser(caller);
-    
+
     // Enforce tier-based custom list limit
     checkCustomListLimit(caller, user);
-    
+
     let list : List = {
       id = user.nextListId;
       name;
@@ -746,10 +732,10 @@ actor {
       Runtime.trap("Unauthorized: Only users can perform this action");
     };
     let user = getUser(caller);
-    
+
     // Enforce tier-based routine limit
     checkRoutineLimit(caller, user);
-    
+
     let routine : MorningRoutine = {
       id = user.nextRoutineId;
       text;
@@ -1163,7 +1149,7 @@ actor {
     switch (users.get(caller)) {
       case (null) { Runtime.trap("User not found") };
       case (?user) {
-        if (user.earningsEnabled and settings.maxMoneyPerDay == 0) {
+        if (settings.maxMoneyPerDay == 0) {
           Runtime.trap("Earnings system cannot be enabled with Max Money Per Day set to 0. Please set a positive value and redistribute buckets.");
         };
         let userSettings = {
@@ -1185,8 +1171,8 @@ actor {
     };
 
     let user = getUser(caller);
-    if (not user.earningsEnabled) {
-      Runtime.trap("Earnings system is currently disabled. Payroll cannot be added.");
+    if (user.monetarySettings.maxMoneyPerDay <= 0) {
+      Runtime.trap("No valid monetary configuration. Please set Max Money Per Day and configure your buckets before using the earnings system.");
     };
 
     let newTotalBalance = user.monetarySettings.totalBalance + dailyIncome;
@@ -1205,20 +1191,12 @@ actor {
       Runtime.trap("Unauthorized: Only users can perform this action");
     };
 
-    // Enforce tier-based earnings access
-    if (enabled) {
-      checkEarningsAccess(caller);
-    };
-
     let user = getUser(caller);
 
     if (enabled and user.monetarySettings.maxMoneyPerDay == 0) {
       Runtime.trap("Cannot enable earnings system with Max Money Per Day set to 0.");
     };
 
-    let updatedUser = { user with earningsEnabled = enabled };
-    users.add(caller, updatedUser);
-    
     // Also update the profile
     switch (userProfiles.get(caller)) {
       case (?profile) {
@@ -1227,7 +1205,7 @@ actor {
       };
       case (null) {};
     };
-    
+
     enabled;
   };
 
@@ -1236,7 +1214,7 @@ actor {
       Runtime.trap("Unauthorized: Only users can perform this action");
     };
     let user = getUser(caller);
-    user.earningsEnabled;
+    user.monetarySettings.maxMoneyPerDay > 0;
   };
 
   public type SpendInput = {

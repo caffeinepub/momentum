@@ -1,55 +1,99 @@
 {
   "kind": "build_request",
-  "title": "Persist Plan Mode onboarding tip per user (not per device)",
+  "title": "Convert Admin Dashboard from modal dialog to a dedicated full page",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-3",
-      "text": "Update the Plan Mode tip persistence logic so the “Plan Mode Tips” instruction dialog is tracked per authenticated user (keyed by the user’s Internet Identity principal) rather than a single shared localStorage key for the whole browser/device.",
+      "id": "REQ-9",
+      "text": "Replace the current modal-based Admin Dashboard UI with a dedicated, full-screen Admin Dashboard page (not a popup/modal), preserving existing functionality (user list display, search, pagination, promote/demote admin, and tier updates).",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-5"
+          "msg-10",
+          "msg-12"
         ],
         "quotes": [
-          "Why cannot see the 4 instructions on new users after registration",
-          "Those onboarding steps are being tracked in localStorage, which is shared by all users on the same device.",
-          "If you want, I can adjust the code so onboarding is stored per user instead of per device.",
-          "Yes please",
-          "Build it"
+          "Yes fix it",
+          "Yes"
         ]
       },
       "acceptanceCriteria": [
-        "When User A logs in on a device, enters Plan Mode, and dismisses the Plan Mode tip, User A does not see it again on that device after reload/restart.",
-        "After User A logs out, User B logs in on the same device and enters Plan Mode, User B does see the Plan Mode tip (even though User A previously dismissed it).",
-        "The tip dialog content remains unchanged (including the exact text: \"The Real Magic Is in Settings.\")."
+        "Clicking the Admin entry point opens a full-page Admin Dashboard view (no Dialog/modal overlay behavior).",
+        "The Admin Dashboard page supports normal document/page scrolling and does not trap focus like a modal.",
+        "The Admin Dashboard page retains search, pagination, principal copy, role actions, and tier selection behavior currently present in AdminDashboardDialog."
       ]
     },
     {
-      "id": "REQ-4",
-      "text": "Add a client-side migration/fallback so existing users who previously dismissed the Plan Mode tip under the old shared localStorage key keep it dismissed for their own account after upgrading (without affecting other users on the same device).",
+      "id": "REQ-10",
+      "text": "Add in-app navigation to access the Admin Dashboard as a standalone page view (e.g., via a simple route-like mechanism or internal view state) and provide an obvious way to return to the main Task Manager screen.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-5"
+          "msg-10",
+          "msg-12"
         ],
         "quotes": [
-          "Those onboarding steps are being tracked in localStorage, which is shared by all users on the same device."
+          "Yes fix it",
+          "Yes"
         ]
       },
       "acceptanceCriteria": [
-        "If the old shared localStorage key indicates the tip was previously dismissed, the currently logged-in user is treated as dismissed under the new per-user key after the update.",
-        "The migration does not cause the tip to be dismissed for other users who log in later on the same device."
+        "From the main UI, an admin user can open the Admin Dashboard page from the header.",
+        "The Admin Dashboard page includes a clear 'Back' control that returns the user to the prior/main screen.",
+        "Returning from the Admin Dashboard page restores the main UI without requiring a full refresh."
+      ]
+    },
+    {
+      "id": "REQ-11",
+      "text": "Ensure the Admin Dashboard page is access-controlled in the UI: if the caller is not an admin, do not show the user directory; instead show an English-language unauthorized message and a way to navigate back.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6",
+          "msg-10",
+          "msg-12"
+        ],
+        "quotes": [
+          "When the user list is empty, it almost always means one of these:",
+          "Yes fix it",
+          "Yes"
+        ]
+      },
+      "acceptanceCriteria": [
+        "If the current user is not an admin, the Admin Dashboard page shows an 'Unauthorized' style message (English) and does not render the user list table.",
+        "If the current user is an admin, the user list table renders and actions work as before.",
+        "No scenario results in a misleading empty list for non-admins without any explanation."
+      ]
+    },
+    {
+      "id": "REQ-12",
+      "text": "Eliminate render-time side effects in the admin user list pagination logic by removing the state-setting useMemo pattern and using an appropriate effect-based approach so page clamping does not occur during render.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-10",
+          "msg-12"
+        ],
+        "quotes": [
+          "Yes fix it",
+          "Yes"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The current-page clamping logic no longer sets React state during render.",
+        "Pagination remains stable when filtering changes total pages (e.g., searching reduces results and current page is adjusted safely)."
       ]
     }
   ],
   "constraints": [
-    "Do not edit files under frontend/src/components/ui (Shadcn UI sources are read-only).",
-    "Do not modify any files listed in SYSTEM_CONTEXT.frontend.immutablePaths."
+    "Do not edit any files under frontend/immutablePaths (notably: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, and frontend/src/components/ui).",
+    "Keep the backend as a single Motoko actor; do not introduce additional backend services.",
+    "Use English for all user-facing text introduced or modified by this change."
   ],
   "nonGoals": [
-    "Adding new onboarding/tutorial steps or changing the number of instruction steps.",
-    "Moving onboarding-tip persistence into the backend canister."
+    "Do not redesign or change backend RBAC/admin assignment behavior.",
+    "Do not add third-party authentication or any new auth provider beyond Internet Identity.",
+    "Do not change tier limits or tier enforcement rules."
   ],
   "imageRequirements": {
     "required": [],

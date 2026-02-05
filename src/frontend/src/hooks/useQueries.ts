@@ -54,6 +54,7 @@ export function useIsCallerAdmin() {
 
 export function useAdminUserList() {
   const { actor, isFetching } = useActor();
+  const { data: isAdmin } = useIsCallerAdmin();
 
   return useQuery<UserMetadata[]>({
     queryKey: ['adminUserList'],
@@ -61,7 +62,7 @@ export function useAdminUserList() {
       if (!actor) return [];
       return actor.getAllUserMetadataWithRoles();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !isFetching && !!isAdmin,
   });
 }
 

@@ -1,41 +1,108 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Per-user persistence and migration for Plan Mode tip dialog",
+  "title": "Admin Dashboard full-page navigation (replace modal)",
   "requirements": [
     {
-      "id": "REQ-3",
-      "summary": "Persist Plan Mode tip dismissal per authenticated user (keyed by Internet Identity principal) instead of a shared device-wide localStorage key.",
+      "id": "REQ-9",
+      "summary": "Replace the modal Admin Dashboard with a dedicated full-page Admin Dashboard view while preserving all existing user management features.",
       "acceptanceCriteria": [
-        "When User A logs in on a device, enters Plan Mode, and dismisses the Plan Mode tip, User A does not see it again on that device after reload/restart.",
-        "After User A logs out, User B logs in on the same device and enters Plan Mode, User B does see the Plan Mode tip (even though User A previously dismissed it).",
-        "The tip dialog content remains unchanged (including the exact text: \"The Real Magic Is in Settings.\")."
+        "Clicking the Admin entry point opens a full-page Admin Dashboard view (no Dialog/modal overlay behavior).",
+        "The Admin Dashboard page supports normal document/page scrolling and does not trap focus like a modal.",
+        "The Admin Dashboard page retains search, pagination, principal copy, role actions, and tier selection behavior currently present in AdminDashboardDialog."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/usePlanModeTip.ts",
-          "operation": "modify",
-          "description": "Update the hook to store and read the Plan Mode tip dismissal using a per-user localStorage key derived from the authenticated user's Internet Identity principal (e.g., a principal-suffixed key), and to re-check whenever the principal changes. Use the authorization component's authentication model by basing the key on the current Internet Identity principal; verify the component's usage instructions before implementing."
+          "path": "frontend/src/pages/AdminDashboard.tsx",
+          "operation": "create",
+          "description": "Create a dedicated full-page Admin Dashboard view that renders the existing admin user directory functionality (search, pagination, principal copy, promote/demote admin, tier updates) using existing shadcn-ui building blocks (e.g., Button/Table/Select/Input/Badge/ScrollArea). Verify the component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/pages/TaskManager.tsx",
-          "operation": "modify",
-          "description": "Pass the authenticated user's Internet Identity principal string (from the existing useInternetIdentity identity) into usePlanModeTip so the tip display logic is evaluated per logged-in user session. Use the authorization component's identity access pattern (useInternetIdentity) to obtain the principal; verify the component's usage instructions before implementing."
+          "path": "frontend/src/components/admin/AdminUserDirectory.tsx",
+          "operation": "create",
+          "description": "Extract the non-modal admin user directory UI/logic (search, pagination, actions, tier select, copy principal) into a reusable component used by the full-page Admin Dashboard. Use existing shadcn-ui components for consistent UI. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/admin/AdminDashboardDialog.tsx",
+          "operation": "delete",
+          "description": "Remove the modal Dialog-based AdminDashboardDialog implementation to eliminate popup/modal overlay behavior and prevent stale modal-based entry points."
         }
       ]
     },
     {
-      "id": "REQ-4",
-      "summary": "Migrate the old shared Plan Mode tip dismissal flag to the new per-user key for the currently logged-in user only.",
+      "id": "REQ-10",
+      "summary": "Add in-app navigation to open the Admin Dashboard as a standalone page and provide a clear Back control to return to the main Task Manager screen without refresh.",
       "acceptanceCriteria": [
-        "If the old shared localStorage key indicates the tip was previously dismissed, the currently logged-in user is treated as dismissed under the new per-user key after the update.",
-        "The migration does not cause the tip to be dismissed for other users who log in later on the same device."
+        "From the main UI, an admin user can open the Admin Dashboard page from the header.",
+        "The Admin Dashboard page includes a clear 'Back' control that returns the user to the prior/main screen.",
+        "Returning from the Admin Dashboard page restores the main UI without requiring a full refresh."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/usePlanModeTip.ts",
+          "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Add a client-side fallback/migration: when a principal-scoped key is not yet present for the current user, check the legacy shared localStorage key and, if it indicates dismissal, write the dismissal state into the current user's per-user key and clear the legacy shared key so it cannot affect later logins by other users on the same device. Use the authorization component's authentication model by ensuring migration only runs when a non-anonymous principal is available; verify the component's usage instructions before implementing."
+          "description": "Introduce simple app-level view state (route-like mechanism) to switch between the main Task Manager view and the new full-page Admin Dashboard view, wiring a Back action to return to the main view without a full reload."
+        },
+        {
+          "path": "frontend/src/pages/TaskManager.tsx",
+          "operation": "modify",
+          "description": "Add a navigation callback prop (e.g., onOpenAdminDashboard) that can be triggered from the Header, and forward it into the Header so the Admin entry point opens the full-page Admin Dashboard."
+        },
+        {
+          "path": "frontend/src/components/Header.tsx",
+          "operation": "modify",
+          "description": "Replace the modal-opening Admin button behavior with a call to the provided navigation callback so Admin opens the full-page Admin Dashboard. Remove the AdminDashboardDialog import/usage. Keep existing admin visibility behavior (only show Admin entry point for admins). Use existing shadcn-ui Button patterns. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/AdminDashboard.tsx",
+          "operation": "modify",
+          "description": "Add a clear Back control (e.g., button in a top bar) that calls the provided onBack callback to return to the main Task Manager view, ensuring navigation does not require refresh. Verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-11",
+      "summary": "UI access-control the Admin Dashboard page: show unauthorized message and back navigation for non-admin users instead of a misleading empty list.",
+      "acceptanceCriteria": [
+        "If the current user is not an admin, the Admin Dashboard page shows an 'Unauthorized' style message (English) and does not render the user list table.",
+        "If the current user is an admin, the user list table renders and actions work as before.",
+        "No scenario results in a misleading empty list for non-admins without any explanation."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/AdminDashboard.tsx",
+          "operation": "modify",
+          "description": "Gate the admin directory UI by checking admin status (via existing admin query hook). If not admin, render an English-language Unauthorized message and a Back control, and do not render the user directory table/actions. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Update the admin user list query hook to support conditional fetching (e.g., accept an enabled flag) so the Admin Dashboard page can avoid requesting the user directory when the caller is not an admin, preventing confusing empty states and reducing unauthorized error noise."
+        },
+        {
+          "path": "frontend/src/components/admin/AdminUserDirectory.tsx",
+          "operation": "modify",
+          "description": "Ensure the directory component assumes it is rendered only for admins (or receives explicit enabled/isAdmin input) and renders a loading/error state appropriately for admin callers, while leaving unauthorized handling to the page-level gate."
+        }
+      ]
+    },
+    {
+      "id": "REQ-12",
+      "summary": "Remove render-time side effects from admin pagination by replacing the state-setting useMemo clamping with an effect-based approach.",
+      "acceptanceCriteria": [
+        "The current-page clamping logic no longer sets React state during render.",
+        "Pagination remains stable when filtering changes total pages (e.g., searching reduces results and current page is adjusted safely)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/admin/AdminUserDirectory.tsx",
+          "operation": "modify",
+          "description": "Replace the current pagination clamping pattern that sets state inside useMemo with a useEffect-based clamp that runs after render when total pages change, maintaining stable pagination when search/filtering alters result count."
+        },
+        {
+          "path": "frontend/src/pages/AdminDashboard.tsx",
+          "operation": "modify",
+          "description": "Ensure the full-page Admin Dashboard wiring uses the updated directory component so pagination clamping occurs via effects (not during render) in the live admin page."
         }
       ]
     }
