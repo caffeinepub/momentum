@@ -236,7 +236,7 @@ const TaskCard = memo(function TaskCard({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
       className={cn(
-        'relative rounded-lg border shadow-sm transition-all duration-300 ease-out hover:shadow-md w-full',
+        'relative rounded-lg border shadow-sm transition-all duration-300 ease-out hover:shadow-md w-full no-text-select',
         isEditMode 
           ? 'cursor-move hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-br from-blue-50/80 via-indigo-50/60 to-purple-50/40 dark:from-blue-950/30 dark:via-indigo-950/20 dark:to-purple-950/10 border-blue-200 dark:border-blue-800' 
           : 'cursor-default bg-card',

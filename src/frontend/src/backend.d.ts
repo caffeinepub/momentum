@@ -12,6 +12,12 @@ export interface UserMetadata {
     isAdmin: boolean;
     profile?: UserProfile;
 }
+export interface TierLimitsConfig {
+    gold: TierLimits;
+    diamond: TierLimits;
+    basic: TierLimits;
+    silver: TierLimits;
+}
 export interface TaskUpdateInput {
     title: string;
     isLongTask: boolean;
@@ -54,6 +60,11 @@ export interface PayrollRecord {
         evening: bigint;
         priorities: bigint;
     };
+}
+export interface TierLimits {
+    maxCustomLists?: bigint;
+    maxTasks?: bigint;
+    maxRoutines?: bigint;
 }
 export interface MorningRoutine {
     id: RoutineId;
@@ -146,6 +157,7 @@ export interface backendInterface {
     getAllSpends(): Promise<Array<SpendRecord>>;
     getAllTasks(): Promise<Array<Task>>;
     getAllTasksByList(listId: ListId): Promise<Array<Task>>;
+    getAllTierLimits(): Promise<TierLimitsConfig>;
     getAllUserMetadata(): Promise<Array<[Principal, UserProfile]>>;
     getAllUserMetadataWithRoles(): Promise<Array<UserMetadata>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
@@ -160,8 +172,10 @@ export interface backendInterface {
     getPayrollHistory(): Promise<Array<PayrollRecord>>;
     getPreset(id: bigint): Promise<SpendPreset | null>;
     getTask(id: TaskId): Promise<Task>;
+    getTotalUsers(): Promise<bigint>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
+    manualResetRoutines(completedRoutineIds: Array<RoutineId>): Promise<void>;
     moveTask(taskId: TaskId, destinationListId: ListId): Promise<void>;
     performRoutineDailyResetIfNeeded(): Promise<void>;
     promoteToAdmin(target: Principal): Promise<void>;
@@ -178,4 +192,5 @@ export interface backendInterface {
     updateRoutineItemPosition(routineId: RoutineId, positionIndex: bigint): Promise<void>;
     updateTask(id: TaskId, updatedTask: TaskUpdateInput): Promise<void>;
     updateTaskPosition(taskId: TaskId, positionIndex: bigint): Promise<void>;
+    updateTierLimits(tier: UserTier, newLimits: TierLimits): Promise<void>;
 }

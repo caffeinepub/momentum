@@ -9,10 +9,8 @@ import Text "mo:core/Text";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
 
-
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
-
 
 actor {
   let accessControlState = AccessControl.initState();
@@ -186,43 +184,52 @@ actor {
 
   let users = Map.empty<Principal, User>();
 
-  // Tier limits configuration
-  type TierLimits = {
-    maxRoutines : ?Nat; // null means unlimited
+  public type TierLimits = {
+    maxRoutines : ?Nat;
     maxCustomLists : ?Nat;
     maxTasks : ?Nat;
   };
 
+  public type TierLimitsConfig = {
+    basic : TierLimits;
+    silver : TierLimits;
+    gold : TierLimits;
+    diamond : TierLimits;
+  };
+
+  var tierLimits : TierLimitsConfig = {
+    basic = { maxRoutines = ?5; maxCustomLists = ?2; maxTasks = ?20 };
+    silver = { maxRoutines = ?10; maxCustomLists = ?5; maxTasks = ?50 };
+    gold = { maxRoutines = ?20; maxCustomLists = ?10; maxTasks = ?100 };
+    diamond = { maxRoutines = null; maxCustomLists = null; maxTasks = null };
+  };
+
+  public query ({ caller }) func getAllTierLimits() : async TierLimitsConfig {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can fetch all tier limits");
+    };
+    tierLimits;
+  };
+
+  public shared ({ caller }) func updateTierLimits(tier : UserTier, newLimits : TierLimits) : async () {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can update tier limits");
+    };
+
+    tierLimits := switch (tier) {
+      case (#basic) { { tierLimits with basic = newLimits } };
+      case (#silver) { { tierLimits with silver = newLimits } };
+      case (#gold) { { tierLimits with gold = newLimits } };
+      case (#diamond) { { tierLimits with diamond = newLimits } };
+    };
+  };
+
   func getTierLimits(tier : UserTier) : TierLimits {
     switch (tier) {
-      case (#basic) {
-        {
-          maxRoutines = ?5;
-          maxCustomLists = ?2;
-          maxTasks = ?20;
-        };
-      };
-      case (#silver) {
-        {
-          maxRoutines = ?10;
-          maxCustomLists = ?5;
-          maxTasks = ?50;
-        };
-      };
-      case (#gold) {
-        {
-          maxRoutines = ?20;
-          maxCustomLists = ?10;
-          maxTasks = ?100;
-        };
-      };
-      case (#diamond) {
-        {
-          maxRoutines = null; // unlimited
-          maxCustomLists = null;
-          maxTasks = null;
-        };
-      };
+      case (#basic) { tierLimits.basic };
+      case (#silver) { tierLimits.silver };
+      case (#gold) { tierLimits.gold };
+      case (#diamond) { tierLimits.diamond };
     };
   };
 
@@ -243,7 +250,7 @@ actor {
           Runtime.trap("You have reached the maximum number of routines (" # maxRoutines.toText() # ") for your tier. Please upgrade your tier to add more routines.");
         };
       };
-      case (null) {}; // unlimited
+      case (null) {};
     };
   };
 
@@ -252,7 +259,6 @@ actor {
     let limits = getTierLimits(tier);
     switch (limits.maxCustomLists) {
       case (?maxLists) {
-        // Count custom lists (non-quadrant lists, excluding the 4 default quadrants)
         let customListCount = user.lists.values().toArray().filter(func(list : List) : Bool {
           not list.quadrant
         }).size();
@@ -260,7 +266,7 @@ actor {
           Runtime.trap("You have reached the maximum number of custom lists (" # maxLists.toText() # ") for your tier. Please upgrade your tier to add more lists.");
         };
       };
-      case (null) {}; // unlimited
+      case (null) {};
     };
   };
 
@@ -274,7 +280,7 @@ actor {
           Runtime.trap("You have reached the maximum number of tasks (" # maxTasks.toText() # ") for your tier. Please upgrade your tier to add more tasks.");
         };
       };
-      case (null) {}; // unlimited
+      case (null) {};
     };
   };
 
@@ -496,7 +502,6 @@ actor {
     };
     let user = getUser(caller);
 
-    // Enforce tier-based task limit
     checkTaskLimit(caller, user);
 
     if (input.title.size() > MAX_TITLE_LENGTH) {
@@ -614,7 +619,6 @@ actor {
     };
     let user = getUser(caller);
 
-    // Enforce tier-based custom list limit
     checkCustomListLimit(caller, user);
 
     let list : List = {
@@ -733,7 +737,6 @@ actor {
     };
     let user = getUser(caller);
 
-    // Enforce tier-based routine limit
     checkRoutineLimit(caller, user);
 
     let routine : MorningRoutine = {
@@ -943,6 +946,36 @@ actor {
 
     let newUser = {
       user with routines = updatedRoutines;
+      lastResetDate = currentDayEpoch;
+    };
+    users.add(caller, newUser);
+  };
+
+  public shared ({ caller }) func manualResetRoutines(completedRoutineIds : [RoutineId]) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+
+    let currentTimeNanos = Time.now();
+    let currentDayEpoch = currentTimeNanos / (24 * 3600 * 1000000000);
+
+    let user = getOrCreateUserInternal(caller);
+
+    let updatedRoutines = user.routines.map<RoutineId, MorningRoutine, MorningRoutine>(
+      func(id, routine) {
+        let wasCompleted = completedRoutineIds.find(func(completedId) { completedId == id }) != null;
+
+        if (wasCompleted) {
+          { routine with streakCount = routine.streakCount + 1 };
+        } else {
+          { routine with streakCount = 0 };
+        };
+      }
+    );
+
+    let newUser = {
+      user with
+      routines = updatedRoutines;
       lastResetDate = currentDayEpoch;
     };
     users.add(caller, newUser);
@@ -1197,7 +1230,6 @@ actor {
       Runtime.trap("Cannot enable earnings system with Max Money Per Day set to 0.");
     };
 
-    // Also update the profile
     switch (userProfiles.get(caller)) {
       case (?profile) {
         let updatedProfile = { profile with earningsEnabled = enabled };
@@ -1429,5 +1461,9 @@ actor {
     };
 
     AccessControl.assignRole(accessControlState, caller, target, #user);
+  };
+
+  public query ({ caller }) func getTotalUsers() : async Nat {
+    users.size();
   };
 };

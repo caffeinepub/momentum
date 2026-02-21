@@ -73,6 +73,22 @@
         @apply ring-2 ring-primary ring-offset-2;
     }
 
+    /* Disable text selection for interactive drag/long-press containers */
+    .no-text-select {
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+    }
+
+    /* Re-enable text selection for inputs/textareas inside no-text-select containers */
+    .no-text-select input,
+    .no-text-select textarea,
+    .no-text-select [contenteditable="true"] {
+        user-select: text;
+        -webkit-user-select: text;
+        -webkit-touch-callout: default;
+    }
+
     /* Streak visualization effects - GPU-accelerated with transform and opacity */
     
     /* 2-7 days: Subtle blue shimmer animation */

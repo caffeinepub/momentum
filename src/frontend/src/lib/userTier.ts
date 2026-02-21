@@ -25,3 +25,7 @@ export function getAllTiers(): Array<{ value: UserTier; label: string }> {
     { value: UserTier.diamond, label: 'Diamond' },
   ];
 }
+
+export function getTierOrder(): UserTier[] {
+  return [UserTier.basic, UserTier.silver, UserTier.gold, UserTier.diamond];
+}

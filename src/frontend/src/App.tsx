@@ -5,21 +5,20 @@ import TaskManager from './pages/TaskManager';
 import AdminDashboard from './pages/AdminDashboard';
 import OfflineIndicator from './components/OfflineIndicator';
 
-type AppView = 'main' | 'admin';
+type View = 'main' | 'admin';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<AppView>('main');
+  const [currentView, setCurrentView] = useState<View>('main');
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      {currentView === 'main' && (
+      <OfflineIndicator />
+      {currentView === 'main' ? (
         <TaskManager onOpenAdminDashboard={() => setCurrentView('admin')} />
-      )}
-      {currentView === 'admin' && (
+      ) : (
         <AdminDashboard onBack={() => setCurrentView('main')} />
       )}
       <Toaster />
-      <OfflineIndicator />
     </ThemeProvider>
   );
 }

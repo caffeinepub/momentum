@@ -2,12 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-replace-the-current-modal-based-admin-dashboard-ui-with-a-dedicated-full-screen-admin-dashboard-page-not-a-popup-modal-preserving-existing-functionality-user-list-display-search-pagination-promote-demote-admin-and-tier-updates",
-      "featureTitle": "Replace the current modal-based Admin Dashboard UI with a dedicated, full-screen Admin Dashboard page (not a popup/modal), preserving existing functionality (user list display, search, pagination, promote/demote admin, and tier updates).",
+      "featureId": "feature-add-a-reset-new-day-button-in-the-app-header-component-header-tsx-positioned-next-to-the-dark-mode-toggle-button",
+      "featureTitle": "Add a 'Reset New Day' button in the app header component (Header.tsx) positioned next to the dark mode toggle button",
       "files": [
-        "frontend/src/components/admin/AdminDashboardDialog.tsx",
-        "frontend/src/components/admin/AdminUserDirectory.tsx",
-        "frontend/src/pages/AdminDashboard.tsx"
+        "frontend/src/components/Header.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -18,17 +16,54 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-9"
+        "REQ-1"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-add-in-app-navigation-to-access-the-admin-dashboard-as-a-standalone-page-view-e-g-via-a-simple-route-like-mechanism-or-internal-view-state-and-provide-an-obvious-way-to-return-to-the-main-task-manager-screen",
-      "featureTitle": "Add in-app navigation to access the Admin Dashboard as a standalone page view (e.g., via a simple route-like mechanism or internal view state) and provide an obvious way to return to the main Task Manager screen.",
+      "featureId": "feature-modify-morningroutine-tsx-to-implement-frontend-only-check-uncheck-interaction-with-instant-visual-feedback-without-triggering-backend-saves-on-individual-check-uncheck-actions",
+      "featureTitle": "Modify MorningRoutine.tsx to implement frontend-only check/uncheck interaction with instant visual feedback without triggering backend saves on individual check/uncheck actions",
       "files": [
-        "frontend/src/App.tsx",
+        "frontend/src/components/MorningRoutine.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "authorization@4.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-update-the-strike-count-badge-display-logic-in-morningroutine-tsx-to-show-strike-count-1-when-a-routine-is-checked-preview-of-tomorrow-s-count-and-the-current-strike-count-when-unchecked",
+      "featureTitle": "Update the strike count badge display logic in MorningRoutine.tsx to show strike count + 1 when a routine is checked (preview of tomorrow's count) and the current strike count when unchecked",
+      "files": [
+        "frontend/src/components/MorningRoutine.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "authorization@4.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-implement-the-manual-reset-workflow-triggered-by-clicking-the-reset-new-day-button-save-all-currently-checked-routines-to-the-backend-incrementing-their-strike-counts-by-1-reset-all-unchecked-routines-strike-counts-to-0-in-the-backend-and-clear-all-routine-checkboxes-back-to-unchecked-state-in-the-frontend",
+      "featureTitle": "Implement the manual reset workflow triggered by clicking the 'Reset New Day' button: save all currently checked routines to the backend (incrementing their strike counts by 1), reset all unchecked routines' strike counts to 0 in the backend, and clear all routine checkboxes back to unchecked state in the frontend",
+      "files": [
         "frontend/src/components/Header.tsx",
-        "frontend/src/pages/AdminDashboard.tsx",
+        "frontend/src/components/MorningRoutine.tsx",
         "frontend/src/pages/TaskManager.tsx"
       ],
       "components": [
@@ -40,17 +75,15 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-10"
+        "REQ-4"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-ensure-the-admin-dashboard-page-is-access-controlled-in-the-ui-if-the-caller-is-not-an-admin-do-not-show-the-user-directory-instead-show-an-english-language-unauthorized-message-and-a-way-to-navigate-back",
-      "featureTitle": "Ensure the Admin Dashboard page is access-controlled in the UI: if the caller is not an admin, do not show the user directory; instead show an English-language unauthorized message and a way to navigate back.",
+      "featureId": "feature-create-a-react-query-mutation-hook-in-usequeries-ts-for-the-manual-daily-reset-operation-that-calls-the-new-backend-function-with-checked-routine-ids",
+      "featureTitle": "Create a React Query mutation hook in useQueries.ts for the manual daily reset operation that calls the new backend function with checked routine IDs",
       "files": [
-        "frontend/src/components/admin/AdminUserDirectory.tsx",
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/pages/AdminDashboard.tsx"
+        "frontend/src/hooks/useQueries.ts"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -61,27 +94,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-11"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-eliminate-render-time-side-effects-in-the-admin-user-list-pagination-logic-by-removing-the-state-setting-usememo-pattern-and-using-an-appropriate-effect-based-approach-so-page-clamping-does-not-occur-during-render",
-      "featureTitle": "Eliminate render-time side effects in the admin user list pagination logic by removing the state-setting useMemo pattern and using an appropriate effect-based approach so page clamping does not occur during render.",
-      "files": [
-        "frontend/src/components/admin/AdminUserDirectory.tsx",
-        "frontend/src/pages/AdminDashboard.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "authorization@4.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-12"
+        "REQ-6"
       ],
       "confidence": "high"
     }

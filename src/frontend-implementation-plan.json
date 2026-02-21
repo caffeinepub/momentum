@@ -1,108 +1,99 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Admin Dashboard full-page navigation (replace modal)",
+  "title": "Add Manual Daily Reset System for Routines",
   "requirements": [
     {
-      "id": "REQ-9",
-      "summary": "Replace the modal Admin Dashboard with a dedicated full-page Admin Dashboard view while preserving all existing user management features.",
+      "id": "REQ-1",
+      "summary": "Add a 'Reset New Day' button in the app header component (Header.tsx) positioned next to the dark mode toggle button",
       "acceptanceCriteria": [
-        "Clicking the Admin entry point opens a full-page Admin Dashboard view (no Dialog/modal overlay behavior).",
-        "The Admin Dashboard page supports normal document/page scrolling and does not trap focus like a modal.",
-        "The Admin Dashboard page retains search, pagination, principal copy, role actions, and tier selection behavior currently present in AdminDashboardDialog."
+        "Button appears in the header next to the theme toggle",
+        "Button is visible and accessible on both mobile and desktop views",
+        "Button has appropriate styling consistent with the header design"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/AdminDashboard.tsx",
-          "operation": "create",
-          "description": "Create a dedicated full-page Admin Dashboard view that renders the existing admin user directory functionality (search, pagination, principal copy, promote/demote admin, tier updates) using existing shadcn-ui building blocks (e.g., Button/Table/Select/Input/Badge/ScrollArea). Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/admin/AdminUserDirectory.tsx",
-          "operation": "create",
-          "description": "Extract the non-modal admin user directory UI/logic (search, pagination, actions, tier select, copy principal) into a reusable component used by the full-page Admin Dashboard. Use existing shadcn-ui components for consistent UI. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/admin/AdminDashboardDialog.tsx",
-          "operation": "delete",
-          "description": "Remove the modal Dialog-based AdminDashboardDialog implementation to eliminate popup/modal overlay behavior and prevent stale modal-based entry points."
+          "path": "frontend/src/components/Header.tsx",
+          "operation": "modify",
+          "description": "Add a 'Reset New Day' button next to the dark mode toggle. The button should be styled consistently with existing header buttons and positioned in the header controls area. Include responsive styling for mobile and desktop views. Wire the button to trigger the manual reset workflow when clicked."
         }
       ]
     },
     {
-      "id": "REQ-10",
-      "summary": "Add in-app navigation to open the Admin Dashboard as a standalone page and provide a clear Back control to return to the main Task Manager screen without refresh.",
+      "id": "REQ-2",
+      "summary": "Modify MorningRoutine.tsx to implement frontend-only check/uncheck interaction with instant visual feedback without triggering backend saves on individual check/uncheck actions",
       "acceptanceCriteria": [
-        "From the main UI, an admin user can open the Admin Dashboard page from the header.",
-        "The Admin Dashboard page includes a clear 'Back' control that returns the user to the prior/main screen.",
-        "Returning from the Admin Dashboard page restores the main UI without requiring a full refresh."
+        "Clicking routine checkboxes updates UI immediately",
+        "No backend mutation calls are triggered on check/uncheck",
+        "Routine checked state is maintained in local component state only"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/App.tsx",
+          "path": "frontend/src/components/MorningRoutine.tsx",
           "operation": "modify",
-          "description": "Introduce simple app-level view state (route-like mechanism) to switch between the main Task Manager view and the new full-page Admin Dashboard view, wiring a Back action to return to the main view without a full reload."
+          "description": "Remove the backend mutation call from the checkbox toggle handler. Instead, maintain checked state in local React state (using useState or useReducer to track which routine IDs are checked). Update the checkbox UI to reflect this local state immediately when clicked. Ensure the completeMorningRoutine mutation is no longer called on individual check/uncheck actions."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Update the strike count badge display logic in MorningRoutine.tsx to show strike count + 1 when a routine is checked (preview of tomorrow's count) and the current strike count when unchecked",
+      "acceptanceCriteria": [
+        "Badge shows current strike count for unchecked routines",
+        "Badge shows strike count + 1 for checked routines",
+        "Badge updates instantly when checking/unchecking routines"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/MorningRoutine.tsx",
+          "operation": "modify",
+          "description": "Update the streak count badge display logic to compute the display value based on local checked state. When a routine is checked in local state, display routine.streakCount + 1. When unchecked, display routine.streakCount. Ensure this computation happens reactively whenever local checked state changes so the badge updates instantly."
+        }
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "summary": "Implement the manual reset workflow triggered by clicking the 'Reset New Day' button: save all currently checked routines to the backend (incrementing their strike counts by 1), reset all unchecked routines' strike counts to 0 in the backend, and clear all routine checkboxes back to unchecked state in the frontend",
+      "acceptanceCriteria": [
+        "Clicking 'Reset New Day' calls a backend function with the list of checked routine IDs",
+        "Backend increments strike count by 1 for all checked routines",
+        "Backend resets strike count to 0 for all unchecked routines",
+        "Frontend clears all checkboxes to unchecked state after successful backend save",
+        "User receives confirmation feedback when reset completes successfully",
+        "Routine queries are invalidated to reflect updated strike counts"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/Header.tsx",
+          "operation": "modify",
+          "description": "Wire the 'Reset New Day' button to trigger the manual reset mutation hook from useQueries.ts. Pass the array of checked routine IDs from MorningRoutine component state to the mutation. Show loading state on the button while the mutation is in progress. Display a toast notification on success or error. Coordinate with MorningRoutine.tsx to access the checked routine IDs state (consider lifting state or using a callback pattern)."
+        },
+        {
+          "path": "frontend/src/components/MorningRoutine.tsx",
+          "operation": "modify",
+          "description": "Expose the local checked routine IDs state to the parent component (TaskManager or Header) via a callback or ref so the 'Reset New Day' button can access it. After the manual reset mutation succeeds, clear the local checked state back to an empty set/array so all checkboxes return to unchecked. Ensure this happens in response to the mutation success callback."
         },
         {
           "path": "frontend/src/pages/TaskManager.tsx",
           "operation": "modify",
-          "description": "Add a navigation callback prop (e.g., onOpenAdminDashboard) that can be triggered from the Header, and forward it into the Header so the Admin entry point opens the full-page Admin Dashboard."
-        },
-        {
-          "path": "frontend/src/components/Header.tsx",
-          "operation": "modify",
-          "description": "Replace the modal-opening Admin button behavior with a call to the provided navigation callback so Admin opens the full-page Admin Dashboard. Remove the AdminDashboardDialog import/usage. Keep existing admin visibility behavior (only show Admin entry point for admins). Use existing shadcn-ui Button patterns. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/pages/AdminDashboard.tsx",
-          "operation": "modify",
-          "description": "Add a clear Back control (e.g., button in a top bar) that calls the provided onBack callback to return to the main Task Manager view, ensuring navigation does not require refresh. Verify the component's usage instructions before implementing."
+          "description": "If MorningRoutine state needs to be lifted or coordinated with Header, manage the checked routine IDs state at this level and pass it down as props. Coordinate the manual reset flow between Header (which has the button) and MorningRoutine (which maintains the checked state). Ensure proper state clearing after successful reset."
         }
       ]
     },
     {
-      "id": "REQ-11",
-      "summary": "UI access-control the Admin Dashboard page: show unauthorized message and back navigation for non-admin users instead of a misleading empty list.",
+      "id": "REQ-6",
+      "summary": "Create a React Query mutation hook in useQueries.ts for the manual daily reset operation that calls the new backend function with checked routine IDs",
       "acceptanceCriteria": [
-        "If the current user is not an admin, the Admin Dashboard page shows an 'Unauthorized' style message (English) and does not render the user list table.",
-        "If the current user is an admin, the user list table renders and actions work as before.",
-        "No scenario results in a misleading empty list for non-admins without any explanation."
+        "Mutation hook accepts array of checked routine IDs as parameter",
+        "Hook triggers backend reset function when called",
+        "Hook invalidates routine queries on success",
+        "Hook provides loading, error, and success states"
       ],
       "file_operations": [
-        {
-          "path": "frontend/src/pages/AdminDashboard.tsx",
-          "operation": "modify",
-          "description": "Gate the admin directory UI by checking admin status (via existing admin query hook). If not admin, render an English-language Unauthorized message and a Back control, and do not render the user directory table/actions. Verify the component's usage instructions before implementing."
-        },
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Update the admin user list query hook to support conditional fetching (e.g., accept an enabled flag) so the Admin Dashboard page can avoid requesting the user directory when the caller is not an admin, preventing confusing empty states and reducing unauthorized error noise."
-        },
-        {
-          "path": "frontend/src/components/admin/AdminUserDirectory.tsx",
-          "operation": "modify",
-          "description": "Ensure the directory component assumes it is rendered only for admins (or receives explicit enabled/isAdmin input) and renders a loading/error state appropriately for admin callers, while leaving unauthorized handling to the page-level gate."
-        }
-      ]
-    },
-    {
-      "id": "REQ-12",
-      "summary": "Remove render-time side effects from admin pagination by replacing the state-setting useMemo clamping with an effect-based approach.",
-      "acceptanceCriteria": [
-        "The current-page clamping logic no longer sets React state during render.",
-        "Pagination remains stable when filtering changes total pages (e.g., searching reduces results and current page is adjusted safely)."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/admin/AdminUserDirectory.tsx",
-          "operation": "modify",
-          "description": "Replace the current pagination clamping pattern that sets state inside useMemo with a useEffect-based clamp that runs after render when total pages change, maintaining stable pagination when search/filtering alters result count."
-        },
-        {
-          "path": "frontend/src/pages/AdminDashboard.tsx",
-          "operation": "modify",
-          "description": "Ensure the full-page Admin Dashboard wiring uses the updated directory component so pagination clamping occurs via effects (not during render) in the live admin page."
+          "description": "Add a new mutation hook useManualResetRoutines that accepts an array of RoutineId values as the mutation parameter. Call actor.manualResetRoutines(completedRoutineIds) in the mutation function. On success, invalidate all routine-related queries (getAllMorningRoutines, getMorningRoutinesBySection) to fetch updated streak counts. Return standard mutation states (isLoading, isError, isSuccess, mutate, mutateAsync) for UI integration."
         }
       ]
     }

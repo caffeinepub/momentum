@@ -1,88 +1,97 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-05T01:08:10.939Z",
+  "generatedAt": "2026-02-21T12:19:33.137Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 4,
-    "implemented": 4,
+    "total": 6,
+    "implemented": 5,
     "items": [
       {
-        "id": "REQ-10",
-        "summary": "Add in-app navigation to access the Admin Dashboard as a standalone page view (e.g., via a simple route-like mechanism or internal view state) and provide an obvious way to return to the main Task Manager screen.",
+        "id": "REQ-1",
+        "summary": "Add a 'Reset New Day' button in the app header component (Header.tsx) positioned next to the dark mode toggle button",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/App.tsx",
-          "frontend/src/pages/TaskManager.tsx",
+          "frontend/src/components/Header.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/Header.tsx"
+        ]
+      },
+      {
+        "id": "REQ-2",
+        "summary": "Modify MorningRoutine.tsx to implement frontend-only check/uncheck interaction with instant visual feedback without triggering backend saves on individual check/uncheck actions",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/MorningRoutine.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/MorningRoutine.tsx"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Update the strike count badge display logic in MorningRoutine.tsx to show strike count + 1 when a routine is checked (preview of tomorrow's count) and the current strike count when unchecked",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/MorningRoutine.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/MorningRoutine.tsx"
+        ]
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Implement the manual reset workflow triggered by clicking the 'Reset New Day' button: save all currently checked routines to the backend (incrementing their strike counts by 1), reset all unchecked routines' strike counts to 0 in the backend, and clear all routine checkboxes back to unchecked state in the frontend",
+        "status": "implemented",
+        "plannedFiles": [
           "frontend/src/components/Header.tsx",
-          "frontend/src/pages/AdminDashboard.tsx"
+          "frontend/src/components/MorningRoutine.tsx",
+          "frontend/src/pages/TaskManager.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/App.tsx",
-          "frontend/src/pages/TaskManager.tsx",
           "frontend/src/components/Header.tsx",
-          "frontend/src/pages/AdminDashboard.tsx"
+          "frontend/src/components/MorningRoutine.tsx",
+          "frontend/src/pages/TaskManager.tsx"
         ]
       },
       {
-        "id": "REQ-11",
-        "summary": "Ensure the Admin Dashboard page is access-controlled in the UI: if the caller is not an admin, do not show the user directory; instead show an English-language unauthorized message and a way to navigate back.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/AdminDashboard.tsx",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/admin/AdminUserDirectory.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/AdminDashboard.tsx",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/admin/AdminUserDirectory.tsx"
-        ]
+        "id": "REQ-5",
+        "summary": "Add a backend function in main.mo to handle the manual daily reset, accepting an array of routine IDs that were checked, incrementing their strike counts by 1, and resetting strike counts to 0 for all other routines belonging to the user",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
-        "id": "REQ-12",
-        "summary": "Eliminate render-time side effects in the admin user list pagination logic by removing the state-setting useMemo pattern and using an appropriate effect-based approach so page clamping does not occur during render.",
+        "id": "REQ-6",
+        "summary": "Create a React Query mutation hook in useQueries.ts for the manual daily reset operation that calls the new backend function with checked routine IDs",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/admin/AdminUserDirectory.tsx",
-          "frontend/src/pages/AdminDashboard.tsx"
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/components/admin/AdminUserDirectory.tsx",
-          "frontend/src/pages/AdminDashboard.tsx"
-        ]
-      },
-      {
-        "id": "REQ-9",
-        "summary": "Replace the current modal-based Admin Dashboard UI with a dedicated, full-screen Admin Dashboard page (not a popup/modal), preserving existing functionality (user list display, search, pagination, promote/demote admin, and tier updates).",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/AdminDashboard.tsx",
-          "frontend/src/components/admin/AdminUserDirectory.tsx",
-          "frontend/src/components/admin/AdminDashboardDialog.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/AdminDashboard.tsx",
-          "frontend/src/components/admin/AdminUserDirectory.tsx",
-          "frontend/src/components/admin/AdminDashboardDialog.tsx"
+          "frontend/src/hooks/useQueries.ts"
         ]
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/App.tsx",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
     "frontend/src/components/Header.tsx",
-    "frontend/src/components/admin/AdminDashboardDialog.tsx",
-    "frontend/src/components/admin/AdminUserDirectory.tsx",
+    "frontend/src/components/MorningRoutine.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/AdminDashboard.tsx",
     "frontend/src/pages/TaskManager.tsx",
     "project_state.json",
     "scratch/component-selection.json",

@@ -96,6 +96,17 @@ export interface TaskUpdateInput {
   'urgent' : boolean,
   'listId' : ListId,
 }
+export interface TierLimits {
+  'maxCustomLists' : [] | [bigint],
+  'maxTasks' : [] | [bigint],
+  'maxRoutines' : [] | [bigint],
+}
+export interface TierLimitsConfig {
+  'gold' : TierLimits,
+  'diamond' : TierLimits,
+  'basic' : TierLimits,
+  'silver' : TierLimits,
+}
 export interface UserMetadata {
   'principal' : Principal,
   'isAdmin' : boolean,
@@ -138,6 +149,7 @@ export interface _SERVICE {
   'getAllSpends' : ActorMethod<[], Array<SpendRecord>>,
   'getAllTasks' : ActorMethod<[], Array<Task>>,
   'getAllTasksByList' : ActorMethod<[ListId], Array<Task>>,
+  'getAllTierLimits' : ActorMethod<[], TierLimitsConfig>,
   'getAllUserMetadata' : ActorMethod<[], Array<[Principal, UserProfile]>>,
   'getAllUserMetadataWithRoles' : ActorMethod<[], Array<UserMetadata>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
@@ -155,8 +167,10 @@ export interface _SERVICE {
   'getPayrollHistory' : ActorMethod<[], Array<PayrollRecord>>,
   'getPreset' : ActorMethod<[bigint], [] | [SpendPreset]>,
   'getTask' : ActorMethod<[TaskId], Task>,
+  'getTotalUsers' : ActorMethod<[], bigint>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'manualResetRoutines' : ActorMethod<[Array<RoutineId>], undefined>,
   'moveTask' : ActorMethod<[TaskId, ListId], undefined>,
   'performRoutineDailyResetIfNeeded' : ActorMethod<[], undefined>,
   'promoteToAdmin' : ActorMethod<[Principal], undefined>,
@@ -176,6 +190,7 @@ export interface _SERVICE {
   'updateRoutineItemPosition' : ActorMethod<[RoutineId, bigint], undefined>,
   'updateTask' : ActorMethod<[TaskId, TaskUpdateInput], undefined>,
   'updateTaskPosition' : ActorMethod<[TaskId, bigint], undefined>,
+  'updateTierLimits' : ActorMethod<[UserTier, TierLimits], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

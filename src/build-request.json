@@ -1,99 +1,136 @@
 {
   "kind": "build_request",
-  "title": "Convert Admin Dashboard from modal dialog to a dedicated full page",
+  "title": "Add Manual Daily Reset System for Routines",
+  "projectName": "Momentum",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-9",
-      "text": "Replace the current modal-based Admin Dashboard UI with a dedicated, full-screen Admin Dashboard page (not a popup/modal), preserving existing functionality (user list display, search, pagination, promote/demote admin, and tier updates).",
+      "id": "REQ-1",
+      "text": "Add a 'Reset New Day' button in the app header component (Header.tsx) positioned next to the dark mode toggle button",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-10",
-          "msg-12"
+          "msg-recent"
         ],
         "quotes": [
-          "Yes fix it",
-          "Yes"
+          "A 'Reset New Day' button next to the dark mode toggle in the app header"
         ]
       },
       "acceptanceCriteria": [
-        "Clicking the Admin entry point opens a full-page Admin Dashboard view (no Dialog/modal overlay behavior).",
-        "The Admin Dashboard page supports normal document/page scrolling and does not trap focus like a modal.",
-        "The Admin Dashboard page retains search, pagination, principal copy, role actions, and tier selection behavior currently present in AdminDashboardDialog."
+        "Button appears in the header next to the theme toggle",
+        "Button is visible and accessible on both mobile and desktop views",
+        "Button has appropriate styling consistent with the header design"
       ]
     },
     {
-      "id": "REQ-10",
-      "text": "Add in-app navigation to access the Admin Dashboard as a standalone page view (e.g., via a simple route-like mechanism or internal view state) and provide an obvious way to return to the main Task Manager screen.",
+      "id": "REQ-2",
+      "text": "Modify MorningRoutine.tsx to implement frontend-only check/uncheck interaction with instant visual feedback without triggering backend saves on individual check/uncheck actions",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-10",
-          "msg-12"
+          "msg-recent"
         ],
         "quotes": [
-          "Yes fix it",
-          "Yes"
+          "Frontend-only check/uncheck interaction (instant visual feedback, no backend save)"
         ]
       },
       "acceptanceCriteria": [
-        "From the main UI, an admin user can open the Admin Dashboard page from the header.",
-        "The Admin Dashboard page includes a clear 'Back' control that returns the user to the prior/main screen.",
-        "Returning from the Admin Dashboard page restores the main UI without requiring a full refresh."
+        "Clicking routine checkboxes updates UI immediately",
+        "No backend mutation calls are triggered on check/uncheck",
+        "Routine checked state is maintained in local component state only"
       ]
     },
     {
-      "id": "REQ-11",
-      "text": "Ensure the Admin Dashboard page is access-controlled in the UI: if the caller is not an admin, do not show the user directory; instead show an English-language unauthorized message and a way to navigate back.",
+      "id": "REQ-3",
+      "text": "Update the strike count badge display logic in MorningRoutine.tsx to show strike count + 1 when a routine is checked (preview of tomorrow's count) and the current strike count when unchecked",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6",
-          "msg-10",
-          "msg-12"
+          "msg-recent"
         ],
         "quotes": [
-          "When the user list is empty, it almost always means one of these:",
-          "Yes fix it",
-          "Yes"
+          "Badge display logic: shows strike count + 1 when checked, strike count when unchecked"
         ]
       },
       "acceptanceCriteria": [
-        "If the current user is not an admin, the Admin Dashboard page shows an 'Unauthorized' style message (English) and does not render the user list table.",
-        "If the current user is an admin, the user list table renders and actions work as before.",
-        "No scenario results in a misleading empty list for non-admins without any explanation."
+        "Badge shows current strike count for unchecked routines",
+        "Badge shows strike count + 1 for checked routines",
+        "Badge updates instantly when checking/unchecking routines"
       ]
     },
     {
-      "id": "REQ-12",
-      "text": "Eliminate render-time side effects in the admin user list pagination logic by removing the state-setting useMemo pattern and using an appropriate effect-based approach so page clamping does not occur during render.",
-      "target": "frontend",
+      "id": "REQ-4",
+      "text": "Implement the manual reset workflow triggered by clicking the 'Reset New Day' button: save all currently checked routines to the backend (incrementing their strike counts by 1), reset all unchecked routines' strike counts to 0 in the backend, and clear all routine checkboxes back to unchecked state in the frontend",
+      "target": "both",
       "source": {
         "messageIds": [
-          "msg-10",
-          "msg-12"
+          "msg-recent"
         ],
         "quotes": [
-          "Yes fix it",
-          "Yes"
+          "When 'Reset New Day' is clicked: Backend saves all currently checked routines (increases their strike counts by 1)",
+          "Unchecked routines get their strike count reset to 0",
+          "All checkboxes reset to unchecked state",
+          "This is the ONLY time backend updates persist"
         ]
       },
       "acceptanceCriteria": [
-        "The current-page clamping logic no longer sets React state during render.",
-        "Pagination remains stable when filtering changes total pages (e.g., searching reduces results and current page is adjusted safely)."
+        "Clicking 'Reset New Day' calls a backend function with the list of checked routine IDs",
+        "Backend increments strike count by 1 for all checked routines",
+        "Backend resets strike count to 0 for all unchecked routines",
+        "Frontend clears all checkboxes to unchecked state after successful backend save",
+        "User receives confirmation feedback when reset completes successfully",
+        "Routine queries are invalidated to reflect updated strike counts"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Add a backend function in main.mo to handle the manual daily reset, accepting an array of routine IDs that were checked, incrementing their strike counts by 1, and resetting strike counts to 0 for all other routines belonging to the user",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-recent"
+        ],
+        "quotes": [
+          "Backend saves all currently checked routines (increases their strike counts by 1)",
+          "Unchecked routines get their strike count reset to 0"
+        ]
+      },
+      "acceptanceCriteria": [
+        "New backend function accepts user principal and array of checked routine IDs",
+        "Function increments strike count by 1 for routines in the checked array",
+        "Function resets strike count to 0 for routines not in the checked array",
+        "Function returns success/error result",
+        "Proper authorization check ensures only the routine owner can trigger reset"
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "text": "Create a React Query mutation hook in useQueries.ts for the manual daily reset operation that calls the new backend function with checked routine IDs",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-recent"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Mutation hook accepts array of checked routine IDs as parameter",
+        "Hook triggers backend reset function when called",
+        "Hook invalidates routine queries on success",
+        "Hook provides loading, error, and success states"
       ]
     }
   ],
   "constraints": [
-    "Do not edit any files under frontend/immutablePaths (notably: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, and frontend/src/components/ui).",
-    "Keep the backend as a single Motoko actor; do not introduce additional backend services.",
-    "Use English for all user-facing text introduced or modified by this change."
+    "Preserve all existing UI elements from version 152 including sticky bottom button bar on mobile, full-width routine containers matching task containers, and working two-column layout toggle",
+    "Do not modify the automatic daily reset logic or remove existing routine functionality beyond the check/uncheck behavior",
+    "Maintain the existing MorningRoutine component structure and styling",
+    "Ensure the manual reset is the ONLY time routine completion state persists to the backend"
   ],
   "nonGoals": [
-    "Do not redesign or change backend RBAC/admin assignment behavior.",
-    "Do not add third-party authentication or any new auth provider beyond Internet Identity.",
-    "Do not change tier limits or tier enforcement rules."
+    "Modifying task management functionality",
+    "Changing the automatic date detection or rollover logic beyond the manual reset",
+    "Altering the routine creation or deletion flows",
+    "Implementing automatic reset triggers or scheduled resets"
   ],
   "imageRequirements": {
     "required": [],

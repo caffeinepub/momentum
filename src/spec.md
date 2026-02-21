@@ -1,12 +1,14 @@
 # Specification
 
 ## Summary
-**Goal:** Convert the Admin Dashboard from a modal dialog into a dedicated full-page view with navigation, proper access control messaging, and stable pagination behavior.
+**Goal:** Add a manual daily reset system that allows users to explicitly mark which morning routines they completed and reset for a new day.
 
 **Planned changes:**
-- Replace the modal-based Admin Dashboard dialog with a full-screen Admin Dashboard page that preserves existing user list, search, pagination, admin role actions, and tier update functionality.
-- Add in-app navigation so admins can open the Admin Dashboard from the main header and return to the main Task Manager screen via a clear Back control without refreshing.
-- Add UI access control on the Admin Dashboard page: non-admin users see an English unauthorized message and a way to navigate back (no misleading empty user list).
-- Refactor pagination page-clamping to avoid render-time state updates (remove the state-setting `useMemo` pattern and move clamping to an effect-based approach).
+- Add a "Reset New Day" button in the app header next to the dark mode toggle
+- Make routine checkboxes provide instant visual feedback without saving to backend
+- Update strike count badge to show preview (+1) when checked, current count when unchecked
+- Implement manual reset workflow: clicking "Reset New Day" saves checked routines (increments strike count by 1), resets unchecked routines to 0, and clears all checkboxes
+- Add backend function to handle the daily reset operation with checked routine IDs
+- Create React Query mutation hook for the manual reset operation
 
-**User-visible outcome:** Admin users can open an Admin Dashboard as a normal page (not a popup), scroll and use all existing admin tools, and easily navigate back; non-admin users see a clear unauthorized message with a back option.
+**User-visible outcome:** Users can check off completed morning routines throughout the day with instant feedback, see a preview of tomorrow's strike count, and manually trigger a "Reset New Day" to save their progress and start fresh.

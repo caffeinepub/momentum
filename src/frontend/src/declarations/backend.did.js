@@ -80,6 +80,17 @@ export const Task = IDL.Record({
   'urgent' : IDL.Bool,
   'listId' : ListId,
 });
+export const TierLimits = IDL.Record({
+  'maxCustomLists' : IDL.Opt(IDL.Nat),
+  'maxTasks' : IDL.Opt(IDL.Nat),
+  'maxRoutines' : IDL.Opt(IDL.Nat),
+});
+export const TierLimitsConfig = IDL.Record({
+  'gold' : TierLimits,
+  'diamond' : TierLimits,
+  'basic' : TierLimits,
+  'silver' : TierLimits,
+});
 export const UserTier = IDL.Variant({
   'gold' : IDL.Null,
   'diamond' : IDL.Null,
@@ -153,6 +164,7 @@ export const idlService = IDL.Service({
   'getAllSpends' : IDL.Func([], [IDL.Vec(SpendRecord)], ['query']),
   'getAllTasks' : IDL.Func([], [IDL.Vec(Task)], ['query']),
   'getAllTasksByList' : IDL.Func([ListId], [IDL.Vec(Task)], ['query']),
+  'getAllTierLimits' : IDL.Func([], [TierLimitsConfig], ['query']),
   'getAllUserMetadata' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(IDL.Principal, UserProfile))],
@@ -179,12 +191,14 @@ export const idlService = IDL.Service({
   'getPayrollHistory' : IDL.Func([], [IDL.Vec(PayrollRecord)], ['query']),
   'getPreset' : IDL.Func([IDL.Nat], [IDL.Opt(SpendPreset)], ['query']),
   'getTask' : IDL.Func([TaskId], [Task], ['query']),
+  'getTotalUsers' : IDL.Func([], [IDL.Nat], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'manualResetRoutines' : IDL.Func([IDL.Vec(RoutineId)], [], []),
   'moveTask' : IDL.Func([TaskId, ListId], [], []),
   'performRoutineDailyResetIfNeeded' : IDL.Func([], [], []),
   'promoteToAdmin' : IDL.Func([IDL.Principal], [], []),
@@ -205,6 +219,7 @@ export const idlService = IDL.Service({
   'updateRoutineItemPosition' : IDL.Func([RoutineId, IDL.Nat], [], []),
   'updateTask' : IDL.Func([TaskId, TaskUpdateInput], [], []),
   'updateTaskPosition' : IDL.Func([TaskId, IDL.Nat], [], []),
+  'updateTierLimits' : IDL.Func([UserTier, TierLimits], [], []),
 });
 
 export const idlInitArgs = [];
@@ -278,6 +293,17 @@ export const idlFactory = ({ IDL }) => {
     'important' : IDL.Bool,
     'urgent' : IDL.Bool,
     'listId' : ListId,
+  });
+  const TierLimits = IDL.Record({
+    'maxCustomLists' : IDL.Opt(IDL.Nat),
+    'maxTasks' : IDL.Opt(IDL.Nat),
+    'maxRoutines' : IDL.Opt(IDL.Nat),
+  });
+  const TierLimitsConfig = IDL.Record({
+    'gold' : TierLimits,
+    'diamond' : TierLimits,
+    'basic' : TierLimits,
+    'silver' : TierLimits,
   });
   const UserTier = IDL.Variant({
     'gold' : IDL.Null,
@@ -356,6 +382,7 @@ export const idlFactory = ({ IDL }) => {
     'getAllSpends' : IDL.Func([], [IDL.Vec(SpendRecord)], ['query']),
     'getAllTasks' : IDL.Func([], [IDL.Vec(Task)], ['query']),
     'getAllTasksByList' : IDL.Func([ListId], [IDL.Vec(Task)], ['query']),
+    'getAllTierLimits' : IDL.Func([], [TierLimitsConfig], ['query']),
     'getAllUserMetadata' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Principal, UserProfile))],
@@ -382,12 +409,14 @@ export const idlFactory = ({ IDL }) => {
     'getPayrollHistory' : IDL.Func([], [IDL.Vec(PayrollRecord)], ['query']),
     'getPreset' : IDL.Func([IDL.Nat], [IDL.Opt(SpendPreset)], ['query']),
     'getTask' : IDL.Func([TaskId], [Task], ['query']),
+    'getTotalUsers' : IDL.Func([], [IDL.Nat], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'manualResetRoutines' : IDL.Func([IDL.Vec(RoutineId)], [], []),
     'moveTask' : IDL.Func([TaskId, ListId], [], []),
     'performRoutineDailyResetIfNeeded' : IDL.Func([], [], []),
     'promoteToAdmin' : IDL.Func([IDL.Principal], [], []),
@@ -408,6 +437,7 @@ export const idlFactory = ({ IDL }) => {
     'updateRoutineItemPosition' : IDL.Func([RoutineId, IDL.Nat], [], []),
     'updateTask' : IDL.Func([TaskId, TaskUpdateInput], [], []),
     'updateTaskPosition' : IDL.Func([TaskId, IDL.Nat], [], []),
+    'updateTierLimits' : IDL.Func([UserTier, TierLimits], [], []),
   });
 };
 
