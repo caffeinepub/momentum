@@ -302,7 +302,8 @@ export interface backendInterface {
     promoteToAdmin(target: Principal): Promise<void>;
     removeAdmin(target: Principal): Promise<void>;
     reorderTask(taskId: TaskId, newPosition: bigint): Promise<void>;
-    resetNewDay(completedRoutineIds: Array<RoutineId>): Promise<void>;
+    resetNewDay(): Promise<void>;
+    resetSkippedDay(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveMonetarySettings(settings: MonetarySettings): Promise<void>;
     setUserTier(targetUser: Principal, newTier: UserTier): Promise<void>;
@@ -1078,17 +1079,31 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async resetNewDay(arg0: Array<RoutineId>): Promise<void> {
+    async resetNewDay(): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.resetNewDay(arg0);
+                const result = await this.actor.resetNewDay();
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.resetNewDay(arg0);
+            const result = await this.actor.resetNewDay();
+            return result;
+        }
+    }
+    async resetSkippedDay(): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.resetSkippedDay();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.resetSkippedDay();
             return result;
         }
     }

@@ -1,123 +1,46 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-22T01:51:54.215Z",
+  "generatedAt": "2026-02-22T19:37:23.809Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 10,
-    "implemented": 5,
+    "total": 2,
+    "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Add backend query functions to calculate and return canister storage metrics including total stable memory used, total heap memory used, total number of users, total number of routines across all users, and total number of tasks across all users",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-10",
-        "summary": "Add a navigation link or button to access the admin dashboard from the existing Header component, visible only to admin users",
-        "status": "missing",
+        "summary": "Add safe-area padding to the Header component to accommodate iOS Dynamic Island and Android notches/punch-holes, using CSS env(safe-area-inset-top) for proper spacing around device cutouts",
+        "status": "implemented",
         "plannedFiles": [
           "frontend/src/components/Header.tsx"
         ],
-        "matchedFiles": []
+        "matchedFiles": [
+          "frontend/src/components/Header.tsx"
+        ]
       },
       {
         "id": "REQ-2",
-        "summary": "Add backend query function to return per-user storage breakdown including Principal ID, number of routines, number of tasks, and estimated storage size per user",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Add backend query function to return canister cycle balance",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Implement access control on all storage monitoring backend functions to restrict access to the canister owner only using msg.caller Principal verification",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-5",
-        "summary": "Create a new AdminDashboard page route at /admin that displays storage monitoring metrics with overview cards showing total memory used, user count, total routines, and total tasks",
+        "summary": "Reduce the height of the Morning and Evening routine container elements by 50% in the MorningRoutine component to make them more compact while maintaining all existing functionality",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/AdminDashboard.tsx"
+          "frontend/src/components/MorningRoutine.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/AdminDashboard.tsx"
-        ]
-      },
-      {
-        "id": "REQ-6",
-        "summary": "Add storage usage visualization to the admin dashboard showing memory usage as a percentage of the 4GB canister limit with a progress bar or chart",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/AdminDashboard.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/AdminDashboard.tsx"
-        ]
-      },
-      {
-        "id": "REQ-7",
-        "summary": "Add a per-user data breakdown table to the admin dashboard displaying Principal ID, routine count, task count, and estimated storage size for each user, sorted by storage usage",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/AdminDashboard.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/AdminDashboard.tsx"
-        ]
-      },
-      {
-        "id": "REQ-8",
-        "summary": "Add cycle balance display to the admin dashboard showing current canister cycle balance with formatted units",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/AdminDashboard.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/AdminDashboard.tsx"
-        ]
-      },
-      {
-        "id": "REQ-9",
-        "summary": "Implement frontend access control for the admin dashboard route to restrict access to authorized administrators only, showing an unauthorized message for non-admin users",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/AdminDashboard.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/AdminDashboard.tsx"
+          "frontend/src/components/MorningRoutine.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/components/admin/StorageMonitoring.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/AdminDashboard.tsx",
-    "frontend/src/pages/TaskManager.tsx",
+    "frontend/src/components/Header.tsx",
+    "frontend/src/components/MorningRoutine.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

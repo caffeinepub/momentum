@@ -22,6 +22,7 @@ import UniversalAddTaskDialog from '../components/UniversalAddTaskDialog';
 import CreateListDialog from '../components/CreateListDialog';
 import EditTaskDialog from '../components/EditTaskDialog';
 import PlanModeTipDialog from '../components/PlanModeTipDialog';
+import DayResetDialog from '../components/DayResetDialog';
 import AuthBootstrapLoading from '../components/AuthBootstrapLoading';
 import UnauthenticatedScreen from '../components/UnauthenticatedScreen';
 import { RoutineSection, type TaskCreateInput, type TaskUpdateInput } from '@/backend';
@@ -61,6 +62,7 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
   const { 
     routines, 
     resetNewDay,
+    resetSkippedDay,
     createRoutine,
     deleteRoutine,
     updateRoutinePosition,
@@ -85,6 +87,7 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
   const [editingTask, setEditingTask] = useState<LocalTask | null>(null);
   const [preSelectedListId, setPreSelectedListId] = useState<bigint | null>(null);
   const [planTipOpen, setPlanTipOpen] = useState(false);
+  const [dayResetDialogOpen, setDayResetDialogOpen] = useState(false);
   
   const [isMatrixExpanded, setIsMatrixExpanded] = useState(true);
   const [isMorningExpanded, setIsMorningExpanded] = useState(true);
@@ -374,14 +377,30 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
     });
   };
 
-  const handleResetNewDay = async () => {
+  const handleStartNewDay = () => {
+    setDayResetDialogOpen(true);
+  };
+
+  const handleNextDayReset = async () => {
     try {
-      const completedIds = Array.from(checkedRoutineIds);
-      await resetNewDay.mutateAsync(completedIds);
+      await resetNewDay.mutateAsync();
       setCheckedRoutineIds(new Set());
-      toast.success('New day started! All routines have been reset.');
+      setDayResetDialogOpen(false);
+      toast.success('New day started! Routines have been reset.');
     } catch (error: any) {
-      console.error('Reset new day error:', error);
+      console.error('Next day reset error:', error);
+      toast.error('Failed to reset routines. Please try again.');
+    }
+  };
+
+  const handleSkippedDayReset = async () => {
+    try {
+      await resetSkippedDay.mutateAsync();
+      setCheckedRoutineIds(new Set());
+      setDayResetDialogOpen(false);
+      toast.success('Day skipped! All routines and streaks have been reset.');
+    } catch (error: any) {
+      console.error('Skipped day reset error:', error);
       toast.error('Failed to reset routines. Please try again.');
     }
   };
@@ -393,6 +412,8 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
     setDisplayMode(mode === 1 ? 'reorder' : 'normal');
   };
 
+  const isResettingDay = resetNewDay.isPending || resetSkippedDay.isPending;
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted pb-20">
       {(isHomeMode || (isPlanMode && planLayout === 'homeLike')) && (
@@ -401,8 +422,8 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
           testDate={testDate}
           onTestDateChange={setTestDate}
           showTestDatePicker={isHomeMode}
-          onResetNewDay={handleResetNewDay}
-          isResettingDay={resetNewDay.isPending}
+          onStartNewDay={handleStartNewDay}
+          isResettingDay={isResettingDay}
         />
       )}
 
@@ -505,7 +526,9 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         monetarySettings={monetarySettings}
-        onSaveSettings={saveMonetarySettings.mutateAsync}
+        onSaveSettings={async (settings) => {
+          await saveMonetarySettings.mutateAsync(settings);
+        }}
         isSaving={saveMonetarySettings.isPending}
         earningsEnabled={earningsEnabled}
         onToggleEarnings={handleToggleEarnings}
@@ -516,15 +539,17 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
         open={userInfoOpen}
         onOpenChange={setUserInfoOpen}
         userProfile={userProfile}
-        onSaveProfile={saveProfile.mutateAsync}
+        onSaveProfile={async (profile) => {
+          await saveProfile.mutateAsync(profile);
+        }}
         isSavingProfile={saveProfile.isPending}
       />
 
       <TodayEarnsDialog
         open={todayEarnsOpen}
         onOpenChange={setTodayEarnsOpen}
-        tasks={localTasks}
         routines={routines}
+        tasks={tasks}
         monetarySettings={monetarySettings}
         onSubmitPayroll={handleSubmitPayroll}
         isSubmitting={addPayroll.isPending}
@@ -534,13 +559,25 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
         open={spendPlanOpen}
         onOpenChange={setSpendPlanOpen}
         spends={spends}
-        monetarySettings={monetarySettings}
         presets={presets}
-        onCreateSpend={createSpend.mutateAsync}
-        onDeleteSpend={deleteSpend.mutateAsync}
-        onCreatePreset={createPreset.mutateAsync}
-        onUpdatePreset={async (id, preset) => updatePreset.mutateAsync({ id, preset })}
-        onDeletePreset={deletePreset.mutateAsync}
+        monetarySettings={monetarySettings}
+        onCreateSpend={async (input) => {
+          const result = await createSpend.mutateAsync(input);
+          return result;
+        }}
+        onDeleteSpend={async (id) => {
+          await deleteSpend.mutateAsync(id);
+        }}
+        onCreatePreset={async (preset) => {
+          const result = await createPreset.mutateAsync(preset);
+          return result;
+        }}
+        onUpdatePreset={async (id, preset) => {
+          await updatePreset.mutateAsync({ id, preset });
+        }}
+        onDeletePreset={async (id) => {
+          await deletePreset.mutateAsync(id);
+        }}
         isCreating={createSpend.isPending}
         isDeleting={deleteSpend.isPending}
       />
@@ -548,17 +585,17 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
       <InsightsDialog
         open={insightsOpen}
         onOpenChange={setInsightsOpen}
-        spends={spends}
+        spends={spends || []}
         monetarySettings={monetarySettings}
       />
 
       <UniversalAddTaskDialog
         open={addTaskOpen}
         onOpenChange={setAddTaskOpen}
-        onCreateTask={handleCreateTask}
         lists={localLists}
-        isLoading={createTask.isPending}
         quadrantsReady={quadrantsReady}
+        onCreateTask={handleCreateTask}
+        isLoading={createTask.isPending}
         preSelectedListId={preSelectedListId}
       />
 
@@ -576,7 +613,7 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
           task={editingTask}
           lists={localLists}
           onUpdateTask={handleUpdateTask}
-          isLoading={updateTask.isPending}
+          isLoading={updateTask.isPending || deleteTask.isPending}
         />
       )}
 
@@ -584,6 +621,14 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
         open={planTipOpen}
         onOpenChange={setPlanTipOpen}
         onDismiss={handleDismissPlanTip}
+      />
+
+      <DayResetDialog
+        open={dayResetDialogOpen}
+        onOpenChange={setDayResetDialogOpen}
+        onNextDayReset={handleNextDayReset}
+        onSkippedDayReset={handleSkippedDayReset}
+        isResetting={isResettingDay}
       />
 
       {(isHomeMode || (isPlanMode && planLayout === 'homeLike')) && <Footer />}

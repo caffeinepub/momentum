@@ -2,10 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-create-a-new-admindashboard-page-route-at-admin-that-displays-storage-monitoring-metrics-with-overview-cards-showing-total-memory-used-user-count-total-routines-and-total-tasks",
-      "featureTitle": "Create a new AdminDashboard page route at /admin that displays storage monitoring metrics with overview cards showing total memory used, user count, total routines, and total tasks",
+      "featureId": "feature-add-safe-area-padding-to-the-header-component-to-accommodate-ios-dynamic-island-and-android-notches-punch-holes-using-css-env-safe-area-inset-top-for-proper-spacing-around-device-cutouts",
+      "featureTitle": "Add safe-area padding to the Header component to accommodate iOS Dynamic Island and Android notches/punch-holes, using CSS env(safe-area-inset-top) for proper spacing around device cutouts",
       "files": [
-        "frontend/src/pages/AdminDashboard.tsx"
+        "frontend/src/components/Header.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -16,15 +16,15 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-5"
+        "REQ-1"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-add-storage-usage-visualization-to-the-admin-dashboard-showing-memory-usage-as-a-percentage-of-the-4gb-canister-limit-with-a-progress-bar-or-chart",
-      "featureTitle": "Add storage usage visualization to the admin dashboard showing memory usage as a percentage of the 4GB canister limit with a progress bar or chart",
+      "featureId": "feature-reduce-the-height-of-the-morning-and-evening-routine-container-elements-by-50-in-the-morningroutine-component-to-make-them-more-compact-while-maintaining-all-existing-functionality",
+      "featureTitle": "Reduce the height of the Morning and Evening routine container elements by 50% in the MorningRoutine component to make them more compact while maintaining all existing functionality",
       "files": [
-        "frontend/src/pages/AdminDashboard.tsx"
+        "frontend/src/components/MorningRoutine.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -35,64 +35,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-6"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-a-per-user-data-breakdown-table-to-the-admin-dashboard-displaying-principal-id-routine-count-task-count-and-estimated-storage-size-for-each-user-sorted-by-storage-usage",
-      "featureTitle": "Add a per-user data breakdown table to the admin dashboard displaying Principal ID, routine count, task count, and estimated storage size for each user, sorted by storage usage",
-      "files": [
-        "frontend/src/pages/AdminDashboard.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "authorization@4.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-7"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-cycle-balance-display-to-the-admin-dashboard-showing-current-canister-cycle-balance-with-formatted-units",
-      "featureTitle": "Add cycle balance display to the admin dashboard showing current canister cycle balance with formatted units",
-      "files": [
-        "frontend/src/pages/AdminDashboard.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "authorization@4.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-8"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-implement-frontend-access-control-for-the-admin-dashboard-route-to-restrict-access-to-authorized-administrators-only-showing-an-unauthorized-message-for-non-admin-users",
-      "featureTitle": "Implement frontend access control for the admin dashboard route to restrict access to authorized administrators only, showing an unauthorized message for non-admin users",
-      "files": [
-        "frontend/src/pages/AdminDashboard.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "authorization@4.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-9"
+        "REQ-2"
       ],
       "confidence": "high"
     }

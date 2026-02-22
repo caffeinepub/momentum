@@ -847,29 +847,53 @@ actor {
     };
   };
 
-  public shared ({ caller }) func resetNewDay(completedRoutineIds : [RoutineId]) : async () {
+  public shared ({ caller }) func resetNewDay() : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can perform this action");
     };
 
-    let user = getOrCreateUserInternal(caller);
+    switch (users.get(caller)) {
+      case (null) { Runtime.trap("User not found") };
+      case (?user) {
+        let updatedRoutines = user.routines.map<RoutineId, MorningRoutine, MorningRoutine>(
+          func(_, routine) {
+            {
+              routine with
+              completed = false;
+              streakCount = if (routine.completed) { routine.streakCount + 1 : Nat } else { 0 };
+              strikeCount = if (routine.completed) { routine.strikeCount + 1 : Nat } else { 0 };
+            };
+          }
+        );
 
-    let updatedRoutines = user.routines.map<RoutineId, MorningRoutine, MorningRoutine>(
-      func(id, routine) {
-        let isCompleted = completedRoutineIds.findIndex(func(x) { x == id }) != null;
-        {
-          routine with
-          completed = false;
-          streakCount = if (isCompleted) { routine.streakCount + 1 : Nat } else {
-            0;
-          };
-          strikeCount = if (isCompleted) { routine.strikeCount + 1 : Nat } else { 0 };
-        };
-      }
-    );
+        let newUser = { user with routines = updatedRoutines };
+        users.add(caller, newUser);
+      };
+    };
+  };
 
-    let newUser = { user with routines = updatedRoutines };
-    users.add(caller, newUser);
+  public shared ({ caller }) func resetSkippedDay() : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+
+    switch (users.get(caller)) {
+      case (null) { Runtime.trap("User not found") };
+      case (?user) {
+        let updatedRoutines = user.routines.map<RoutineId, MorningRoutine, MorningRoutine>(
+          func(_, routine) {
+            {
+              routine with
+              completed = false;
+              streakCount = 0;
+            };
+          }
+        );
+
+        let newUser = { user with routines = updatedRoutines };
+        users.add(caller, newUser);
+      };
+    };
   };
 
   public query ({ caller }) func getPayrollHistory() : async [PayrollRecord] {

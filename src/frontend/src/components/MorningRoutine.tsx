@@ -345,20 +345,21 @@ export default function MorningRoutine({
         onTouchStart={(e) => handleTouchStart(e, routine.id)}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`relative flex items-center gap-2 p-2 pr-3 rounded-md bg-background/50 hover:bg-accent/30 transition-all duration-300 ease-out group no-text-select ${
-          isReorderMode ? 'cursor-move' : 'cursor-pointer'
-        } ${isDragging ? 'opacity-50 scale-95' : ''} ${isDragOver ? 'ring-2 ring-primary' : ''} ${streakClass}`}
+        className={`relative flex items-center gap-2 p-2 pr-3 rounded-md bg-background/50 hover:bg-accent/30 transition-all ${
+          isDragging ? 'opacity-50' : ''
+        } ${isDragOver ? 'border-2 border-primary' : ''} ${streakClass}`}
       >
         {isReorderMode && (
-          <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          <div className="cursor-grab active:cursor-grabbing">
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </div>
         )}
         
         <input
           type="checkbox"
           checked={isChecked}
           onChange={() => onToggleChecked(routine.id)}
-          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary flex-shrink-0"
-          onClick={(e) => e.stopPropagation()}
+          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
         />
         
         <span className={`flex-1 text-sm ${isChecked ? 'line-through text-muted-foreground' : ''}`}>
@@ -366,22 +367,20 @@ export default function MorningRoutine({
         </span>
         
         {showStreakCounter && (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 flex-shrink-0">
-            <Flame className="h-3 w-3 text-orange-500" />
-            <span className="text-xs font-semibold text-orange-700 dark:text-orange-400">
-              {displayBadgeCount}
-            </span>
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-600 dark:text-orange-400">
+            <Flame className="h-3 w-3" />
+            <span className="text-xs font-medium">{displayBadgeCount}</span>
           </div>
         )}
         
         {isReorderMode && (
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
+            className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={(e) => handleDeleteClick(e, routine.id)}
-            className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
           >
-            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         )}
       </div>
@@ -389,91 +388,96 @@ export default function MorningRoutine({
   };
 
   return (
-    <>
-      <div 
-        className="w-full rounded-lg border bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden transition-all duration-300 ease-out"
-        style={{
-          height: isExpanded ? '50vh' : '56px',
-          willChange: 'height',
-        }}
+    <div className="w-full">
+      <div
+        className={`rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden ${
+          !isExpanded ? 'cursor-pointer' : ''
+        }`}
+        onClick={!isExpanded ? onToggleExpand : undefined}
       >
-        <div 
-          className={`sticky top-0 z-10 flex w-full items-center justify-between p-3 ${headerGradient} backdrop-blur-md rounded-t-lg border-b cursor-pointer`}
-          onClick={onToggleExpand}
-        >
+        {/* Header */}
+        <div className={`${headerGradient} px-4 py-2 flex items-center justify-between`}>
           <div className="flex items-center gap-2">
-            <ChevronDown 
-              className={`h-5 w-5 text-gray-800 dark:text-gray-100 transition-transform duration-300 ease-out`}
-              style={{
-                transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
-                willChange: 'transform',
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleExpand();
               }}
-            />
-            <h2 className="text-xl font-bold tracking-tight text-gray-800 dark:text-gray-100">{sectionTitle}</h2>
+              className="p-1 hover:bg-white/20 rounded transition-colors"
+              aria-label={isExpanded ? 'Collapse' : 'Expand'}
+            >
+              <ChevronDown
+                className={`h-4 w-4 text-foreground transition-transform ${
+                  isExpanded ? 'rotate-0' : '-rotate-90'
+                }`}
+              />
+            </button>
+            <h2 className="text-base font-semibold text-foreground">{sectionTitle}</h2>
+            <span className="text-xs text-muted-foreground">({routines.length})</span>
           </div>
           
           {isExpanded && (
-            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-              {!isReorderMode ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-gray-800 dark:text-gray-100">2 Columns</span>
-                    <Switch
-                      checked={isTwoColumn}
-                      onCheckedChange={handleSwitchChange}
-                      className="data-[state=checked]:bg-gray-800 dark:data-[state=checked]:bg-gray-100"
-                    />
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleOpenDialog}
-                    className="h-8 px-3 text-gray-800 dark:text-gray-100 hover:bg-white/20 dark:hover:bg-black/20"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </>
-              ) : (
+            <div className="flex items-center gap-2">
+              {isReorderMode ? (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleExitReorderMode}
-                  className="h-8 px-3 text-gray-800 dark:text-gray-100 hover:bg-white/20 dark:hover:bg-black/20 border-2 border-gray-800 dark:border-gray-100"
+                  className="h-7 text-xs"
                 >
                   Done
                 </Button>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">2 Columns</span>
+                    <Switch
+                      checked={isTwoColumn}
+                      onCheckedChange={handleSwitchChange}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleOpenDialog}
+                    className="h-7 w-7"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </>
               )}
             </div>
           )}
         </div>
 
-        <div 
-          className="p-4 overflow-y-auto transition-opacity duration-300 ease-out"
-          style={{
-            height: 'calc(100% - 56px)',
-            opacity: isExpanded ? 1 : 0,
-            pointerEvents: isExpanded ? 'auto' : 'none',
-            willChange: 'opacity',
-          }}
-        >
-          {sortedRoutines.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-              No routines yet. Click + to add one.
-            </div>
-          ) : (
-            <div className={`grid gap-2 ${isTwoColumn ? 'grid-cols-2' : 'grid-cols-1'}`}>
-              {sortedRoutines.map(renderRoutineItem)}
-            </div>
-          )}
-        </div>
+        {/* Content */}
+        {isExpanded && (
+          <div className="p-3" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : sortedRoutines.length === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                No routines yet. Click + to add one.
+              </div>
+            ) : (
+              <div className={`space-y-2 ${isTwoColumn ? 'grid grid-cols-2 gap-2' : ''}`}>
+                {sortedRoutines.map(renderRoutineItem)}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
+      {/* Add Routine Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add {sectionTitle} Item</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="py-4">
             <Input
               placeholder="Enter routine item..."
               value={newItemText}
@@ -493,7 +497,8 @@ export default function MorningRoutine({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={deleteConfirmRoutineId !== null} onOpenChange={(open) => !open && handleCancelDelete()}>
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmRoutineId !== null} onOpenChange={handleCancelDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Routine Item?</AlertDialogTitle>
@@ -509,6 +514,6 @@ export default function MorningRoutine({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }
