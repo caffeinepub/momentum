@@ -1,24 +1,27 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-22T19:37:23.807Z",
-  "summary": "The diff implements both requirements. REQ-1 adds safe-area-inset-top padding to the Header component. REQ-2 is partially visible in the truncated MorningRoutine.tsx diff but the actual height reduction implementation is not shown in the provided content. No hallucinated features detected.",
-  "missing_requirements": [
+  "generatedAt": "2026-02-22T16:12:25.621Z",
+  "summary": "The implementation successfully addresses all requirements. The 'Reset New Day' button has been removed from the Header, replaced by a centered 'Start New Day' button that opens a dialog. The dialog contains both 'Next Day Reset' and 'Skipped Day Reset' buttons with clear labeling and visual distinction. The backend implements the resetSkippedDay function that unchecks all routines and resets streaks to 0. The frontend correctly connects the Skipped Day Reset button to the backend, provides success feedback, updates the UI, and closes the dialog after completion.",
+  "missing_requirements": [],
+  "hallucinated_features": [
     {
-      "id": "REQ-2",
-      "requirement": "Reduce the height of the Morning and Evening routine container elements by 50%",
-      "reason": "The MorningRoutine.tsx file was modified but the diff is truncated. The visible portion shows component structure and handlers but does not show the actual container height reduction implementation (e.g., reduced height styles or className changes for the routine containers).",
+      "description": "Migration module added to backend/migration.mo",
+      "reason": "The BuildRequest does not mention creating a migration module or migration functionality. This was implemented without being requested.",
       "evidence": [
-        "frontend/src/components/MorningRoutine.tsx"
+        "backend/migration.mo"
       ]
     }
   ],
-  "hallucinated_features": [],
-  "confidence": 0.75,
+  "confidence": 0.95,
   "changed_files": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "frontend-file-summaries.txt",
     "frontend/src/components/Header.tsx",
-    "frontend/src/components/MorningRoutine.tsx",
+    "frontend/src/components/StartNewDayDialog.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/TaskManager.tsx",
     "project_state.json"
   ]
 }

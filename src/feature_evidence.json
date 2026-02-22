@@ -2,8 +2,8 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-add-safe-area-padding-to-the-header-component-to-accommodate-ios-dynamic-island-and-android-notches-punch-holes-using-css-env-safe-area-inset-top-for-proper-spacing-around-device-cutouts",
-      "featureTitle": "Add safe-area padding to the Header component to accommodate iOS Dynamic Island and Android notches/punch-holes, using CSS env(safe-area-inset-top) for proper spacing around device cutouts",
+      "featureId": "feature-remove-the-existing-reset-new-day-button-from-the-header-component",
+      "featureTitle": "Remove the existing 'Reset New Day' button from the Header component",
       "files": [
         "frontend/src/components/Header.tsx"
       ],
@@ -21,10 +21,11 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-reduce-the-height-of-the-morning-and-evening-routine-container-elements-by-50-in-the-morningroutine-component-to-make-them-more-compact-while-maintaining-all-existing-functionality",
-      "featureTitle": "Reduce the height of the Morning and Evening routine container elements by 50% in the MorningRoutine component to make them more compact while maintaining all existing functionality",
+      "featureId": "feature-add-a-new-start-new-day-button-in-the-center-of-the-header-component-that-opens-a-popup-dialog",
+      "featureTitle": "Add a new 'Start New Day' button in the center of the Header component that opens a popup dialog",
       "files": [
-        "frontend/src/components/MorningRoutine.tsx"
+        "frontend/src/components/Header.tsx",
+        "frontend/src/components/StartNewDayDialog.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -36,6 +37,46 @@
       ],
       "testIds": [
         "REQ-2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-create-a-popup-dialog-with-two-reset-buttons-next-day-reset-with-the-original-reset-functionality-and-skipped-day-reset",
+      "featureTitle": "Create a popup dialog with two reset buttons: 'Next Day Reset' (with the original reset functionality) and 'Skipped Day Reset'",
+      "files": [
+        "frontend/src/components/StartNewDayDialog.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "authorization@4.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-connect-the-skipped-day-reset-button-in-the-popup-to-the-backend-reset-function-and-handle-the-response",
+      "featureTitle": "Connect the 'Skipped Day Reset' button in the popup to the backend reset function and handle the response",
+      "files": [
+        "frontend/src/components/StartNewDayDialog.tsx",
+        "frontend/src/pages/TaskManager.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "authorization@4.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-5"
       ],
       "confidence": "high"
     }

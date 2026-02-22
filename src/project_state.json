@@ -1,30 +1,77 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "New project",
-  "architectural_notes": [],
+  "summary": "Routine tracking app with daily reset functionality",
+  "architectural_notes": [
+    "App includes routine tracking with streak counting functionality",
+    "Header contains reset functionality for daily routine management"
+  ],
   "known_issues": [],
   "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-add-safe-area-padding-to-the-header-component-to-accommodate-ios-dynamic-island-and-android-notches-punch-holes-using-css-env-safe-area-inset-top-for-proper-spacing-around-device-cutouts",
-      "title": "Add safe-area padding to the Header component to accommodate iOS Dynamic Island and Android notches/punch-holes, using CSS env(safe-area-inset-top) for proper spacing around device cutouts",
+      "id": "feature-remove-the-existing-reset-new-day-button-from-the-header-component",
+      "title": "Remove the existing 'Reset New Day' button from the Header component",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-reduce-the-height-of-the-morning-and-evening-routine-container-elements-by-50-in-the-morningroutine-component-to-make-them-more-compact-while-maintaining-all-existing-functionality",
-      "title": "Reduce the height of the Morning and Evening routine container elements by 50% in the MorningRoutine component to make them more compact while maintaining all existing functionality",
+      "id": "feature-add-a-new-start-new-day-button-in-the-center-of-the-header-component-that-opens-a-popup-dialog",
+      "title": "Add a new 'Start New Day' button in the center of the Header component that opens a popup dialog",
       "reqIds": [
         "REQ-2"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-create-a-popup-dialog-with-two-reset-buttons-next-day-reset-with-the-original-reset-functionality-and-skipped-day-reset",
+      "title": "Create a popup dialog with two reset buttons: 'Next Day Reset' (with the original reset functionality) and 'Skipped Day Reset'",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-connect-the-skipped-day-reset-button-in-the-popup-to-the-backend-reset-function-and-handle-the-response",
+      "title": "Connect the 'Skipped Day Reset' button in the popup to the backend reset function and handle the response",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
     }
   ],
-  "new_feature_requests": [],
-  "projectName": "Routine Tracker",
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Add 'Start New Day' button in header that opens popup with two reset options",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Move existing 'Reset New Day' button into popup and rename to 'Next Day Reset'",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Add 'Skipped Day Reset' button that unchecks all routines and resets all streak counts to 0",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Implement 'Skipped Day Reset' functionality in the backend that unchecks all routines AND resets all streak counts to 0",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "Momentum",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

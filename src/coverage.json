@@ -1,18 +1,18 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-22T19:37:23.809Z",
+  "generatedAt": "2026-02-22T16:12:25.625Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 2,
-    "implemented": 2,
+    "total": 5,
+    "implemented": 4,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Add safe-area padding to the Header component to accommodate iOS Dynamic Island and Android notches/punch-holes, using CSS env(safe-area-inset-top) for proper spacing around device cutouts",
+        "summary": "Remove the existing 'Reset New Day' button from the Header component",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/components/Header.tsx"
@@ -23,24 +23,67 @@
       },
       {
         "id": "REQ-2",
-        "summary": "Reduce the height of the Morning and Evening routine container elements by 50% in the MorningRoutine component to make them more compact while maintaining all existing functionality",
+        "summary": "Add a new 'Start New Day' button in the center of the Header component that opens a popup dialog",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/MorningRoutine.tsx"
+          "frontend/src/components/Header.tsx",
+          "frontend/src/components/StartNewDayDialog.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/MorningRoutine.tsx"
+          "frontend/src/components/Header.tsx",
+          "frontend/src/components/StartNewDayDialog.tsx"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Create a popup dialog with two reset buttons: 'Next Day Reset' (with the original reset functionality) and 'Skipped Day Reset'",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/StartNewDayDialog.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/StartNewDayDialog.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ]
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Implement 'Skipped Day Reset' functionality in the backend that unchecks all routines AND resets all streak counts to 0",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-5",
+        "summary": "Connect the 'Skipped Day Reset' button in the popup to the backend reset function and handle the response",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/StartNewDayDialog.tsx",
+          "frontend/src/pages/TaskManager.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/StartNewDayDialog.tsx",
+          "frontend/src/pages/TaskManager.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
     "frontend/src/components/Header.tsx",
-    "frontend/src/components/MorningRoutine.tsx",
+    "frontend/src/components/StartNewDayDialog.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/TaskManager.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

@@ -22,7 +22,7 @@ import UniversalAddTaskDialog from '../components/UniversalAddTaskDialog';
 import CreateListDialog from '../components/CreateListDialog';
 import EditTaskDialog from '../components/EditTaskDialog';
 import PlanModeTipDialog from '../components/PlanModeTipDialog';
-import DayResetDialog from '../components/DayResetDialog';
+import StartNewDayDialog from '../components/StartNewDayDialog';
 import AuthBootstrapLoading from '../components/AuthBootstrapLoading';
 import UnauthenticatedScreen from '../components/UnauthenticatedScreen';
 import { RoutineSection, type TaskCreateInput, type TaskUpdateInput } from '@/backend';
@@ -87,7 +87,7 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
   const [editingTask, setEditingTask] = useState<LocalTask | null>(null);
   const [preSelectedListId, setPreSelectedListId] = useState<bigint | null>(null);
   const [planTipOpen, setPlanTipOpen] = useState(false);
-  const [dayResetDialogOpen, setDayResetDialogOpen] = useState(false);
+  const [startNewDayOpen, setStartNewDayOpen] = useState(false);
   
   const [isMatrixExpanded, setIsMatrixExpanded] = useState(true);
   const [isMorningExpanded, setIsMorningExpanded] = useState(true);
@@ -315,6 +315,17 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
     }
   };
 
+  const handleDeleteTask = async (taskId: bigint) => {
+    try {
+      await deleteTask.mutateAsync(taskId);
+      if (editingTask && editingTask.id === taskId) {
+        setEditingTask(null);
+      }
+    } catch (error) {
+      console.error('Delete task error:', error);
+    }
+  };
+
   const handleToggleEarnings = async (enabled: boolean) => {
     try {
       await toggleEarningsSystem.mutateAsync(enabled);
@@ -333,21 +344,41 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
     }
   };
 
-  const handleOpenAddTask = (listId?: bigint) => {
-    if (listId) {
-      setPreSelectedListId(listId);
-    } else {
-      setPreSelectedListId(null);
+  const handleResetNewDay = async () => {
+    const completedIds = Array.from(checkedRoutineIds);
+    try {
+      await resetNewDay.mutateAsync(completedIds);
+      setCheckedRoutineIds(new Set());
+      setStartNewDayOpen(false);
+      toast.success('Day reset successfully! All routines unchecked and streaks updated.');
+    } catch (error: any) {
+      console.error('Reset new day error:', error);
+      toast.error('Failed to reset day. Please try again.');
     }
-    setAddTaskOpen(true);
   };
 
-  const handleSwitchToPlanMode = () => {
-    setAppMode.mutate(1);
+  const handleResetSkippedDay = async () => {
+    try {
+      await resetSkippedDay.mutateAsync();
+      setCheckedRoutineIds(new Set());
+      setStartNewDayOpen(false);
+      toast.success('Skipped day reset! All routines unchecked and streaks reset to 0.');
+    } catch (error: any) {
+      console.error('Reset skipped day error:', error);
+      toast.error('Failed to reset skipped day. Please try again.');
+    }
   };
 
-  const handlePlanModeX = () => {
-    setPlanLayout('homeLike');
+  const handleRoutineCheckChange = (routineId: bigint) => {
+    setCheckedRoutineIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(routineId)) {
+        newSet.delete(routineId);
+      } else {
+        newSet.add(routineId);
+      }
+      return newSet;
+    });
   };
 
   const handleCreateRoutine = async (text: string, section: RoutineSection) => {
@@ -360,150 +391,209 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
     }
   };
 
-  const handleDismissPlanTip = () => {
-    markPlanTipAsShown();
-    setPlanTipOpen(false);
-  };
-
-  const handleToggleRoutineChecked = (id: bigint) => {
-    setCheckedRoutineIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
+  const handleDeleteRoutine = async (id: bigint) => {
+    try {
+      await deleteRoutine.mutateAsync(id);
+      setCheckedRoutineIds(prev => {
+        const newSet = new Set(prev);
         newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
-
-  const handleStartNewDay = () => {
-    setDayResetDialogOpen(true);
-  };
-
-  const handleNextDayReset = async () => {
-    try {
-      await resetNewDay.mutateAsync();
-      setCheckedRoutineIds(new Set());
-      setDayResetDialogOpen(false);
-      toast.success('New day started! Routines have been reset.');
-    } catch (error: any) {
-      console.error('Next day reset error:', error);
-      toast.error('Failed to reset routines. Please try again.');
+        return newSet;
+      });
+    } catch (error) {
+      console.error('Delete routine error:', error);
     }
   };
 
-  const handleSkippedDayReset = async () => {
+  const handleRoutineReorder = async (routineId: bigint, positionIndex: bigint) => {
     try {
-      await resetSkippedDay.mutateAsync();
-      setCheckedRoutineIds(new Set());
-      setDayResetDialogOpen(false);
-      toast.success('Day skipped! All routines and streaks have been reset.');
-    } catch (error: any) {
-      console.error('Skipped day reset error:', error);
-      toast.error('Failed to reset routines. Please try again.');
+      await updateRoutinePosition.mutateAsync({ routineId, positionIndex });
+    } catch (error) {
+      console.error('Routine reorder error:', error);
     }
   };
-
-  // Convert displayMode to number for MorningRoutine component
-  const displayModeNumber = displayMode === 'reorder' ? 1 : 0;
-  
-  const handleToggleDisplayMode = (mode: number) => {
-    setDisplayMode(mode === 1 ? 'reorder' : 'normal');
-  };
-
-  const isResettingDay = resetNewDay.isPending || resetSkippedDay.isPending;
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted pb-20">
-      {(isHomeMode || (isPlanMode && planLayout === 'homeLike')) && (
-        <Header 
-          onOpenAdminDashboard={onOpenAdminDashboard}
-          testDate={testDate}
-          onTestDateChange={setTestDate}
-          showTestDatePicker={isHomeMode}
-          onStartNewDay={handleStartNewDay}
-          isResettingDay={isResettingDay}
-        />
-      )}
-
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {(isHomeMode || (isPlanMode && planLayout === 'homeLike')) && (
-          <MorningRoutine
-            section={RoutineSection.top}
-            routines={morningRoutines}
-            onCreateRoutine={handleCreateRoutine}
-            onDeleteRoutine={async (id) => {
-              await deleteRoutine.mutateAsync(id);
-            }}
-            onReorderRoutine={async (routineId, positionIndex) => {
-              await updateRoutinePosition.mutateAsync({ routineId, positionIndex });
-            }}
-            displayMode={displayModeNumber}
-            onToggleDisplayMode={handleToggleDisplayMode}
-            isExpanded={isMorningExpanded}
-            onToggleExpand={() => setIsMorningExpanded(!isMorningExpanded)}
-            testDate={testDate}
-            checkedRoutineIds={checkedRoutineIds}
-            onToggleChecked={handleToggleRoutineChecked}
-          />
-        )}
-
-        <EisenhowerMatrix
-          tasks={localTasks}
-          quadrantLists={quadrantLists}
-          onDragStart={handleDragStart}
-          onDrop={handleDrop}
-          onTouchDrop={handleTouchDrop}
-          onReorder={handleReorder}
-          onEditTask={setEditingTask}
-          onDeleteTask={(id) => deleteTask.mutate(id)}
-          onToggleComplete={handleToggleComplete}
-          isExpanded={isMatrixExpanded}
-          onToggleExpand={() => setIsMatrixExpanded(!isMatrixExpanded)}
-          isPlanMode={isPlanMode}
-          onSwitchToPlanMode={handleSwitchToPlanMode}
-        />
-
-        {(isHomeMode || (isPlanMode && planLayout === 'homeLike')) && (
-          <MorningRoutine
-            section={RoutineSection.bottom}
-            routines={eveningRoutines}
-            onCreateRoutine={handleCreateRoutine}
-            onDeleteRoutine={async (id) => {
-              await deleteRoutine.mutateAsync(id);
-            }}
-            onReorderRoutine={async (routineId, positionIndex) => {
-              await updateRoutinePosition.mutateAsync({ routineId, positionIndex });
-            }}
-            displayMode={displayModeNumber}
-            onToggleDisplayMode={handleToggleDisplayMode}
-            isExpanded={isEveningExpanded}
-            onToggleExpand={() => setIsEveningExpanded(!isEveningExpanded)}
-            testDate={testDate}
-            checkedRoutineIds={checkedRoutineIds}
-            onToggleChecked={handleToggleRoutineChecked}
-          />
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted">
+      <Header 
+        onOpenAdminDashboard={onOpenAdminDashboard}
+        testDate={testDate}
+        onTestDateChange={setTestDate}
+        showTestDatePicker={false}
+        onOpenStartNewDay={() => setStartNewDayOpen(true)}
+      />
+      
+      <main className="flex-1 container mx-auto px-2 sm:px-4 py-4 pb-20">
+        {isHomeMode && (
+          <div className="space-y-4">
+            <MorningRoutine
+              section={RoutineSection.top}
+              routines={morningRoutines}
+              onCreateRoutine={handleCreateRoutine}
+              onDeleteRoutine={handleDeleteRoutine}
+              onReorderRoutine={handleRoutineReorder}
+              displayMode={displayMode}
+              onToggleDisplayMode={setDisplayMode}
+              isExpanded={isMorningExpanded}
+              onToggleExpand={() => setIsMorningExpanded(!isMorningExpanded)}
+              checkedRoutineIds={checkedRoutineIds}
+              onToggleChecked={handleRoutineCheckChange}
+            />
+            
+            <EisenhowerMatrix
+              quadrantLists={quadrantLists}
+              tasks={localTasks}
+              onDragStart={handleDragStart}
+              onDrop={handleDrop}
+              onTouchDrop={handleTouchDrop}
+              onToggleComplete={handleToggleComplete}
+              onEditTask={setEditingTask}
+              onDeleteTask={handleDeleteTask}
+              onReorder={handleReorder}
+              isExpanded={isMatrixExpanded}
+              onToggleExpand={() => setIsMatrixExpanded(!isMatrixExpanded)}
+              isPlanMode={false}
+            />
+            
+            <CustomLists
+              lists={customLists}
+              tasks={localTasks}
+              onDragStart={handleDragStart}
+              onDrop={handleDrop}
+              onTouchDrop={handleTouchDrop}
+              onToggleComplete={handleToggleComplete}
+              onEditTask={setEditingTask}
+              onDeleteTask={handleDeleteTask}
+              onReorder={handleReorder}
+              onDeleteList={deleteList.mutateAsync}
+              onQuickAddTask={(listId) => {
+                setPreSelectedListId(listId);
+                setAddTaskOpen(true);
+              }}
+              onCreateTask={() => setAddTaskOpen(true)}
+              onCreateList={() => setCreateListOpen(true)}
+              isPlanMode={false}
+            />
+            
+            <MorningRoutine
+              section={RoutineSection.bottom}
+              routines={eveningRoutines}
+              onCreateRoutine={handleCreateRoutine}
+              onDeleteRoutine={handleDeleteRoutine}
+              onReorderRoutine={handleRoutineReorder}
+              displayMode={displayMode}
+              onToggleDisplayMode={setDisplayMode}
+              isExpanded={isEveningExpanded}
+              onToggleExpand={() => setIsEveningExpanded(!isEveningExpanded)}
+              checkedRoutineIds={checkedRoutineIds}
+              onToggleChecked={handleRoutineCheckChange}
+            />
+          </div>
         )}
 
         {isPlanMode && planLayout === 'lists' && (
-          <CustomLists
-            tasks={localTasks}
-            lists={customLists}
-            onDragStart={handleDragStart}
-            onDrop={handleDrop}
-            onTouchDrop={handleTouchDrop}
-            onReorder={handleReorder}
-            onEditTask={setEditingTask}
-            onDeleteTask={(id) => deleteTask.mutate(id)}
-            onDeleteList={(id) => deleteList.mutate(id)}
-            onToggleComplete={handleToggleComplete}
-            onCreateTask={() => handleOpenAddTask()}
-            onCreateList={() => setCreateListOpen(true)}
-            onQuickAddTask={(listId) => handleOpenAddTask(listId)}
-            isHidden={false}
-            isPlanMode={isPlanMode}
-          />
+          <div className="space-y-4">
+            <EisenhowerMatrix
+              quadrantLists={quadrantLists}
+              tasks={localTasks}
+              onDragStart={handleDragStart}
+              onDrop={handleDrop}
+              onTouchDrop={handleTouchDrop}
+              onToggleComplete={handleToggleComplete}
+              onEditTask={setEditingTask}
+              onDeleteTask={handleDeleteTask}
+              onReorder={handleReorder}
+              isExpanded={isMatrixExpanded}
+              onToggleExpand={() => setIsMatrixExpanded(!isMatrixExpanded)}
+              isPlanMode={true}
+            />
+            
+            <CustomLists
+              lists={customLists}
+              tasks={localTasks}
+              onDragStart={handleDragStart}
+              onDrop={handleDrop}
+              onTouchDrop={handleTouchDrop}
+              onToggleComplete={handleToggleComplete}
+              onEditTask={setEditingTask}
+              onDeleteTask={handleDeleteTask}
+              onReorder={handleReorder}
+              onDeleteList={deleteList.mutateAsync}
+              onQuickAddTask={(listId) => {
+                setPreSelectedListId(listId);
+                setAddTaskOpen(true);
+              }}
+              onCreateTask={() => setAddTaskOpen(true)}
+              onCreateList={() => setCreateListOpen(true)}
+              isPlanMode={true}
+            />
+          </div>
+        )}
+
+        {isPlanMode && planLayout === 'homeLike' && (
+          <div className="space-y-4">
+            <MorningRoutine
+              section={RoutineSection.top}
+              routines={morningRoutines}
+              onCreateRoutine={handleCreateRoutine}
+              onDeleteRoutine={handleDeleteRoutine}
+              onReorderRoutine={handleRoutineReorder}
+              displayMode={displayMode}
+              onToggleDisplayMode={setDisplayMode}
+              isExpanded={isMorningExpanded}
+              onToggleExpand={() => setIsMorningExpanded(!isMorningExpanded)}
+              checkedRoutineIds={checkedRoutineIds}
+              onToggleChecked={handleRoutineCheckChange}
+            />
+            
+            <EisenhowerMatrix
+              quadrantLists={quadrantLists}
+              tasks={localTasks}
+              onDragStart={handleDragStart}
+              onDrop={handleDrop}
+              onTouchDrop={handleTouchDrop}
+              onToggleComplete={handleToggleComplete}
+              onEditTask={setEditingTask}
+              onDeleteTask={handleDeleteTask}
+              onReorder={handleReorder}
+              isExpanded={isMatrixExpanded}
+              onToggleExpand={() => setIsMatrixExpanded(!isMatrixExpanded)}
+              isPlanMode={true}
+            />
+            
+            <CustomLists
+              lists={customLists}
+              tasks={localTasks}
+              onDragStart={handleDragStart}
+              onDrop={handleDrop}
+              onTouchDrop={handleTouchDrop}
+              onToggleComplete={handleToggleComplete}
+              onEditTask={setEditingTask}
+              onDeleteTask={handleDeleteTask}
+              onReorder={handleReorder}
+              onDeleteList={deleteList.mutateAsync}
+              onQuickAddTask={(listId) => {
+                setPreSelectedListId(listId);
+                setAddTaskOpen(true);
+              }}
+              onCreateTask={() => setAddTaskOpen(true)}
+              onCreateList={() => setCreateListOpen(true)}
+              isPlanMode={true}
+            />
+            
+            <MorningRoutine
+              section={RoutineSection.bottom}
+              routines={eveningRoutines}
+              onCreateRoutine={handleCreateRoutine}
+              onDeleteRoutine={handleDeleteRoutine}
+              onReorderRoutine={handleRoutineReorder}
+              displayMode={displayMode}
+              onToggleDisplayMode={setDisplayMode}
+              isExpanded={isEveningExpanded}
+              onToggleExpand={() => setIsEveningExpanded(!isEveningExpanded)}
+              checkedRoutineIds={checkedRoutineIds}
+              onToggleChecked={handleRoutineCheckChange}
+            />
+          </div>
         )}
       </main>
 
@@ -511,26 +601,25 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
         isPlanMode={isPlanMode}
         planLayout={planLayout}
         onSwitchMode={(mode) => setAppMode.mutate(mode)}
-        onPlanModeX={handlePlanModeX}
-        onAddTask={() => handleOpenAddTask()}
+        onAddTask={() => setAddTaskOpen(true)}
         onAddList={() => setCreateListOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenUserInfo={() => setUserInfoOpen(true)}
         onOpenTodayEarns={() => setTodayEarnsOpen(true)}
         onOpenSpendPlan={() => setSpendPlanOpen(true)}
         onOpenInsights={() => setInsightsOpen(true)}
-        onOpenUserInfo={() => setUserInfoOpen(true)}
-        earningsEnabled={earningsEnabled}
+        earningsEnabled={earningsEnabled ?? true}
       />
+
+      <Footer />
 
       <SettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         monetarySettings={monetarySettings}
-        onSaveSettings={async (settings) => {
-          await saveMonetarySettings.mutateAsync(settings);
-        }}
+        onSaveSettings={saveMonetarySettings.mutateAsync}
         isSaving={saveMonetarySettings.isPending}
-        earningsEnabled={earningsEnabled}
+        earningsEnabled={earningsEnabled ?? true}
         onToggleEarnings={handleToggleEarnings}
         isTogglingEarnings={toggleEarningsSystem.isPending}
       />
@@ -539,17 +628,15 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
         open={userInfoOpen}
         onOpenChange={setUserInfoOpen}
         userProfile={userProfile}
-        onSaveProfile={async (profile) => {
-          await saveProfile.mutateAsync(profile);
-        }}
+        onSaveProfile={saveProfile.mutateAsync}
         isSavingProfile={saveProfile.isPending}
       />
 
       <TodayEarnsDialog
         open={todayEarnsOpen}
         onOpenChange={setTodayEarnsOpen}
-        routines={routines}
-        tasks={tasks}
+        routines={routines || []}
+        tasks={localTasks}
         monetarySettings={monetarySettings}
         onSubmitPayroll={handleSubmitPayroll}
         isSubmitting={addPayroll.isPending}
@@ -558,26 +645,14 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
       <SpendPlanDialog
         open={spendPlanOpen}
         onOpenChange={setSpendPlanOpen}
-        spends={spends}
-        presets={presets}
+        spends={spends || []}
+        presets={presets || []}
         monetarySettings={monetarySettings}
-        onCreateSpend={async (input) => {
-          const result = await createSpend.mutateAsync(input);
-          return result;
-        }}
-        onDeleteSpend={async (id) => {
-          await deleteSpend.mutateAsync(id);
-        }}
-        onCreatePreset={async (preset) => {
-          const result = await createPreset.mutateAsync(preset);
-          return result;
-        }}
-        onUpdatePreset={async (id, preset) => {
-          await updatePreset.mutateAsync({ id, preset });
-        }}
-        onDeletePreset={async (id) => {
-          await deletePreset.mutateAsync(id);
-        }}
+        onCreateSpend={createSpend.mutateAsync}
+        onDeleteSpend={deleteSpend.mutateAsync}
+        onCreatePreset={createPreset.mutateAsync}
+        onUpdatePreset={(id, preset) => updatePreset.mutateAsync({ id, preset })}
+        onDeletePreset={deletePreset.mutateAsync}
         isCreating={createSpend.isPending}
         isDeleting={deleteSpend.isPending}
       />
@@ -613,25 +688,32 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
           task={editingTask}
           lists={localLists}
           onUpdateTask={handleUpdateTask}
-          isLoading={updateTask.isPending || deleteTask.isPending}
+          isLoading={updateTask.isPending}
         />
       )}
 
       <PlanModeTipDialog
         open={planTipOpen}
-        onOpenChange={setPlanTipOpen}
-        onDismiss={handleDismissPlanTip}
+        onOpenChange={(open) => {
+          setPlanTipOpen(open);
+          if (!open) {
+            markPlanTipAsShown();
+          }
+        }}
+        onDismiss={() => {
+          setPlanTipOpen(false);
+          markPlanTipAsShown();
+        }}
       />
 
-      <DayResetDialog
-        open={dayResetDialogOpen}
-        onOpenChange={setDayResetDialogOpen}
-        onNextDayReset={handleNextDayReset}
-        onSkippedDayReset={handleSkippedDayReset}
-        isResetting={isResettingDay}
+      <StartNewDayDialog
+        open={startNewDayOpen}
+        onOpenChange={setStartNewDayOpen}
+        onNextDayReset={handleResetNewDay}
+        onSkippedDayReset={handleResetSkippedDay}
+        isResettingNextDay={resetNewDay.isPending}
+        isResettingSkipped={resetSkippedDay.isPending}
       />
-
-      {(isHomeMode || (isPlanMode && planLayout === 'homeLike')) && <Footer />}
     </div>
   );
 }

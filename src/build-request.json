@@ -1,57 +1,108 @@
 {
   "kind": "build_request",
-  "title": "Add safe-area padding and compact routine containers",
-  "projectName": "Routine Tracker",
+  "title": "Add Start New Day popup with reset options",
+  "projectName": "Momentum",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Add safe-area padding to the Header component to accommodate iOS Dynamic Island and Android notches/punch-holes, using CSS env(safe-area-inset-top) for proper spacing around device cutouts",
+      "text": "Remove the existing 'Reset New Day' button from the Header component",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-20"
         ],
         "quotes": [
-          "Add safe-area padding to the header for iOS Dynamic Island and Android notches/punch-holes"
+          "Move the existing \"Reset New Day\" button from the header into a popup"
         ]
       },
       "acceptanceCriteria": [
-        "Header has top padding that respects device safe-area-inset-top",
-        "Header content is not obscured by iOS Dynamic Island or Android notches/punch-holes",
-        "Safe-area padding is applied using CSS environment variables"
+        "The 'Reset New Day' button is no longer visible in the Header component",
+        "The button's functionality is preserved for use in the popup"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Reduce the height of the Morning and Evening routine container elements by 50% in the MorningRoutine component to make them more compact while maintaining all existing functionality",
+      "text": "Add a new 'Start New Day' button in the center of the Header component that opens a popup dialog",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-20"
         ],
         "quotes": [
-          "Reduce the height of Morning and Evening routine containers in half to make them more compact"
+          "Add a new \"Start New Day\" button in the center of the header that opens this popup"
         ]
       },
       "acceptanceCriteria": [
-        "Morning routine container height is reduced by 50%",
-        "Evening routine container height is reduced by 50%",
-        "All routine functionality (drag-and-drop, checkboxes, add/delete) remains intact",
-        "Routine items remain readable and interactive after height reduction"
+        "A 'Start New Day' button is visible in the center of the header",
+        "Clicking the button opens a popup dialog with reset options"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Create a popup dialog with two reset buttons: 'Next Day Reset' (with the original reset functionality) and 'Skipped Day Reset'",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-20"
+        ],
+        "quotes": [
+          "Rename it to \"Next Day Reset\" inside the popup",
+          "Inside the popup, create a second button called \"Skipped Day Reset\""
+        ]
+      },
+      "acceptanceCriteria": [
+        "The popup contains a 'Next Day Reset' button that performs the original reset functionality",
+        "The popup contains a 'Skipped Day Reset' button",
+        "Both buttons are clearly labeled and visually distinct"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Implement 'Skipped Day Reset' functionality in the backend that unchecks all routines AND resets all streak counts to 0",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-20"
+        ],
+        "quotes": [
+          "\"Skipped Day Reset\" that unchecks all routines AND resets all streak counts to 0"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A new backend function unchecks all routine items for the authenticated user",
+        "The function resets all streak counts to 0 for the authenticated user",
+        "The function is callable from the frontend"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Connect the 'Skipped Day Reset' button in the popup to the backend reset function and handle the response",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-20"
+        ],
+        "quotes": [
+          "\"Skipped Day Reset\" that unchecks all routines AND resets all streak counts to 0"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Clicking 'Skipped Day Reset' calls the backend reset function",
+        "Success feedback is shown to the user",
+        "The UI updates to reflect unchecked routines and reset streaks",
+        "The popup closes after the action completes"
       ]
     }
   ],
   "constraints": [
-    "Do not modify any UI elements or functions beyond the header padding and routine container heights",
-    "Keep all existing functionality intact, especially drag-and-drop and routine management features",
-    "Do not change color schemes, layouts, or other visual elements"
+    "Preserve the existing 'Reset New Day' functionality exactly as implemented",
+    "Follow the existing dialog component patterns in frontend/src/components"
   ],
   "nonGoals": [
-    "Modifying backend logic or data structures",
-    "Changing routine functionality or behavior",
-    "Redesigning the overall UI or theme",
-    "Adding new features beyond the specified changes"
+    "Modifying the existing reset logic beyond moving it to the popup",
+    "Adding confirmation dialogs for either reset option",
+    "Adding animations or transitions beyond standard dialog behavior"
   ],
   "imageRequirements": {
     "required": [],
