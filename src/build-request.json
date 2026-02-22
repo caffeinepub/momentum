@@ -1,108 +1,83 @@
 {
   "kind": "build_request",
-  "title": "Add Start New Day popup with reset options",
-  "projectName": "Momentum",
-  "priority": "normal",
+  "title": "Fix strike count update logic for routine reset buttons",
+  "projectName": "Routine Tracker",
+  "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Remove the existing 'Reset New Day' button from the Header component",
-      "target": "frontend",
+      "text": "Fix the backend strike count update logic in the nextDayReset function so that when 'Next Day Reset' is clicked, checked routines increment their strike count by 1 and unchecked routines reset their strike count to 0, with all checkboxes unchecked after the operation",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-20"
+          "msg-14",
+          "msg-16"
         ],
         "quotes": [
-          "Move the existing \"Reset New Day\" button from the header into a popup"
+          "Strike count not updating properly after reset - only works correctly on first routine creation",
+          "Next Day Reset: Checked routines get +1 strike, unchecked routines reset to 0, all checkboxes uncheck"
         ]
       },
       "acceptanceCriteria": [
-        "The 'Reset New Day' button is no longer visible in the Header component",
-        "The button's functionality is preserved for use in the popup"
+        "After clicking 'Next Day Reset', checked routines have their strike count incremented by 1",
+        "After clicking 'Next Day Reset', unchecked routines have their strike count reset to 0",
+        "All routine checkboxes are unchecked after the reset operation",
+        "Strike count updates persist correctly across multiple reset operations, not just on first routine creation"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Add a new 'Start New Day' button in the center of the Header component that opens a popup dialog",
-      "target": "frontend",
+      "text": "Fix the backend strike count update logic in the skippedDayReset function so that when 'Skipped Day Reset' is clicked, all routine strike counts reset to 0 and all checkboxes are unchecked",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-20"
+          "msg-14",
+          "msg-16"
         ],
         "quotes": [
-          "Add a new \"Start New Day\" button in the center of the header that opens this popup"
+          "'skipped day' button reset all strike counts to 0 (to acknowledge missing a day) then just uncheck all boxes",
+          "Skipped Day Reset: All strikes reset to 0, all uncheck"
         ]
       },
       "acceptanceCriteria": [
-        "A 'Start New Day' button is visible in the center of the header",
-        "Clicking the button opens a popup dialog with reset options"
+        "After clicking 'Skipped Day Reset', all routine strike counts are set to 0 regardless of checked state",
+        "All routine checkboxes are unchecked after the reset operation",
+        "Strike count updates persist correctly across multiple reset operations"
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Create a popup dialog with two reset buttons: 'Next Day Reset' (with the original reset functionality) and 'Skipped Day Reset'",
+      "text": "Preserve the existing frontend preview behavior where checking a routine shows strike count + 1 in the badge and unchecking shows the current strike count, with no backend calls during check/uncheck actions",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-20"
+          "msg-14"
         ],
         "quotes": [
-          "Rename it to \"Next Day Reset\" inside the popup",
-          "Inside the popup, create a second button called \"Skipped Day Reset\""
+          "When a routine is checked: Badge shows strike count + 1 (preview of what it will be after reset)",
+          "When a routine is unchecked: Badge shows the current strike count (no change preview)"
         ]
       },
       "acceptanceCriteria": [
-        "The popup contains a 'Next Day Reset' button that performs the original reset functionality",
-        "The popup contains a 'Skipped Day Reset' button",
-        "Both buttons are clearly labeled and visually distinct"
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Implement 'Skipped Day Reset' functionality in the backend that unchecks all routines AND resets all streak counts to 0",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-20"
-        ],
-        "quotes": [
-          "\"Skipped Day Reset\" that unchecks all routines AND resets all streak counts to 0"
-        ]
-      },
-      "acceptanceCriteria": [
-        "A new backend function unchecks all routine items for the authenticated user",
-        "The function resets all streak counts to 0 for the authenticated user",
-        "The function is callable from the frontend"
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Connect the 'Skipped Day Reset' button in the popup to the backend reset function and handle the response",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-20"
-        ],
-        "quotes": [
-          "\"Skipped Day Reset\" that unchecks all routines AND resets all streak counts to 0"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Clicking 'Skipped Day Reset' calls the backend reset function",
-        "Success feedback is shown to the user",
-        "The UI updates to reflect unchecked routines and reset streaks",
-        "The popup closes after the action completes"
+        "Checking a routine displays strike count + 1 in the badge as a preview",
+        "Unchecking a routine displays the current strike count in the badge",
+        "No backend calls are made during check/uncheck actions",
+        "Preview behavior updates instantly without waiting for backend responses"
       ]
     }
   ],
   "constraints": [
-    "Preserve the existing 'Reset New Day' functionality exactly as implemented",
-    "Follow the existing dialog component patterns in frontend/src/components"
+    "Keep all existing UI elements and layout unchanged",
+    "Preserve the 'Start new day' button in header that opens the reset popup",
+    "Keep both 'Next Day Reset' and 'Skipped Day Reset' buttons in the popup",
+    "Maintain all other existing functions and features",
+    "Do not modify the frontend check/uncheck preview logic"
   ],
   "nonGoals": [
-    "Modifying the existing reset logic beyond moving it to the popup",
-    "Adding confirmation dialogs for either reset option",
-    "Adding animations or transitions beyond standard dialog behavior"
+    "Adding new UI elements or redesigning existing components",
+    "Changing the preview behavior for routine check/uncheck actions",
+    "Modifying any features outside of the routine reset functionality",
+    "Adding new reset modes or buttons"
   ],
   "imageRequirements": {
     "required": [],

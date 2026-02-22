@@ -1,83 +1,27 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Add Start New Day popup with reset options",
+  "title": "Fix strike count update logic for routine reset buttons",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Remove the existing 'Reset New Day' button from the Header component",
-      "acceptanceCriteria": [
-        "The 'Reset New Day' button is no longer visible in the Header component",
-        "The button's functionality is preserved for use in the popup"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/Header.tsx",
-          "operation": "modify",
-          "description": "Remove the 'Reset New Day' button from the Header component while preserving its functionality for use in the new popup dialog. Keep all other header elements (logo, date, auth controls, theme toggle, admin access) unchanged."
-        }
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "summary": "Add a new 'Start New Day' button in the center of the Header component that opens a popup dialog",
-      "acceptanceCriteria": [
-        "A 'Start New Day' button is visible in the center of the header",
-        "Clicking the button opens a popup dialog with reset options"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/Header.tsx",
-          "operation": "modify",
-          "description": "Add a new 'Start New Day' button positioned in the center of the header that opens a dialog for reset options. Wire the button to trigger the new StartNewDayDialog component's open state."
-        },
-        {
-          "path": "frontend/src/components/StartNewDayDialog.tsx",
-          "operation": "create",
-          "description": "Create a new dialog component following the existing dialog patterns in frontend/src/components. Use shadcn-ui Dialog components (Dialog, DialogContent, DialogHeader, DialogTitle) for consistent styling. Include state management for dialog open/close and render the two reset buttons (Next Day Reset and Skipped Day Reset) with clear visual distinction. Wire the dialog to be controlled by the Header component."
-        }
-      ]
-    },
-    {
       "id": "REQ-3",
-      "summary": "Create a popup dialog with two reset buttons: 'Next Day Reset' (with the original reset functionality) and 'Skipped Day Reset'",
+      "summary": "Preserve the existing frontend preview behavior where checking a routine shows strike count + 1 in the badge and unchecking shows the current strike count, with no backend calls during check/uncheck actions",
       "acceptanceCriteria": [
-        "The popup contains a 'Next Day Reset' button that performs the original reset functionality",
-        "The popup contains a 'Skipped Day Reset' button",
-        "Both buttons are clearly labeled and visually distinct"
+        "Checking a routine displays strike count + 1 in the badge as a preview",
+        "Unchecking a routine displays the current strike count in the badge",
+        "No backend calls are made during check/uncheck actions",
+        "Preview behavior updates instantly without waiting for backend responses"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/StartNewDayDialog.tsx",
+          "path": "frontend/src/components/MorningRoutine.tsx",
           "operation": "modify",
-          "description": "Implement the dialog content with two reset buttons. The 'Next Day Reset' button should call the existing resetNewDay backend function with completed routine IDs (preserving the original reset logic exactly). The 'Skipped Day Reset' button should be styled distinctly (e.g., using a destructive variant) and wired to call the new resetSkippedDay backend function. Include appropriate loading states and error handling for both buttons."
+          "description": "Review and verify that the existing checkbox toggle logic in the MorningRoutine component correctly displays strike count + 1 when checked (preview) and the current strike count when unchecked, without making backend calls. Ensure the local state management for checkbox tracking (completedRoutines state) works correctly with the preview display logic. If the preview calculation is not working as expected, adjust the badge display logic to show routine.strikeCount + 1 for checked routines and routine.strikeCount for unchecked routines, using the local completedRoutines state to determine checked status."
         },
         {
-          "path": "frontend/src/hooks/useQueries.ts",
+          "path": "frontend/src/components/DayResetDialog.tsx",
           "operation": "modify",
-          "description": "Add a new React Query mutation hook useResetSkippedDay that calls the backend resetSkippedDay function. Include optimistic updates to uncheck all routines and reset streak counts to 0, followed by query invalidation for routines and related data. Follow the existing mutation patterns in this file for consistency."
-        }
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "summary": "Connect the 'Skipped Day Reset' button in the popup to the backend reset function and handle the response",
-      "acceptanceCriteria": [
-        "Clicking 'Skipped Day Reset' calls the backend reset function",
-        "Success feedback is shown to the user",
-        "The UI updates to reflect unchecked routines and reset streaks",
-        "The popup closes after the action completes"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/StartNewDayDialog.tsx",
-          "operation": "modify",
-          "description": "Wire the 'Skipped Day Reset' button to call the useResetSkippedDay mutation hook. On success, display a toast notification confirming the reset, close the dialog, and ensure the UI reflects unchecked routines with zero streak counts. Handle errors gracefully with appropriate error messages. Include loading state management to disable the button during the backend call."
-        },
-        {
-          "path": "frontend/src/pages/TaskManager.tsx",
-          "operation": "modify",
-          "description": "Import and integrate the StartNewDayDialog component into the TaskManager page alongside the existing dialog components (SettingsDialog, InsightsDialog, etc.). Manage the dialog's open/close state and pass necessary props (routines data, mutation functions). Ensure the dialog is accessible from the Header component's 'Start New Day' button."
+          "description": "Verify that the dialog correctly passes the current checked state to the backend reset functions (resetNewDay and resetSkippedDay) without modifying the preview behavior. Ensure that after successful reset operations, the local completedRoutines state is cleared to reflect all unchecked boxes. Add error handling to display user-friendly messages if the reset operations fail. The dialog should not alter how checkboxes preview strike counts - that logic remains in MorningRoutine.tsx."
         }
       ]
     }

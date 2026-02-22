@@ -1,13 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Replace the header's "Reset New Day" button with a centered "Start New Day" button that opens a popup containing two reset options: "Next Day Reset" (original functionality) and "Skipped Day Reset" (unchecks all routines and resets all streaks to 0).
+**Goal:** Fix the strike count update logic for routine reset buttons so that "Next Day Reset" and "Skipped Day Reset" work correctly across all reset operations.
 
 **Planned changes:**
-- Remove the "Reset New Day" button from the Header component
-- Add a centered "Start New Day" button in the Header that opens a popup dialog
-- Create a popup with two buttons: "Next Day Reset" (original reset) and "Skipped Day Reset"
-- Implement backend function to uncheck all routines and reset all streak counts to 0
-- Connect the "Skipped Day Reset" button to the new backend function
+- Fix backend logic in nextDayReset function to increment strike count by 1 for checked routines and reset to 0 for unchecked routines
+- Fix backend logic in skippedDayReset function to reset all routine strike counts to 0
+- Ensure strike count updates persist correctly across multiple reset operations, not just on first routine creation
+- Preserve existing frontend preview behavior where checking shows strike count + 1 and unchecking shows current strike count
 
-**User-visible outcome:** Users can click "Start New Day" in the header to open a popup where they choose between a normal next-day reset or a skipped-day reset that also clears all streak progress.
+**User-visible outcome:** Users can reliably use "Next Day Reset" to progress their routine streaks and "Skipped Day Reset" to acknowledge missed days, with strike counts updating correctly every time the buttons are clicked.

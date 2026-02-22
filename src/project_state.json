@@ -1,77 +1,46 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Routine tracking app with daily reset functionality",
+  "summary": "Routine tracking app with strike count system. Features two reset modes: Next Day Reset (increments checked routines, resets unchecked to 0) and Skipped Day Reset (resets all to 0). Start new day button in header opens popup with both reset options.",
   "architectural_notes": [
-    "App includes routine tracking with streak counting functionality",
-    "Header contains reset functionality for daily routine management"
+    "Frontend displays strike count preview: +1 when checked, current count when unchecked (no backend calls)",
+    "Backend updates only triggered by reset buttons in Start new day popup",
+    "Multi-device sync for routine check status across user devices",
+    "Next Day Reset: checked routines increment strike count by 1, unchecked reset to 0, all checkboxes uncheck",
+    "Skipped Day Reset: all strike counts reset to 0, all checkboxes uncheck"
   ],
-  "known_issues": [],
-  "isFixRequest": false,
-  "existing_features": [
-    {
-      "id": "feature-remove-the-existing-reset-new-day-button-from-the-header-component",
-      "title": "Remove the existing 'Reset New Day' button from the Header component",
-      "reqIds": [
-        "REQ-1"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-new-start-new-day-button-in-the-center-of-the-header-component-that-opens-a-popup-dialog",
-      "title": "Add a new 'Start New Day' button in the center of the Header component that opens a popup dialog",
-      "reqIds": [
-        "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-create-a-popup-dialog-with-two-reset-buttons-next-day-reset-with-the-original-reset-functionality-and-skipped-day-reset",
-      "title": "Create a popup dialog with two reset buttons: 'Next Day Reset' (with the original reset functionality) and 'Skipped Day Reset'",
-      "reqIds": [
-        "REQ-3"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-connect-the-skipped-day-reset-button-in-the-popup-to-the-backend-reset-function-and-handle-the-response",
-      "title": "Connect the 'Skipped Day Reset' button in the popup to the backend reset function and handle the response",
-      "reqIds": [
-        "REQ-5"
-      ],
-      "version": 1
-    }
+  "known_issues": [
+    "Strike count not updating properly after Next Day Reset or Skipped Day Reset - only works correctly on first routine creation"
   ],
+  "isFixRequest": true,
+  "existing_features": [],
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Add 'Start New Day' button in header that opens popup with two reset options",
-      "reqIds": [],
+      "summary": "Fix the backend strike count update logic in the nextDayReset function so that when 'Next Day Reset' is clicked, checked routines increment their strike count by 1 and unchecked routines reset their strike count to 0, with all checkboxes unchecked after the operation",
+      "reqIds": [
+        "REQ-1"
+      ],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "Move existing 'Reset New Day' button into popup and rename to 'Next Day Reset'",
-      "reqIds": [],
+      "summary": "Fix the backend strike count update logic in the skippedDayReset function so that when 'Skipped Day Reset' is clicked, all routine strike counts reset to 0 and all checkboxes are unchecked",
+      "reqIds": [
+        "REQ-2"
+      ],
       "status": "pending"
     },
     {
       "id": "AR-3",
-      "summary": "Add 'Skipped Day Reset' button that unchecks all routines and resets all streak counts to 0",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-7",
-      "summary": "Implement 'Skipped Day Reset' functionality in the backend that unchecks all routines AND resets all streak counts to 0",
+      "summary": "Preserve the existing frontend preview behavior where checking a routine shows strike count + 1 in the badge and unchecking shows the current strike count, with no backend calls during check/uncheck actions",
       "reqIds": [
-        "REQ-4"
+        "REQ-3"
       ],
       "status": "pending"
     }
   ],
-  "gameProjectType": "none",
-  "projectName": "Momentum",
+  "projectName": "Routine Tracker",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

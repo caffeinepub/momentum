@@ -219,7 +219,7 @@ export interface backendInterface {
     promoteToAdmin(target: Principal): Promise<void>;
     removeAdmin(target: Principal): Promise<void>;
     reorderTask(taskId: TaskId, newPosition: bigint): Promise<void>;
-    resetNewDay(completedRoutineIds: Array<RoutineId>): Promise<void>;
+    resetNewDay(): Promise<void>;
     resetSkippedDay(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveMonetarySettings(settings: MonetarySettings): Promise<void>;

@@ -211,7 +211,7 @@ export interface _SERVICE {
   'promoteToAdmin' : ActorMethod<[Principal], undefined>,
   'removeAdmin' : ActorMethod<[Principal], undefined>,
   'reorderTask' : ActorMethod<[TaskId, bigint], undefined>,
-  'resetNewDay' : ActorMethod<[Array<RoutineId>], undefined>,
+  'resetNewDay' : ActorMethod<[], undefined>,
   'resetSkippedDay' : ActorMethod<[], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'saveMonetarySettings' : ActorMethod<[MonetarySettings], undefined>,

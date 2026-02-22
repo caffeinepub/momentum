@@ -1,71 +1,38 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-22T16:12:25.625Z",
+  "generatedAt": "2026-02-22T22:31:57.585Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 5,
-    "implemented": 4,
+    "total": 3,
+    "implemented": 0,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Remove the existing 'Reset New Day' button from the Header component",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/Header.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/Header.tsx"
-        ]
-      },
-      {
-        "id": "REQ-2",
-        "summary": "Add a new 'Start New Day' button in the center of the Header component that opens a popup dialog",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/Header.tsx",
-          "frontend/src/components/StartNewDayDialog.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/Header.tsx",
-          "frontend/src/components/StartNewDayDialog.tsx"
-        ]
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Create a popup dialog with two reset buttons: 'Next Day Reset' (with the original reset functionality) and 'Skipped Day Reset'",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/StartNewDayDialog.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/StartNewDayDialog.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ]
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Implement 'Skipped Day Reset' functionality in the backend that unchecks all routines AND resets all streak counts to 0",
+        "summary": "Fix the backend strike count update logic in the nextDayReset function so that when 'Next Day Reset' is clicked, checked routines increment their strike count by 1 and unchecked routines reset their strike count to 0, with all checkboxes unchecked after the operation",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-5",
-        "summary": "Connect the 'Skipped Day Reset' button in the popup to the backend reset function and handle the response",
-        "status": "implemented",
+        "id": "REQ-2",
+        "summary": "Fix the backend strike count update logic in the skippedDayReset function so that when 'Skipped Day Reset' is clicked, all routine strike counts reset to 0 and all checkboxes are unchecked",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Preserve the existing frontend preview behavior where checking a routine shows strike count + 1 in the badge and unchecking shows the current strike count, with no backend calls during check/uncheck actions",
+        "status": "missing",
         "plannedFiles": [
-          "frontend/src/components/StartNewDayDialog.tsx",
-          "frontend/src/pages/TaskManager.tsx"
+          "frontend/src/components/MorningRoutine.tsx",
+          "frontend/src/components/DayResetDialog.tsx"
         ],
-        "matchedFiles": [
-          "frontend/src/components/StartNewDayDialog.tsx",
-          "frontend/src/pages/TaskManager.tsx"
-        ]
+        "matchedFiles": []
       }
     ]
   },
@@ -76,13 +43,6 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/components/Header.tsx",
-    "frontend/src/components/StartNewDayDialog.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useQueries.ts",
     "frontend/src/pages/TaskManager.tsx",
     "project_state.json",
     "scratch/component-selection.json",
