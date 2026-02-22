@@ -55,6 +55,7 @@ export const List = IDL.Record({
 export const MorningRoutine = IDL.Record({
   'id' : RoutineId,
   'weight' : IDL.Int,
+  'strikeCount' : IDL.Nat,
   'order' : IDL.Nat,
   'text' : IDL.Text,
   'completed' : IDL.Bool,
@@ -108,12 +109,25 @@ export const UserMetadata = IDL.Record({
   'isAdmin' : IDL.Bool,
   'profile' : IDL.Opt(UserProfile),
 });
+export const UserStorageBreakdown = IDL.Record({
+  'principal' : IDL.Principal,
+  'routineCount' : IDL.Nat,
+  'taskCount' : IDL.Nat,
+  'estimatedSizeBytes' : IDL.Nat,
+});
 export const MonetarySettings = IDL.Record({
   'maxDailyPriorities' : IDL.Nat,
   'maxMorningRoutine' : IDL.Nat,
   'maxMoneyPerDay' : IDL.Nat,
   'totalBalance' : IDL.Int,
   'maxEveningRoutine' : IDL.Nat,
+});
+export const StorageMetrics = IDL.Record({
+  'totalTasks' : IDL.Nat,
+  'estimatedHeapMemoryBytes' : IDL.Nat,
+  'totalRoutines' : IDL.Nat,
+  'totalUsers' : IDL.Nat,
+  'estimatedStableMemoryBytes' : IDL.Nat,
 });
 export const PayrollRecord = IDL.Record({
   'total' : IDL.Int,
@@ -175,11 +189,21 @@ export const idlService = IDL.Service({
       [IDL.Vec(UserMetadata)],
       ['query'],
     ),
+  'getAllUserStorageBreakdowns' : IDL.Func(
+      [],
+      [IDL.Vec(UserStorageBreakdown)],
+      ['query'],
+    ),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getDefaultOrder' : IDL.Func([], [IDL.Nat], ['query']),
   'getDefaultPosition' : IDL.Func([], [IDL.Nat], ['query']),
   'getEarningsEnabled' : IDL.Func([], [IDL.Bool], ['query']),
+  'getEstimatedMemoryUsage' : IDL.Func(
+      [],
+      [IDL.Record({ 'stableSize' : IDL.Nat, 'heapSize' : IDL.Nat })],
+      ['query'],
+    ),
   'getList' : IDL.Func([ListId], [List], ['query']),
   'getMonetarySettings' : IDL.Func([], [MonetarySettings], ['query']),
   'getMorningRoutine' : IDL.Func([RoutineId], [MorningRoutine], ['query']),
@@ -188,9 +212,42 @@ export const idlService = IDL.Service({
       [IDL.Vec(MorningRoutine)],
       ['query'],
     ),
+  'getOverallStorageMetrics' : IDL.Func([], [StorageMetrics], ['query']),
   'getPayrollHistory' : IDL.Func([], [IDL.Vec(PayrollRecord)], ['query']),
   'getPreset' : IDL.Func([IDL.Nat], [IDL.Opt(SpendPreset)], ['query']),
+  'getRoutineAndTaskStorageBreakdown' : IDL.Func(
+      [],
+      [
+        IDL.Record({
+          'tasks' : IDL.Record({
+            'total' : IDL.Nat,
+            'userBreakdowns' : IDL.Vec(IDL.Nat),
+          }),
+          'routines' : IDL.Record({
+            'total' : IDL.Nat,
+            'userBreakdowns' : IDL.Vec(IDL.Nat),
+          }),
+        }),
+      ],
+      ['query'],
+    ),
+  'getRoutineStorageBreakdown' : IDL.Func(
+      [],
+      [IDL.Record({ 'total' : IDL.Nat, 'userBreakdowns' : IDL.Vec(IDL.Nat) })],
+      ['query'],
+    ),
   'getTask' : IDL.Func([TaskId], [Task], ['query']),
+  'getTaskStorageBreakdown' : IDL.Func(
+      [],
+      [IDL.Record({ 'total' : IDL.Nat, 'userBreakdowns' : IDL.Vec(IDL.Nat) })],
+      ['query'],
+    ),
+  'getTopUsersByStorage' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(UserStorageBreakdown)],
+      ['query'],
+    ),
+  'getTotalStorageUsed' : IDL.Func([], [IDL.Nat], ['query']),
   'getTotalUsers' : IDL.Func([], [IDL.Nat], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
@@ -198,13 +255,11 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'manualResetRoutines' : IDL.Func([IDL.Vec(RoutineId)], [], []),
   'moveTask' : IDL.Func([TaskId, ListId], [], []),
-  'performRoutineDailyResetIfNeeded' : IDL.Func([], [], []),
   'promoteToAdmin' : IDL.Func([IDL.Principal], [], []),
   'removeAdmin' : IDL.Func([IDL.Principal], [], []),
   'reorderTask' : IDL.Func([TaskId, IDL.Nat], [], []),
-  'resetNewDay' : IDL.Func([], [], []),
+  'resetNewDay' : IDL.Func([IDL.Vec(RoutineId)], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'saveMonetarySettings' : IDL.Func([MonetarySettings], [], []),
   'setUserTier' : IDL.Func([IDL.Principal, UserTier], [], []),
@@ -269,6 +324,7 @@ export const idlFactory = ({ IDL }) => {
   const MorningRoutine = IDL.Record({
     'id' : RoutineId,
     'weight' : IDL.Int,
+    'strikeCount' : IDL.Nat,
     'order' : IDL.Nat,
     'text' : IDL.Text,
     'completed' : IDL.Bool,
@@ -322,12 +378,25 @@ export const idlFactory = ({ IDL }) => {
     'isAdmin' : IDL.Bool,
     'profile' : IDL.Opt(UserProfile),
   });
+  const UserStorageBreakdown = IDL.Record({
+    'principal' : IDL.Principal,
+    'routineCount' : IDL.Nat,
+    'taskCount' : IDL.Nat,
+    'estimatedSizeBytes' : IDL.Nat,
+  });
   const MonetarySettings = IDL.Record({
     'maxDailyPriorities' : IDL.Nat,
     'maxMorningRoutine' : IDL.Nat,
     'maxMoneyPerDay' : IDL.Nat,
     'totalBalance' : IDL.Int,
     'maxEveningRoutine' : IDL.Nat,
+  });
+  const StorageMetrics = IDL.Record({
+    'totalTasks' : IDL.Nat,
+    'estimatedHeapMemoryBytes' : IDL.Nat,
+    'totalRoutines' : IDL.Nat,
+    'totalUsers' : IDL.Nat,
+    'estimatedStableMemoryBytes' : IDL.Nat,
   });
   const PayrollRecord = IDL.Record({
     'total' : IDL.Int,
@@ -393,11 +462,21 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(UserMetadata)],
         ['query'],
       ),
+    'getAllUserStorageBreakdowns' : IDL.Func(
+        [],
+        [IDL.Vec(UserStorageBreakdown)],
+        ['query'],
+      ),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getDefaultOrder' : IDL.Func([], [IDL.Nat], ['query']),
     'getDefaultPosition' : IDL.Func([], [IDL.Nat], ['query']),
     'getEarningsEnabled' : IDL.Func([], [IDL.Bool], ['query']),
+    'getEstimatedMemoryUsage' : IDL.Func(
+        [],
+        [IDL.Record({ 'stableSize' : IDL.Nat, 'heapSize' : IDL.Nat })],
+        ['query'],
+      ),
     'getList' : IDL.Func([ListId], [List], ['query']),
     'getMonetarySettings' : IDL.Func([], [MonetarySettings], ['query']),
     'getMorningRoutine' : IDL.Func([RoutineId], [MorningRoutine], ['query']),
@@ -406,9 +485,52 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(MorningRoutine)],
         ['query'],
       ),
+    'getOverallStorageMetrics' : IDL.Func([], [StorageMetrics], ['query']),
     'getPayrollHistory' : IDL.Func([], [IDL.Vec(PayrollRecord)], ['query']),
     'getPreset' : IDL.Func([IDL.Nat], [IDL.Opt(SpendPreset)], ['query']),
+    'getRoutineAndTaskStorageBreakdown' : IDL.Func(
+        [],
+        [
+          IDL.Record({
+            'tasks' : IDL.Record({
+              'total' : IDL.Nat,
+              'userBreakdowns' : IDL.Vec(IDL.Nat),
+            }),
+            'routines' : IDL.Record({
+              'total' : IDL.Nat,
+              'userBreakdowns' : IDL.Vec(IDL.Nat),
+            }),
+          }),
+        ],
+        ['query'],
+      ),
+    'getRoutineStorageBreakdown' : IDL.Func(
+        [],
+        [
+          IDL.Record({
+            'total' : IDL.Nat,
+            'userBreakdowns' : IDL.Vec(IDL.Nat),
+          }),
+        ],
+        ['query'],
+      ),
     'getTask' : IDL.Func([TaskId], [Task], ['query']),
+    'getTaskStorageBreakdown' : IDL.Func(
+        [],
+        [
+          IDL.Record({
+            'total' : IDL.Nat,
+            'userBreakdowns' : IDL.Vec(IDL.Nat),
+          }),
+        ],
+        ['query'],
+      ),
+    'getTopUsersByStorage' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(UserStorageBreakdown)],
+        ['query'],
+      ),
+    'getTotalStorageUsed' : IDL.Func([], [IDL.Nat], ['query']),
     'getTotalUsers' : IDL.Func([], [IDL.Nat], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
@@ -416,13 +538,11 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'manualResetRoutines' : IDL.Func([IDL.Vec(RoutineId)], [], []),
     'moveTask' : IDL.Func([TaskId, ListId], [], []),
-    'performRoutineDailyResetIfNeeded' : IDL.Func([], [], []),
     'promoteToAdmin' : IDL.Func([IDL.Principal], [], []),
     'removeAdmin' : IDL.Func([IDL.Principal], [], []),
     'reorderTask' : IDL.Func([TaskId, IDL.Nat], [], []),
-    'resetNewDay' : IDL.Func([], [], []),
+    'resetNewDay' : IDL.Func([IDL.Vec(RoutineId)], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'saveMonetarySettings' : IDL.Func([MonetarySettings], [], []),
     'setUserTier' : IDL.Func([IDL.Principal, UserTier], [], []),

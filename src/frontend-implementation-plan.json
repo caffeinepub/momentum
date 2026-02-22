@@ -1,99 +1,107 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Add Manual Daily Reset System for Routines",
+  "title": "Add storage monitoring system with admin dashboard",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Add a 'Reset New Day' button in the app header component (Header.tsx) positioned next to the dark mode toggle button",
+      "id": "REQ-5",
+      "summary": "Create AdminDashboard page route displaying storage monitoring metrics with overview cards",
       "acceptanceCriteria": [
-        "Button appears in the header next to the theme toggle",
-        "Button is visible and accessible on both mobile and desktop views",
-        "Button has appropriate styling consistent with the header design"
+        "Admin dashboard is accessible at /admin route",
+        "Dashboard displays four overview cards with total memory used (MB/GB), user count, total routines, and total tasks",
+        "Cards have clear labels and formatting for readability",
+        "Data refreshes when the page is loaded"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/Header.tsx",
+          "path": "frontend/src/pages/AdminDashboard.tsx",
           "operation": "modify",
-          "description": "Add a 'Reset New Day' button next to the dark mode toggle. The button should be styled consistently with existing header buttons and positioned in the header controls area. Include responsive styling for mobile and desktop views. Wire the button to trigger the manual reset workflow when clicked."
-        }
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "summary": "Modify MorningRoutine.tsx to implement frontend-only check/uncheck interaction with instant visual feedback without triggering backend saves on individual check/uncheck actions",
-      "acceptanceCriteria": [
-        "Clicking routine checkboxes updates UI immediately",
-        "No backend mutation calls are triggered on check/uncheck",
-        "Routine checked state is maintained in local component state only"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/MorningRoutine.tsx",
-          "operation": "modify",
-          "description": "Remove the backend mutation call from the checkbox toggle handler. Instead, maintain checked state in local React state (using useState or useReducer to track which routine IDs are checked). Update the checkbox UI to reflect this local state immediately when clicked. Ensure the completeMorningRoutine mutation is no longer called on individual check/uncheck actions."
-        }
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "summary": "Update the strike count badge display logic in MorningRoutine.tsx to show strike count + 1 when a routine is checked (preview of tomorrow's count) and the current strike count when unchecked",
-      "acceptanceCriteria": [
-        "Badge shows current strike count for unchecked routines",
-        "Badge shows strike count + 1 for checked routines",
-        "Badge updates instantly when checking/unchecking routines"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/MorningRoutine.tsx",
-          "operation": "modify",
-          "description": "Update the streak count badge display logic to compute the display value based on local checked state. When a routine is checked in local state, display routine.streakCount + 1. When unchecked, display routine.streakCount. Ensure this computation happens reactively whenever local checked state changes so the badge updates instantly."
-        }
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "summary": "Implement the manual reset workflow triggered by clicking the 'Reset New Day' button: save all currently checked routines to the backend (incrementing their strike counts by 1), reset all unchecked routines' strike counts to 0 in the backend, and clear all routine checkboxes back to unchecked state in the frontend",
-      "acceptanceCriteria": [
-        "Clicking 'Reset New Day' calls a backend function with the list of checked routine IDs",
-        "Backend increments strike count by 1 for all checked routines",
-        "Backend resets strike count to 0 for all unchecked routines",
-        "Frontend clears all checkboxes to unchecked state after successful backend save",
-        "User receives confirmation feedback when reset completes successfully",
-        "Routine queries are invalidated to reflect updated strike counts"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/Header.tsx",
-          "operation": "modify",
-          "description": "Wire the 'Reset New Day' button to trigger the manual reset mutation hook from useQueries.ts. Pass the array of checked routine IDs from MorningRoutine component state to the mutation. Show loading state on the button while the mutation is in progress. Display a toast notification on success or error. Coordinate with MorningRoutine.tsx to access the checked routine IDs state (consider lifting state or using a callback pattern)."
-        },
-        {
-          "path": "frontend/src/components/MorningRoutine.tsx",
-          "operation": "modify",
-          "description": "Expose the local checked routine IDs state to the parent component (TaskManager or Header) via a callback or ref so the 'Reset New Day' button can access it. After the manual reset mutation succeeds, clear the local checked state back to an empty set/array so all checkboxes return to unchecked. Ensure this happens in response to the mutation success callback."
-        },
-        {
-          "path": "frontend/src/pages/TaskManager.tsx",
-          "operation": "modify",
-          "description": "If MorningRoutine state needs to be lifted or coordinated with Header, manage the checked routine IDs state at this level and pass it down as props. Coordinate the manual reset flow between Header (which has the button) and MorningRoutine (which maintains the checked state). Ensure proper state clearing after successful reset."
+          "description": "Add storage monitoring section with overview cards displaying total memory used, user count, total routines, and total tasks. Fetch data using getOverallStorageMetrics backend capability. Format memory values in MB/GB units for readability. Use existing shadcn/ui Card components for consistent styling with the user directory and tier settings sections."
         }
       ]
     },
     {
       "id": "REQ-6",
-      "summary": "Create a React Query mutation hook in useQueries.ts for the manual daily reset operation that calls the new backend function with checked routine IDs",
+      "summary": "Add storage usage visualization showing memory usage as percentage of 4GB canister limit",
       "acceptanceCriteria": [
-        "Mutation hook accepts array of checked routine IDs as parameter",
-        "Hook triggers backend reset function when called",
-        "Hook invalidates routine queries on success",
-        "Hook provides loading, error, and success states"
+        "Dashboard includes a visual representation of storage usage (progress bar or chart)",
+        "Shows current usage as a percentage of the 4GB limit",
+        "Includes labels showing absolute values (e.g., '2.1 GB / 4.0 GB')",
+        "Visual indicator changes color as capacity approaches limit (e.g., warning at 75%, danger at 90%)"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useQueries.ts",
+          "path": "frontend/src/pages/AdminDashboard.tsx",
           "operation": "modify",
-          "description": "Add a new mutation hook useManualResetRoutines that accepts an array of RoutineId values as the mutation parameter. Call actor.manualResetRoutines(completedRoutineIds) in the mutation function. On success, invalidate all routine-related queries (getAllMorningRoutines, getMorningRoutinesBySection) to fetch updated streak counts. Return standard mutation states (isLoading, isError, isSuccess, mutate, mutateAsync) for UI integration."
+          "description": "Add a Progress component showing storage usage percentage relative to 4GB (4,294,967,296 bytes) limit. Calculate percentage from getOverallStorageMetrics estimatedStableMemoryBytes and estimatedHeapMemoryBytes. Display absolute values with formatted units (e.g., '2.1 GB / 4.0 GB'). Apply conditional color classes: normal (<75%), warning (75-89%), danger (≥90%). Use existing shadcn/ui Progress component for consistency. Verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "summary": "Add per-user data breakdown table showing Principal ID, routine count, task count, and estimated storage size",
+      "acceptanceCriteria": [
+        "Dashboard displays a table with columns for Principal ID, routine count, task count, and storage size",
+        "Table is sorted by storage size in descending order (largest users first)",
+        "Principal IDs are truncated with ellipsis and copyable on click",
+        "Storage sizes are formatted in appropriate units (KB, MB)",
+        "Table supports pagination if there are many users"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/AdminDashboard.tsx",
+          "operation": "modify",
+          "description": "Add a Table component displaying per-user storage breakdown using getAllUserStorageBreakdowns backend capability. Display columns for Principal ID (truncated with ellipsis, copyable on click similar to AdminUserDirectory), routine count, task count, and estimated storage size formatted in KB/MB. Data is pre-sorted by backend in descending order by storage size. Implement pagination if user count exceeds reasonable display limit (e.g., 50 users). Use existing shadcn/ui Table components for consistency. Verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "summary": "Add cycle balance display showing current canister cycle balance with formatted units",
+      "acceptanceCriteria": [
+        "Dashboard displays current cycle balance",
+        "Cycles are formatted with appropriate units (T for trillion, B for billion, M for million)",
+        "Display includes a label indicating this is the cycle balance"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/AdminDashboard.tsx",
+          "operation": "modify",
+          "description": "Add cycle balance display card fetching data from backend using the appropriate query capability. Format large numbers with T (trillion), B (billion), M (million) suffixes for readability. Display with clear 'Cycle Balance' label. Position alongside other overview metric cards for visual consistency."
+        }
+      ]
+    },
+    {
+      "id": "REQ-9",
+      "summary": "Implement frontend access control for admin dashboard route to restrict access to authorized administrators",
+      "acceptanceCriteria": [
+        "Admin dashboard checks if the current user is authorized before displaying content",
+        "Non-admin users see an 'Unauthorized Access' message with a return button",
+        "Authorization check uses the existing admin verification pattern from the codebase",
+        "Dashboard redirects or shows error if user is not logged in"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/AdminDashboard.tsx",
+          "operation": "modify",
+          "description": "The AdminDashboard already has authorization checks using isCallerAdmin() from useQueries. Verify that the storage monitoring section respects this existing pattern. Ensure unauthorized users see the existing 'Unauthorized Access' message with return button. No new authorization logic is needed; the existing implementation already handles this requirement."
+        }
+      ]
+    },
+    {
+      "id": "REQ-10",
+      "summary": "Add navigation link to access admin dashboard from Header component, visible only to admin users",
+      "acceptanceCriteria": [
+        "Header includes a link or icon button to navigate to /admin",
+        "Link is only visible when user has admin privileges",
+        "Link has appropriate styling consistent with existing header elements",
+        "Clicking the link navigates to the admin dashboard page"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/Header.tsx",
+          "operation": "modify",
+          "description": "The Header already includes an admin dashboard button that checks isAdmin and navigates to /admin using setView('admin'). This requirement is already satisfied by the existing implementation. No changes needed unless the navigation mechanism needs adjustment to support the new storage monitoring features within the admin dashboard."
         }
       ]
     }

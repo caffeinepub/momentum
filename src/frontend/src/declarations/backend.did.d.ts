@@ -28,6 +28,7 @@ export interface MonetarySettings {
 export interface MorningRoutine {
   'id' : RoutineId,
   'weight' : bigint,
+  'strikeCount' : bigint,
   'order' : bigint,
   'text' : string,
   'completed' : boolean,
@@ -64,6 +65,13 @@ export interface SpendRecord {
 }
 export type SpendType = { 'normal' : null } |
   { 'preDeducted' : null };
+export interface StorageMetrics {
+  'totalTasks' : bigint,
+  'estimatedHeapMemoryBytes' : bigint,
+  'totalRoutines' : bigint,
+  'totalUsers' : bigint,
+  'estimatedStableMemoryBytes' : bigint,
+}
 export interface Task {
   'id' : TaskId,
   'weight' : number,
@@ -121,6 +129,12 @@ export interface UserProfile {
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface UserStorageBreakdown {
+  'principal' : Principal,
+  'routineCount' : bigint,
+  'taskCount' : bigint,
+  'estimatedSizeBytes' : bigint,
+}
 export type UserTier = { 'gold' : null } |
   { 'diamond' : null } |
   { 'basic' : null } |
@@ -152,11 +166,16 @@ export interface _SERVICE {
   'getAllTierLimits' : ActorMethod<[], TierLimitsConfig>,
   'getAllUserMetadata' : ActorMethod<[], Array<[Principal, UserProfile]>>,
   'getAllUserMetadataWithRoles' : ActorMethod<[], Array<UserMetadata>>,
+  'getAllUserStorageBreakdowns' : ActorMethod<[], Array<UserStorageBreakdown>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getDefaultOrder' : ActorMethod<[], bigint>,
   'getDefaultPosition' : ActorMethod<[], bigint>,
   'getEarningsEnabled' : ActorMethod<[], boolean>,
+  'getEstimatedMemoryUsage' : ActorMethod<
+    [],
+    { 'stableSize' : bigint, 'heapSize' : bigint }
+  >,
   'getList' : ActorMethod<[ListId], List>,
   'getMonetarySettings' : ActorMethod<[], MonetarySettings>,
   'getMorningRoutine' : ActorMethod<[RoutineId], MorningRoutine>,
@@ -164,19 +183,35 @@ export interface _SERVICE {
     [RoutineSection],
     Array<MorningRoutine>
   >,
+  'getOverallStorageMetrics' : ActorMethod<[], StorageMetrics>,
   'getPayrollHistory' : ActorMethod<[], Array<PayrollRecord>>,
   'getPreset' : ActorMethod<[bigint], [] | [SpendPreset]>,
+  'getRoutineAndTaskStorageBreakdown' : ActorMethod<
+    [],
+    {
+      'tasks' : { 'total' : bigint, 'userBreakdowns' : Array<bigint> },
+      'routines' : { 'total' : bigint, 'userBreakdowns' : Array<bigint> },
+    }
+  >,
+  'getRoutineStorageBreakdown' : ActorMethod<
+    [],
+    { 'total' : bigint, 'userBreakdowns' : Array<bigint> }
+  >,
   'getTask' : ActorMethod<[TaskId], Task>,
+  'getTaskStorageBreakdown' : ActorMethod<
+    [],
+    { 'total' : bigint, 'userBreakdowns' : Array<bigint> }
+  >,
+  'getTopUsersByStorage' : ActorMethod<[bigint], Array<UserStorageBreakdown>>,
+  'getTotalStorageUsed' : ActorMethod<[], bigint>,
   'getTotalUsers' : ActorMethod<[], bigint>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'manualResetRoutines' : ActorMethod<[Array<RoutineId>], undefined>,
   'moveTask' : ActorMethod<[TaskId, ListId], undefined>,
-  'performRoutineDailyResetIfNeeded' : ActorMethod<[], undefined>,
   'promoteToAdmin' : ActorMethod<[Principal], undefined>,
   'removeAdmin' : ActorMethod<[Principal], undefined>,
   'reorderTask' : ActorMethod<[TaskId, bigint], undefined>,
-  'resetNewDay' : ActorMethod<[], undefined>,
+  'resetNewDay' : ActorMethod<[Array<RoutineId>], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'saveMonetarySettings' : ActorMethod<[MonetarySettings], undefined>,
   'setUserTier' : ActorMethod<[Principal, UserTier], undefined>,

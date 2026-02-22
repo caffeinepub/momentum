@@ -69,6 +69,7 @@ export interface TierLimits {
 export interface MorningRoutine {
     id: RoutineId;
     weight: bigint;
+    strikeCount: bigint;
     order: bigint;
     text: string;
     completed: boolean;
@@ -84,6 +85,12 @@ export interface TaskCreateInput {
     urgent: boolean;
     listId: ListId;
 }
+export interface UserStorageBreakdown {
+    principal: Principal;
+    routineCount: bigint;
+    taskCount: bigint;
+    estimatedSizeBytes: bigint;
+}
 export interface SpendRecord {
     id: SpendId;
     date: bigint;
@@ -92,14 +99,14 @@ export interface SpendRecord {
     spendType: SpendType;
 }
 export type TaskId = bigint;
-export type ListId = bigint;
-export interface List {
-    id: ListId;
-    name: string;
-    important: boolean;
-    urgent: boolean;
-    quadrant: boolean;
+export interface StorageMetrics {
+    totalTasks: bigint;
+    estimatedHeapMemoryBytes: bigint;
+    totalRoutines: bigint;
+    totalUsers: bigint;
+    estimatedStableMemoryBytes: bigint;
 }
+export type ListId = bigint;
 export type RoutineId = bigint;
 export type SpendId = bigint;
 export interface MonetarySettings {
@@ -108,6 +115,13 @@ export interface MonetarySettings {
     maxMoneyPerDay: bigint;
     totalBalance: bigint;
     maxEveningRoutine: bigint;
+}
+export interface List {
+    id: ListId;
+    name: string;
+    important: boolean;
+    urgent: boolean;
+    quadrant: boolean;
 }
 export interface UserProfile {
     earningsEnabled: boolean;
@@ -160,28 +174,52 @@ export interface backendInterface {
     getAllTierLimits(): Promise<TierLimitsConfig>;
     getAllUserMetadata(): Promise<Array<[Principal, UserProfile]>>;
     getAllUserMetadataWithRoles(): Promise<Array<UserMetadata>>;
+    getAllUserStorageBreakdowns(): Promise<Array<UserStorageBreakdown>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDefaultOrder(): Promise<bigint>;
     getDefaultPosition(): Promise<bigint>;
     getEarningsEnabled(): Promise<boolean>;
+    getEstimatedMemoryUsage(): Promise<{
+        stableSize: bigint;
+        heapSize: bigint;
+    }>;
     getList(id: ListId): Promise<List>;
     getMonetarySettings(): Promise<MonetarySettings>;
     getMorningRoutine(id: RoutineId): Promise<MorningRoutine>;
     getMorningRoutinesBySection(section: RoutineSection): Promise<Array<MorningRoutine>>;
+    getOverallStorageMetrics(): Promise<StorageMetrics>;
     getPayrollHistory(): Promise<Array<PayrollRecord>>;
     getPreset(id: bigint): Promise<SpendPreset | null>;
+    getRoutineAndTaskStorageBreakdown(): Promise<{
+        tasks: {
+            total: bigint;
+            userBreakdowns: Array<bigint>;
+        };
+        routines: {
+            total: bigint;
+            userBreakdowns: Array<bigint>;
+        };
+    }>;
+    getRoutineStorageBreakdown(): Promise<{
+        total: bigint;
+        userBreakdowns: Array<bigint>;
+    }>;
     getTask(id: TaskId): Promise<Task>;
+    getTaskStorageBreakdown(): Promise<{
+        total: bigint;
+        userBreakdowns: Array<bigint>;
+    }>;
+    getTopUsersByStorage(limit: bigint): Promise<Array<UserStorageBreakdown>>;
+    getTotalStorageUsed(): Promise<bigint>;
     getTotalUsers(): Promise<bigint>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
-    manualResetRoutines(completedRoutineIds: Array<RoutineId>): Promise<void>;
     moveTask(taskId: TaskId, destinationListId: ListId): Promise<void>;
-    performRoutineDailyResetIfNeeded(): Promise<void>;
     promoteToAdmin(target: Principal): Promise<void>;
     removeAdmin(target: Principal): Promise<void>;
     reorderTask(taskId: TaskId, newPosition: bigint): Promise<void>;
-    resetNewDay(): Promise<void>;
+    resetNewDay(completedRoutineIds: Array<RoutineId>): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveMonetarySettings(settings: MonetarySettings): Promise<void>;
     setUserTier(targetUser: Principal, newTier: UserTier): Promise<void>;

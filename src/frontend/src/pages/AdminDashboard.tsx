@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useIsCallerAdmin } from '@/hooks/useQueries';
 import AdminUserDirectory from '@/components/admin/AdminUserDirectory';
 import TierSettings from '@/components/admin/TierSettings';
+import StorageMonitoring from '@/components/admin/StorageMonitoring';
 
 interface AdminDashboardProps {
   onBack: () => void;
@@ -108,9 +109,10 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
 
       <main className="flex-1 container mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-2xl grid-cols-3">
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="tier-settings">Tier Settings</TabsTrigger>
+            <TabsTrigger value="storage">Storage</TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="space-y-4">
@@ -129,6 +131,15 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
               </p>
             </div>
             <TierSettings />
+          </TabsContent>
+
+          <TabsContent value="storage" className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Monitor canister storage usage and track growth. The 4GB limit applies to stable memory.
+              </p>
+            </div>
+            <StorageMonitoring />
           </TabsContent>
         </Tabs>
       </main>

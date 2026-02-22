@@ -89,6 +89,11 @@
         -webkit-touch-callout: default;
     }
 
+    /* Safe area support for iOS devices with notches */
+    .safe-area-bottom {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
     /* Streak visualization effects - GPU-accelerated with transform and opacity */
     
     /* 2-7 days: Subtle blue shimmer animation */

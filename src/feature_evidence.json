@@ -2,10 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-add-a-reset-new-day-button-in-the-app-header-component-header-tsx-positioned-next-to-the-dark-mode-toggle-button",
-      "featureTitle": "Add a 'Reset New Day' button in the app header component (Header.tsx) positioned next to the dark mode toggle button",
+      "featureId": "feature-create-a-new-admindashboard-page-route-at-admin-that-displays-storage-monitoring-metrics-with-overview-cards-showing-total-memory-used-user-count-total-routines-and-total-tasks",
+      "featureTitle": "Create a new AdminDashboard page route at /admin that displays storage monitoring metrics with overview cards showing total memory used, user count, total routines, and total tasks",
       "files": [
-        "frontend/src/components/Header.tsx"
+        "frontend/src/pages/AdminDashboard.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -16,74 +16,15 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-1"
+        "REQ-5"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-modify-morningroutine-tsx-to-implement-frontend-only-check-uncheck-interaction-with-instant-visual-feedback-without-triggering-backend-saves-on-individual-check-uncheck-actions",
-      "featureTitle": "Modify MorningRoutine.tsx to implement frontend-only check/uncheck interaction with instant visual feedback without triggering backend saves on individual check/uncheck actions",
+      "featureId": "feature-add-storage-usage-visualization-to-the-admin-dashboard-showing-memory-usage-as-a-percentage-of-the-4gb-canister-limit-with-a-progress-bar-or-chart",
+      "featureTitle": "Add storage usage visualization to the admin dashboard showing memory usage as a percentage of the 4GB canister limit with a progress bar or chart",
       "files": [
-        "frontend/src/components/MorningRoutine.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "authorization@4.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-2"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-update-the-strike-count-badge-display-logic-in-morningroutine-tsx-to-show-strike-count-1-when-a-routine-is-checked-preview-of-tomorrow-s-count-and-the-current-strike-count-when-unchecked",
-      "featureTitle": "Update the strike count badge display logic in MorningRoutine.tsx to show strike count + 1 when a routine is checked (preview of tomorrow's count) and the current strike count when unchecked",
-      "files": [
-        "frontend/src/components/MorningRoutine.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "authorization@4.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-3"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-implement-the-manual-reset-workflow-triggered-by-clicking-the-reset-new-day-button-save-all-currently-checked-routines-to-the-backend-incrementing-their-strike-counts-by-1-reset-all-unchecked-routines-strike-counts-to-0-in-the-backend-and-clear-all-routine-checkboxes-back-to-unchecked-state-in-the-frontend",
-      "featureTitle": "Implement the manual reset workflow triggered by clicking the 'Reset New Day' button: save all currently checked routines to the backend (incrementing their strike counts by 1), reset all unchecked routines' strike counts to 0 in the backend, and clear all routine checkboxes back to unchecked state in the frontend",
-      "files": [
-        "frontend/src/components/Header.tsx",
-        "frontend/src/components/MorningRoutine.tsx",
-        "frontend/src/pages/TaskManager.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "authorization@4.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-4"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-create-a-react-query-mutation-hook-in-usequeries-ts-for-the-manual-daily-reset-operation-that-calls-the-new-backend-function-with-checked-routine-ids",
-      "featureTitle": "Create a React Query mutation hook in useQueries.ts for the manual daily reset operation that calls the new backend function with checked routine IDs",
-      "files": [
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/pages/AdminDashboard.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -95,6 +36,63 @@
       ],
       "testIds": [
         "REQ-6"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-a-per-user-data-breakdown-table-to-the-admin-dashboard-displaying-principal-id-routine-count-task-count-and-estimated-storage-size-for-each-user-sorted-by-storage-usage",
+      "featureTitle": "Add a per-user data breakdown table to the admin dashboard displaying Principal ID, routine count, task count, and estimated storage size for each user, sorted by storage usage",
+      "files": [
+        "frontend/src/pages/AdminDashboard.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "authorization@4.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-7"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-cycle-balance-display-to-the-admin-dashboard-showing-current-canister-cycle-balance-with-formatted-units",
+      "featureTitle": "Add cycle balance display to the admin dashboard showing current canister cycle balance with formatted units",
+      "files": [
+        "frontend/src/pages/AdminDashboard.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "authorization@4.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-8"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-implement-frontend-access-control-for-the-admin-dashboard-route-to-restrict-access-to-authorized-administrators-only-showing-an-unauthorized-message-for-non-admin-users",
+      "featureTitle": "Implement frontend access control for the admin dashboard route to restrict access to authorized administrators only, showing an unauthorized message for non-admin users",
+      "files": [
+        "frontend/src/pages/AdminDashboard.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "authorization@4.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-9"
       ],
       "confidence": "high"
     }

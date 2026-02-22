@@ -151,6 +151,7 @@ export interface TierLimits {
 export interface MorningRoutine {
     id: RoutineId;
     weight: bigint;
+    strikeCount: bigint;
     order: bigint;
     text: string;
     completed: boolean;
@@ -166,6 +167,12 @@ export interface TaskCreateInput {
     urgent: boolean;
     listId: ListId;
 }
+export interface UserStorageBreakdown {
+    principal: Principal;
+    routineCount: bigint;
+    taskCount: bigint;
+    estimatedSizeBytes: bigint;
+}
 export interface SpendRecord {
     id: SpendId;
     date: bigint;
@@ -174,14 +181,14 @@ export interface SpendRecord {
     spendType: SpendType;
 }
 export type TaskId = bigint;
-export type ListId = bigint;
-export interface List {
-    id: ListId;
-    name: string;
-    important: boolean;
-    urgent: boolean;
-    quadrant: boolean;
+export interface StorageMetrics {
+    totalTasks: bigint;
+    estimatedHeapMemoryBytes: bigint;
+    totalRoutines: bigint;
+    totalUsers: bigint;
+    estimatedStableMemoryBytes: bigint;
 }
+export type ListId = bigint;
 export type RoutineId = bigint;
 export type SpendId = bigint;
 export interface MonetarySettings {
@@ -190,6 +197,13 @@ export interface MonetarySettings {
     maxMoneyPerDay: bigint;
     totalBalance: bigint;
     maxEveningRoutine: bigint;
+}
+export interface List {
+    id: ListId;
+    name: string;
+    important: boolean;
+    urgent: boolean;
+    quadrant: boolean;
 }
 export interface UserProfile {
     earningsEnabled: boolean;
@@ -243,28 +257,52 @@ export interface backendInterface {
     getAllTierLimits(): Promise<TierLimitsConfig>;
     getAllUserMetadata(): Promise<Array<[Principal, UserProfile]>>;
     getAllUserMetadataWithRoles(): Promise<Array<UserMetadata>>;
+    getAllUserStorageBreakdowns(): Promise<Array<UserStorageBreakdown>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDefaultOrder(): Promise<bigint>;
     getDefaultPosition(): Promise<bigint>;
     getEarningsEnabled(): Promise<boolean>;
+    getEstimatedMemoryUsage(): Promise<{
+        stableSize: bigint;
+        heapSize: bigint;
+    }>;
     getList(id: ListId): Promise<List>;
     getMonetarySettings(): Promise<MonetarySettings>;
     getMorningRoutine(id: RoutineId): Promise<MorningRoutine>;
     getMorningRoutinesBySection(section: RoutineSection): Promise<Array<MorningRoutine>>;
+    getOverallStorageMetrics(): Promise<StorageMetrics>;
     getPayrollHistory(): Promise<Array<PayrollRecord>>;
     getPreset(id: bigint): Promise<SpendPreset | null>;
+    getRoutineAndTaskStorageBreakdown(): Promise<{
+        tasks: {
+            total: bigint;
+            userBreakdowns: Array<bigint>;
+        };
+        routines: {
+            total: bigint;
+            userBreakdowns: Array<bigint>;
+        };
+    }>;
+    getRoutineStorageBreakdown(): Promise<{
+        total: bigint;
+        userBreakdowns: Array<bigint>;
+    }>;
     getTask(id: TaskId): Promise<Task>;
+    getTaskStorageBreakdown(): Promise<{
+        total: bigint;
+        userBreakdowns: Array<bigint>;
+    }>;
+    getTopUsersByStorage(limit: bigint): Promise<Array<UserStorageBreakdown>>;
+    getTotalStorageUsed(): Promise<bigint>;
     getTotalUsers(): Promise<bigint>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
-    manualResetRoutines(completedRoutineIds: Array<RoutineId>): Promise<void>;
     moveTask(taskId: TaskId, destinationListId: ListId): Promise<void>;
-    performRoutineDailyResetIfNeeded(): Promise<void>;
     promoteToAdmin(target: Principal): Promise<void>;
     removeAdmin(target: Principal): Promise<void>;
     reorderTask(taskId: TaskId, newPosition: bigint): Promise<void>;
-    resetNewDay(): Promise<void>;
+    resetNewDay(completedRoutineIds: Array<RoutineId>): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveMonetarySettings(settings: MonetarySettings): Promise<void>;
     setUserTier(targetUser: Principal, newTier: UserTier): Promise<void>;
@@ -644,6 +682,20 @@ export class Backend implements backendInterface {
             return from_candid_vec_n31(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getAllUserStorageBreakdowns(): Promise<Array<UserStorageBreakdown>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllUserStorageBreakdowns();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllUserStorageBreakdowns();
+            return result;
+        }
+    }
     async getCallerUserProfile(): Promise<UserProfile | null> {
         if (this.processError) {
             try {
@@ -714,6 +766,23 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getEstimatedMemoryUsage(): Promise<{
+        stableSize: bigint;
+        heapSize: bigint;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getEstimatedMemoryUsage();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getEstimatedMemoryUsage();
+            return result;
+        }
+    }
     async getList(arg0: ListId): Promise<List> {
         if (this.processError) {
             try {
@@ -770,6 +839,20 @@ export class Backend implements backendInterface {
             return from_candid_vec_n9(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getOverallStorageMetrics(): Promise<StorageMetrics> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getOverallStorageMetrics();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getOverallStorageMetrics();
+            return result;
+        }
+    }
     async getPayrollHistory(): Promise<Array<PayrollRecord>> {
         if (this.processError) {
             try {
@@ -798,6 +881,46 @@ export class Backend implements backendInterface {
             return from_candid_opt_n37(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getRoutineAndTaskStorageBreakdown(): Promise<{
+        tasks: {
+            total: bigint;
+            userBreakdowns: Array<bigint>;
+        };
+        routines: {
+            total: bigint;
+            userBreakdowns: Array<bigint>;
+        };
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getRoutineAndTaskStorageBreakdown();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getRoutineAndTaskStorageBreakdown();
+            return result;
+        }
+    }
+    async getRoutineStorageBreakdown(): Promise<{
+        total: bigint;
+        userBreakdowns: Array<bigint>;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getRoutineStorageBreakdown();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getRoutineStorageBreakdown();
+            return result;
+        }
+    }
     async getTask(arg0: TaskId): Promise<Task> {
         if (this.processError) {
             try {
@@ -809,6 +932,51 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getTask(arg0);
+            return result;
+        }
+    }
+    async getTaskStorageBreakdown(): Promise<{
+        total: bigint;
+        userBreakdowns: Array<bigint>;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getTaskStorageBreakdown();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getTaskStorageBreakdown();
+            return result;
+        }
+    }
+    async getTopUsersByStorage(arg0: bigint): Promise<Array<UserStorageBreakdown>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getTopUsersByStorage(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getTopUsersByStorage(arg0);
+            return result;
+        }
+    }
+    async getTotalStorageUsed(): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getTotalStorageUsed();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getTotalStorageUsed();
             return result;
         }
     }
@@ -854,20 +1022,6 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async manualResetRoutines(arg0: Array<RoutineId>): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.manualResetRoutines(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.manualResetRoutines(arg0);
-            return result;
-        }
-    }
     async moveTask(arg0: TaskId, arg1: ListId): Promise<void> {
         if (this.processError) {
             try {
@@ -879,20 +1033,6 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.moveTask(arg0, arg1);
-            return result;
-        }
-    }
-    async performRoutineDailyResetIfNeeded(): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.performRoutineDailyResetIfNeeded();
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.performRoutineDailyResetIfNeeded();
             return result;
         }
     }
@@ -938,17 +1078,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async resetNewDay(): Promise<void> {
+    async resetNewDay(arg0: Array<RoutineId>): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.resetNewDay();
+                const result = await this.actor.resetNewDay(arg0);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.resetNewDay();
+            const result = await this.actor.resetNewDay(arg0);
             return result;
         }
     }
@@ -1152,6 +1292,7 @@ function from_candid_opt_n37(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
 function from_candid_record_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: _RoutineId;
     weight: bigint;
+    strikeCount: bigint;
     order: bigint;
     text: string;
     completed: boolean;
@@ -1160,6 +1301,7 @@ function from_candid_record_n11(_uploadFile: (file: ExternalBlob) => Promise<Uin
 }): {
     id: RoutineId;
     weight: bigint;
+    strikeCount: bigint;
     order: bigint;
     text: string;
     completed: boolean;
@@ -1169,6 +1311,7 @@ function from_candid_record_n11(_uploadFile: (file: ExternalBlob) => Promise<Uin
     return {
         id: value.id,
         weight: value.weight,
+        strikeCount: value.strikeCount,
         order: value.order,
         text: value.text,
         completed: value.completed,

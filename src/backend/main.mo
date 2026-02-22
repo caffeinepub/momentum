@@ -1,7 +1,6 @@
 import Map "mo:core/Map";
 import Int "mo:core/Int";
 import Nat "mo:core/Nat";
-import Iter "mo:core/Iter";
 import Time "mo:core/Time";
 import Order "mo:core/Order";
 import Array "mo:core/Array";
@@ -19,6 +18,8 @@ actor {
   let MAX_TITLE_LENGTH = 20;
   let START_OFFSET = 1000;
   let MAX_ADMINS = 3;
+
+  var canisterOwner : ?Principal = null;
 
   public type Id = Nat;
   public type PrincipalId = Principal;
@@ -62,6 +63,7 @@ actor {
     section : RoutineSection;
     order : Nat;
     streakCount : Nat;
+    strikeCount : Nat;
     weight : Int;
   };
 
@@ -94,12 +96,6 @@ actor {
     quadrant : Bool;
     urgent : Bool;
     important : Bool;
-  };
-
-  module List {
-    public func compare(a : List, b : List) : Order.Order {
-      Nat.compare(a.id, b.id);
-    };
   };
 
   public type PayrollRecord = {
@@ -202,6 +198,18 @@ actor {
     silver = { maxRoutines = ?10; maxCustomLists = ?5; maxTasks = ?50 };
     gold = { maxRoutines = ?20; maxCustomLists = ?10; maxTasks = ?100 };
     diamond = { maxRoutines = null; maxCustomLists = null; maxTasks = null };
+  };
+
+  func isCanisterOwner(caller : Principal) : Bool {
+    switch (canisterOwner) {
+      case (null) {
+        canisterOwner := ?caller;
+        true;
+      };
+      case (?owner) {
+        Principal.equal(caller, owner);
+      };
+    };
   };
 
   public query ({ caller }) func getAllTierLimits() : async TierLimitsConfig {
@@ -405,37 +413,6 @@ actor {
     initializeAllQuadrantsInternal(user);
   };
 
-  func needsRecalculation(tasks : [Task]) : Bool {
-    if (tasks.size() < 2) { return false };
-    var i = 1;
-    while (i < tasks.size()) {
-      let prev = tasks[i - 1];
-      let curr = tasks[i];
-      if (curr.order <= prev.order or (Int.abs(curr.order.toInt() - prev.order.toInt()) < 1)) {
-        return true;
-      };
-      i += 1;
-    };
-    false;
-  };
-
-  func recalculateOrders(user : User, listId : ListId) {
-    let tasksArray = user.tasks.values().toArray().filter(func(t) { t.listId == listId }).sort(
-      func(a : Task, b : Task) : Order.Order { Nat.compare(a.order, b.order) }
-    );
-    let numTasks = tasksArray.size();
-    if (numTasks <= 1) { return };
-
-    var i = 0;
-    while (i < numTasks) {
-      let newOrder = (i + 1) * START_OFFSET;
-      let task = tasksArray[i];
-      let updatedTask = { task with order = newOrder };
-      user.tasks.add(task.id, updatedTask);
-      i += 1;
-    };
-  };
-
   public shared ({ caller }) func updateTaskPosition(taskId : TaskId, positionIndex : Nat) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can perform this action");
@@ -446,31 +423,25 @@ actor {
         switch (user.tasks.get(taskId)) {
           case (null) { Runtime.trap("Task not found") };
           case (?task) {
-            let sortedTasks = user.tasks.values().toArray().filter(func(t) { t.listId == task.listId }).sort(
-              func(a : Task, b : Task) : Order.Order { Nat.compare(a.order, b.order) }
-            );
-            let numTasks = sortedTasks.size();
+            let filteredTasks = user.tasks.values().toArray().filter(func(t) { t.listId == task.listId });
+            let numTasks = filteredTasks.size();
 
             let newOrder = if (numTasks == 0) {
               START_OFFSET;
             } else if (positionIndex >= numTasks) {
-              let lastTask = sortedTasks[numTasks - 1];
+              let lastTask = filteredTasks[numTasks - 1];
               lastTask.order + START_OFFSET;
             } else if (positionIndex == 0) {
-              let firstTask = sortedTasks[0];
+              let firstTask = filteredTasks[0];
               if (firstTask.order > 1) {
                 firstTask.order / 2;
               } else {
                 START_OFFSET;
               };
             } else {
-              let beforeTask = sortedTasks[positionIndex - 1];
-              let afterTask = sortedTasks[positionIndex];
+              let beforeTask = filteredTasks[positionIndex - 1];
+              let afterTask = filteredTasks[positionIndex];
               (beforeTask.order + afterTask.order) / 2;
-            };
-
-            if (numTasks > 1 and needsRecalculation(sortedTasks)) {
-              recalculateOrders(user, task.listId);
             };
 
             let updatedTask = { task with order = newOrder };
@@ -700,7 +671,7 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can perform this action");
     };
-    getUser(caller).lists.values().toArray().sort();
+    getUser(caller).lists.values().toArray();
   };
 
   public query ({ caller }) func getDefaultOrder() : async Nat {
@@ -746,6 +717,7 @@ actor {
       section;
       order = START_OFFSET;
       streakCount = 1;
+      strikeCount = 0;
       weight = 1;
     };
     user.routines.add(user.nextRoutineId, routine);
@@ -848,31 +820,25 @@ actor {
     switch (user.routines.get(routineId)) {
       case (null) { Runtime.trap("Routine item not found") };
       case (?routine) {
-        let sortedRoutines = user.routines.values().toArray().filter(func(r) { r.section == routine.section }).sort(
-          func(a, b) { Nat.compare(a.order, b.order) }
-        );
-        let numRoutines = sortedRoutines.size();
+        let filteredRoutines = user.routines.values().toArray().filter(func(r) { r.section == routine.section });
+        let numRoutines = filteredRoutines.size();
 
         let newOrder = if (numRoutines == 0) {
           START_OFFSET;
         } else if (positionIndex >= numRoutines) {
-          let lastRoutine = sortedRoutines[numRoutines - 1];
+          let lastRoutine = filteredRoutines[numRoutines - 1];
           lastRoutine.order + START_OFFSET;
         } else if (positionIndex == 0) {
-          let firstRoutine = sortedRoutines[0];
+          let firstRoutine = filteredRoutines[0];
           if (firstRoutine.order > 1) {
             firstRoutine.order / 2;
           } else {
             START_OFFSET;
           };
         } else {
-          let beforeRoutine = sortedRoutines[positionIndex - 1];
-          let afterRoutine = sortedRoutines[positionIndex];
+          let beforeRoutine = filteredRoutines[positionIndex - 1];
+          let afterRoutine = filteredRoutines[positionIndex];
           (beforeRoutine.order + afterRoutine.order) / 2;
-        };
-
-        if (needsRoutineRecalculation(sortedRoutines)) {
-          recalculateRoutineOrders(user, routine.section);
         };
 
         let updatedRoutine = { routine with order = newOrder };
@@ -881,161 +847,28 @@ actor {
     };
   };
 
-  func needsRoutineRecalculation(routines : [MorningRoutine]) : Bool {
-    if (routines.size() < 2) { return false };
-    var i = 1;
-    while (i < routines.size()) {
-      let prev = routines[i - 1];
-      let curr = routines[i];
-      if (curr.order <= prev.order or (Int.abs(curr.order.toInt() - prev.order.toInt()) < 1)) {
-        return true;
-      };
-      i += 1;
-    };
-    false;
-  };
-
-  func recalculateRoutineOrders(user : User, section : RoutineSection) {
-    let routinesArray = user.routines.values().toArray().filter(func(r) { r.section == section }).sort(
-      func(a, b) { Nat.compare(a.order, b.order) }
-    );
-    let numRoutines = routinesArray.size();
-    if (numRoutines <= 1) { return };
-
-    var i = 0;
-    while (i < numRoutines) {
-      let newOrder = (i + 1) * START_OFFSET;
-      let routine = routinesArray[i];
-      let updatedRoutine = { routine with order = newOrder };
-      user.routines.add(routine.id, updatedRoutine);
-      i += 1;
-    };
-  };
-
-  public shared ({ caller }) func performRoutineDailyResetIfNeeded() : async () {
+  public shared ({ caller }) func resetNewDay(completedRoutineIds : [RoutineId]) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can perform this action");
     };
-
-    let currentTimeNanos = Time.now();
-    let currentDayEpoch = currentTimeNanos / (24 * 3600 * 1000000000);
-
-    let user = getOrCreateUserInternal(caller);
-
-    if (user.lastResetDate == currentDayEpoch) {
-      return;
-    };
-
-    let updatedRoutines = user.routines.map<RoutineId, MorningRoutine, MorningRoutine>(
-      func(_, routine) {
-        var newStreak = routine.streakCount;
-
-        if (routine.completed) {
-          newStreak += 1;
-        } else {
-          newStreak := 0;
-        };
-        {
-          routine with
-          completed = false;
-          streakCount = newStreak;
-          weight = calculateRoutineWeight(newStreak);
-        };
-      }
-    );
-
-    let newUser = {
-      user with routines = updatedRoutines;
-      lastResetDate = currentDayEpoch;
-    };
-    users.add(caller, newUser);
-  };
-
-  public shared ({ caller }) func manualResetRoutines(completedRoutineIds : [RoutineId]) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can perform this action");
-    };
-
-    let currentTimeNanos = Time.now();
-    let currentDayEpoch = currentTimeNanos / (24 * 3600 * 1000000000);
 
     let user = getOrCreateUserInternal(caller);
 
     let updatedRoutines = user.routines.map<RoutineId, MorningRoutine, MorningRoutine>(
       func(id, routine) {
-        let wasCompleted = completedRoutineIds.find(func(completedId) { completedId == id }) != null;
-
-        if (wasCompleted) {
-          { routine with streakCount = routine.streakCount + 1 };
-        } else {
-          { routine with streakCount = 0 };
-        };
-      }
-    );
-
-    let newUser = {
-      user with
-      routines = updatedRoutines;
-      lastResetDate = currentDayEpoch;
-    };
-    users.add(caller, newUser);
-  };
-
-  public shared ({ caller }) func resetNewDay() : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can perform this action");
-    };
-
-    let currentTimeNanos = Time.now();
-    let currentDayEpoch = currentTimeNanos / (24 * 3600 * 1000000000);
-
-    let user = getOrCreateUserInternal(caller);
-
-    if (user.lastResetDate == currentDayEpoch) { return };
-
-    switch (user.todayEarns) {
-      case (null) {};
-      case (?todayEarns) {
-        if (not todayEarns.submitted) {
-          let payrollRecord : PayrollRecord = {
-            date = currentDayEpoch;
-            total = todayEarns.total;
-            submitted = false;
-            details = todayEarns.details;
-          };
-          user.payrollHistory.add(currentDayEpoch, payrollRecord);
-        };
-      };
-    };
-
-    let updatedTasks = user.tasks.filter(
-      func(_id, task) {
-        task.listId > 4;
-      }
-    );
-
-    let updatedRoutines = user.routines.map<RoutineId, MorningRoutine, MorningRoutine>(
-      func(_, routine) {
-        var newStreak = routine.streakCount;
-        if (routine.completed) { newStreak += 1 } else {
-          newStreak := 0 : Nat;
-        };
+        let isCompleted = completedRoutineIds.findIndex(func(x) { x == id }) != null;
         {
           routine with
           completed = false;
-          streakCount = newStreak;
-          weight = calculateRoutineWeight(newStreak);
+          streakCount = if (isCompleted) { routine.streakCount + 1 : Nat } else {
+            0;
+          };
+          strikeCount = if (isCompleted) { routine.strikeCount + 1 : Nat } else { 0 };
         };
       }
     );
 
-    let newUser = {
-      user with
-      tasks = updatedTasks;
-      routines = updatedRoutines;
-      lastResetDate = currentDayEpoch;
-      todayEarns = null;
-    };
+    let newUser = { user with routines = updatedRoutines };
     users.add(caller, newUser);
   };
 
@@ -1304,11 +1137,7 @@ actor {
     };
     let user = getUser(caller);
     let spendsArray = user.spendRecords.values().toArray();
-    spendsArray.sort(
-      func(a, b) {
-        Nat.compare(b.id, a.id);
-      }
-    );
+    spendsArray;
   };
 
   public shared ({ caller }) func deleteSpend(spendId : SpendId) : async () {
@@ -1465,5 +1294,202 @@ actor {
 
   public query ({ caller }) func getTotalUsers() : async Nat {
     users.size();
+  };
+
+  public type StorageMetrics = {
+    totalUsers : Nat;
+    estimatedStableMemoryBytes : Nat;
+    estimatedHeapMemoryBytes : Nat;
+    totalRoutines : Nat;
+    totalTasks : Nat;
+  };
+
+  public type UserStorageBreakdown = {
+    principal : Principal;
+    routineCount : Nat;
+    taskCount : Nat;
+    estimatedSizeBytes : Nat;
+  };
+
+  func calculateUserStorageBreakdown(principal : Principal, user : User) : UserStorageBreakdown {
+    let routinesCount = user.routines.size();
+    let tasksCount = user.tasks.size();
+    let routineSize = 80;
+    let taskSize = 120;
+    let listSize = 40;
+    let scalingFactor = 1.2;
+    let estimatedSize = Int.abs(
+      (routinesCount * routineSize + tasksCount * taskSize + user.lists.size() * listSize) * routineSize * taskSize * listSize
+    );
+
+    {
+      principal;
+      routineCount = routinesCount;
+      taskCount = tasksCount;
+      estimatedSizeBytes = estimatedSize;
+    };
+  };
+
+  public query ({ caller }) func getOverallStorageMetrics() : async StorageMetrics {
+    if (not isCanisterOwner(caller)) {
+      Runtime.trap("Unauthorized: Only canister owner can access storage metrics");
+    };
+
+    let TOTAL_USER_SIZE = 1024;
+    let MAX_ESTIMATE_SIZE = 100_000_000;
+
+    var stableMemoryEstimate = 0;
+    var heapMemoryEstimate = 0;
+    var totalRoutines = 0;
+    var totalTasks = 0;
+
+    for ((_, user) in users.entries()) {
+      stableMemoryEstimate += TOTAL_USER_SIZE;
+      heapMemoryEstimate += TOTAL_USER_SIZE;
+
+      for (_ in user.routines.values()) {
+        totalRoutines += 1;
+      };
+      for (_ in user.tasks.values()) {
+        totalTasks += 1;
+      };
+    };
+
+    switch (users.size()) {
+      case (0) {
+        stableMemoryEstimate := 0;
+        heapMemoryEstimate := 0;
+      };
+      case (_) {
+        stableMemoryEstimate := Nat.min(stableMemoryEstimate, MAX_ESTIMATE_SIZE);
+        heapMemoryEstimate := Nat.min(heapMemoryEstimate, MAX_ESTIMATE_SIZE);
+      };
+    };
+
+    {
+      totalUsers = users.size();
+      estimatedStableMemoryBytes = stableMemoryEstimate;
+      estimatedHeapMemoryBytes = heapMemoryEstimate;
+      totalRoutines;
+      totalTasks;
+    };
+  };
+
+  func compareUserStorageAscending(a : UserStorageBreakdown, b : UserStorageBreakdown) : Order.Order {
+    Nat.compare(a.estimatedSizeBytes, b.estimatedSizeBytes);
+  };
+
+  public query ({ caller }) func getAllUserStorageBreakdowns() : async [UserStorageBreakdown] {
+    if (not isCanisterOwner(caller)) {
+      Runtime.trap("Unauthorized: Only canister owner can access user storage breakdowns");
+    };
+
+    let breakdowns = users.entries().toArray().map(
+      func((principal, user)) { calculateUserStorageBreakdown(principal, user) }
+    );
+
+    let sortedBreakdowns = breakdowns.sort(compareUserStorageAscending);
+    sortedBreakdowns;
+  };
+
+  public query ({ caller }) func getTopUsersByStorage(limit : Nat) : async [UserStorageBreakdown] {
+    if (not isCanisterOwner(caller)) {
+      Runtime.trap("Unauthorized: Only canister owner can access top users by storage");
+    };
+
+    let breakdowns = users.entries().toArray().map(
+      func((principal, user)) { calculateUserStorageBreakdown(principal, user) }
+    );
+
+    let sortedBreakdowns = breakdowns.sort(func(a, b) {
+      Nat.compare(b.estimatedSizeBytes, a.estimatedSizeBytes);
+    });
+
+    let resultSize = Nat.min(limit, sortedBreakdowns.size());
+    Array.tabulate<UserStorageBreakdown>(resultSize, func(i) { sortedBreakdowns[i] });
+  };
+
+  public query ({ caller }) func getTotalStorageUsed() : async Nat {
+    if (not isCanisterOwner(caller)) {
+      Runtime.trap("Unauthorized: Only canister owner can access total storage used");
+    };
+    let totalUserSize = 1024;
+    users.size() * totalUserSize;
+  };
+
+  public query ({ caller }) func getEstimatedMemoryUsage() : async { stableSize : Nat; heapSize : Nat } {
+    if (not isCanisterOwner(caller)) {
+      Runtime.trap("Unauthorized: Only canister owner can access memory usage estimation");
+    };
+    let totalUserSize = 1024;
+    let stableMemorySize = users.size() * totalUserSize;
+    let heapMemorySize = users.size() * totalUserSize;
+    { stableSize = stableMemorySize; heapSize = heapMemorySize };
+  };
+
+  public query ({ caller }) func getRoutineStorageBreakdown() : async { total : Nat; userBreakdowns : [Nat] } {
+    if (not isCanisterOwner(caller)) {
+      Runtime.trap("Unauthorized: Only canister owner can access routine storage breakdown");
+    };
+    let routineSize = 80;
+    var totalRoutineSize = 0;
+    let breakdowns = users.values().toArray().map(
+      func(user) {
+        let size = user.routines.size() * routineSize;
+        totalRoutineSize += size;
+        size;
+      }
+    );
+    { total = totalRoutineSize; userBreakdowns = breakdowns };
+  };
+
+  public query ({ caller }) func getTaskStorageBreakdown() : async { total : Nat; userBreakdowns : [Nat] } {
+    if (not isCanisterOwner(caller)) {
+      Runtime.trap("Unauthorized: Only canister owner can access task storage breakdown");
+    };
+    let taskSize = 120;
+    var totalTaskSize = 0;
+    let breakdowns = users.values().toArray().map(
+      func(user) {
+        let size = user.tasks.size() * taskSize;
+        totalTaskSize += size;
+        size;
+      }
+    );
+    { total = totalTaskSize; userBreakdowns = breakdowns };
+  };
+
+  public query ({ caller }) func getRoutineAndTaskStorageBreakdown() : async {
+    routines : { total : Nat; userBreakdowns : [Nat] };
+    tasks : { total : Nat; userBreakdowns : [Nat] };
+  } {
+    if (not isCanisterOwner(caller)) {
+      Runtime.trap("Unauthorized: Only canister owner can access routine and task storage breakdown");
+    };
+    let routineSize = 80;
+    let taskSize = 120;
+
+    var totalRoutineSize = 0;
+    let userRoutineBreakdowns = users.values().toArray().map(
+      func(user) {
+        let size = user.routines.size() * routineSize;
+        totalRoutineSize += size;
+        size;
+      }
+    );
+
+    var totalTaskSize = 0;
+    let userTaskBreakdowns = users.values().toArray().map(
+      func(user) {
+        let size = user.tasks.size() * taskSize;
+        totalTaskSize += size;
+        size;
+      }
+    );
+
+    {
+      routines = { total = totalRoutineSize; userBreakdowns = userRoutineBreakdowns };
+      tasks = { total = totalTaskSize; userBreakdowns = userTaskBreakdowns };
+    };
   };
 };

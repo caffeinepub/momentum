@@ -1,135 +1,179 @@
-import { Calendar, Moon, Sun, Shield, User } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { LogOut, User, Shield, RotateCcw } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useInternetIdentity } from '@/hooks/useInternetIdentity';
+import { useGetCallerUserProfile, useIsCallerAdmin } from '@/hooks/useQueries';
+import { getUserTierLabel } from '@/lib/userTier';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useQueryClient } from '@tanstack/react-query';
-import { useGetCallerUserProfile } from '../hooks/useQueries';
+import ThemeToggle from './ThemeToggle';
 import TestDatePicker from './TestDatePicker';
 import { toast } from 'sonner';
 
 interface HeaderProps {
+  onOpenAdminDashboard: () => void;
   testDate?: Date | null;
-  onOpenAdminDashboard?: () => void;
-  onOpenUserInfo?: () => void;
-  onResetNewDay?: () => void;
-  isResetting?: boolean;
   onTestDateChange?: (date: Date | null) => void;
+  showTestDatePicker?: boolean;
+  onResetNewDay?: () => void;
+  isResettingDay?: boolean;
 }
 
 export default function Header({ 
-  testDate, 
   onOpenAdminDashboard, 
-  onOpenUserInfo,
+  testDate, 
+  onTestDateChange,
+  showTestDatePicker = false,
   onResetNewDay,
-  isResetting = false,
-  onTestDateChange
+  isResettingDay = false,
 }: HeaderProps) {
-  const { theme, setTheme } = useTheme();
-  const { clear, identity } = useInternetIdentity();
-  const queryClient = useQueryClient();
+  const { login, clear, loginStatus, identity } = useInternetIdentity();
   const { data: userProfile } = useGetCallerUserProfile();
+  const { data: isAdmin } = useIsCallerAdmin();
+  const queryClient = useQueryClient();
 
   const isAuthenticated = !!identity;
+  const isLoggingIn = loginStatus === 'logging-in';
 
-  const handleLogout = async () => {
-    await clear();
-    queryClient.clear();
+  const handleAuth = async () => {
+    if (isAuthenticated) {
+      await clear();
+      queryClient.clear();
+      toast.success('Logged out successfully');
+    } else {
+      try {
+        await login();
+        toast.success('Logged in successfully');
+      } catch (error: any) {
+        console.error('Login error:', error);
+        if (error.message === 'User is already authenticated') {
+          await clear();
+          setTimeout(() => login(), 300);
+        } else {
+          toast.error('Failed to log in');
+        }
+      }
+    }
   };
 
+  // Full date format for larger screens
   const displayDate = testDate || new Date();
-  const formattedDate = displayDate.toLocaleDateString('en-US', {
+  const fullDate = displayDate.toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
 
-  const handleResetClick = () => {
-    if (onResetNewDay) {
-      onResetNewDay();
-    }
-  };
+  // Shortened date format for smaller screens (e.g., "Mon, Jan 1")
+  const shortDate = displayDate.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <img src="/assets/Momentum.png" alt="Momentum" className="h-8 w-8" />
-            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Momentum
-            </span>
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container mx-auto flex h-14 items-center justify-between px-2 sm:px-4 gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg overflow-hidden">
+            <img 
+              src="/assets/Momentum.png" 
+              alt="Momentum Logo" 
+              className="h-full w-full object-contain"
+            />
           </div>
-          <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="h-4 w-4" />
-            <span>{formattedDate}</span>
-          </div>
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight">Momentum</h1>
         </div>
 
-        <div className="flex items-center gap-2">
-          {onResetNewDay && (
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex-shrink-0">
+            <p className="text-xs sm:text-sm font-medium text-muted-foreground whitespace-nowrap">
+              <span className="hidden lg:inline">{fullDate}</span>
+              <span className="lg:hidden">{shortDate}</span>
+            </p>
+          </div>
+          
+          {/* TEST-ONLY: Date picker for routine testing - hidden on mobile */}
+          {showTestDatePicker && onTestDateChange && (
+            <div className="hidden md:block">
+              <TestDatePicker 
+                selectedDate={testDate || null} 
+                onDateChange={onTestDateChange}
+              />
+            </div>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <ThemeToggle />
+          
+          {isAuthenticated && onResetNewDay && (
             <Button
-              onClick={handleResetClick}
-              disabled={isResetting}
               variant="outline"
               size="sm"
+              onClick={onResetNewDay}
+              disabled={isResettingDay}
               className="gap-2"
             >
-              {isResetting ? 'Resetting...' : 'Reset New Day'}
+              <RotateCcw className={`h-4 w-4 ${isResettingDay ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Reset New Day</span>
             </Button>
           )}
-
-          {testDate && onTestDateChange && (
-            <TestDatePicker selectedDate={testDate} onDateChange={onTestDateChange} />
-          )}
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          >
-            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            <span className="sr-only">Toggle theme</span>
-          </Button>
-
-          {onOpenAdminDashboard && (
-            <Button variant="ghost" size="icon" onClick={onOpenAdminDashboard}>
-              <Shield className="h-5 w-5" />
-              <span className="sr-only">Admin Dashboard</span>
+          
+          {isAuthenticated && isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenAdminDashboard}
+              className="gap-2"
+            >
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">Admin</span>
             </Button>
           )}
-
-          {isAuthenticated && (
+          
+          {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <User className="h-5 w-5" />
-                  <span className="sr-only">User menu</span>
+                <Button variant="outline" size="icon" className="rounded-full h-8 w-8 sm:h-9 sm:w-9">
+                  <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {userProfile && (
-                  <div className="px-2 py-1.5 text-sm font-medium">
-                    {userProfile.name || 'User'}
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">
+                      {userProfile?.name || 'User'}
+                    </p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      Tier: {getUserTierLabel(userProfile?.tier)}
+                    </p>
                   </div>
-                )}
-                {onOpenUserInfo && (
-                  <DropdownMenuItem onClick={onOpenUserInfo}>
-                    Account Info
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={handleLogout}>
-                  Logout
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleAuth} className="cursor-pointer">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          ) : (
+            <Button
+              onClick={handleAuth}
+              disabled={isLoggingIn}
+              variant="default"
+              size="sm"
+              className="gap-2"
+            >
+              {isLoggingIn ? 'Logging in...' : 'Log in'}
+            </Button>
           )}
         </div>
       </div>

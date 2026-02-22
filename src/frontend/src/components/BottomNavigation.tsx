@@ -373,7 +373,7 @@ export default function BottomNavigation({
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-lg">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-lg safe-area-bottom">
         <div className="relative h-14 flex items-end justify-center">
           <div className="absolute inset-x-0 bottom-0 flex items-end justify-between px-8">
             {earningsEnabled && !isPlanMode && (
@@ -497,20 +497,18 @@ export default function BottomNavigation({
               onClick={handleXButtonClick}
               className={`absolute bottom-2 left-1/2 -translate-x-1/2 h-14 w-14 rounded-full shadow-xl flex items-center justify-center z-10 border-4 border-background bg-gradient-to-br from-gray-400 to-gray-500 hover:shadow-2xl hover:scale-105`}
               style={{
-                transform: 'translateX(-50%) translateY(0px) scale(1)',
                 transition: 'transform 175ms cubic-bezier(0.33, 1, 0.68, 1), box-shadow 150ms ease-out',
                 willChange: 'transform, opacity',
               }}
-              aria-label="Switch to Home-like layout"
+              aria-label="Switch to home-like layout"
             >
-              <X className="h-6 w-6 text-white" strokeWidth={2.5} />
+              <X className="h-8 w-8 text-white" strokeWidth={2.5} />
             </button>
           ) : showPlusButton ? (
             <button
               onClick={onAddTask}
               className={`absolute bottom-2 left-1/2 -translate-x-1/2 h-20 w-20 rounded-full shadow-xl flex items-center justify-center z-10 border-4 border-background bg-gradient-to-br from-primary to-primary/80 hover:shadow-2xl hover:scale-105`}
               style={{
-                transform: 'translateX(-50%) translateY(0px) scale(1)',
                 transition: 'transform 175ms cubic-bezier(0.33, 1, 0.68, 1), box-shadow 150ms ease-out',
                 willChange: 'transform, opacity',
               }}

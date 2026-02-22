@@ -1,52 +1,54 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "A routine tracking app with a manual daily reset system. Users can check/uncheck routines throughout the day to preview tomorrow's strike counts (frontend-only), then click a 'Reset New Day' button to commit progress. Checked routines increment their strike count by 1, unchecked routines reset to 0, and all checkboxes clear for the next day.",
+  "summary": "Momentum productivity app with routines and tasks. Backend stores user data in a single canister using Principal-based isolation. Storage monitoring system with admin dashboard being implemented.",
   "architectural_notes": [
-    "Manual daily reset system: check/uncheck is frontend-only preview, backend updates only on 'Reset New Day' button click",
-    "Badge logic: dynamically shows strike count + 1 for checked routines, current count for unchecked",
-    "Reset workflow: increments strikes for checked routines, resets unchecked routines to 0 strikes, clears all checkboxes"
+    "Single canister serves all users with Principal-based data isolation",
+    "Backend stores routines and tasks in HashMaps keyed by user Principal",
+    "Data syncs across devices via Internet Identity authentication",
+    "Current architecture can scale to ~65,000 users before hitting 4GB limit",
+    "Admin dashboard restricted to canister owner Principal for monitoring"
   ],
   "known_issues": [],
   "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-add-a-reset-new-day-button-in-the-app-header-component-header-tsx-positioned-next-to-the-dark-mode-toggle-button",
-      "title": "Add a 'Reset New Day' button in the app header component (Header.tsx) positioned next to the dark mode toggle button",
+      "id": "feature-create-a-new-admindashboard-page-route-at-admin-that-displays-storage-monitoring-metrics-with-overview-cards-showing-total-memory-used-user-count-total-routines-and-total-tasks",
+      "title": "Create a new AdminDashboard page route at /admin that displays storage monitoring metrics with overview cards showing total memory used, user count, total routines, and total tasks",
       "reqIds": [
-        "REQ-1"
+        "REQ-5"
       ],
       "version": 1
     },
     {
-      "id": "feature-modify-morningroutine-tsx-to-implement-frontend-only-check-uncheck-interaction-with-instant-visual-feedback-without-triggering-backend-saves-on-individual-check-uncheck-actions",
-      "title": "Modify MorningRoutine.tsx to implement frontend-only check/uncheck interaction with instant visual feedback without triggering backend saves on individual check/uncheck actions",
-      "reqIds": [
-        "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-the-strike-count-badge-display-logic-in-morningroutine-tsx-to-show-strike-count-1-when-a-routine-is-checked-preview-of-tomorrow-s-count-and-the-current-strike-count-when-unchecked",
-      "title": "Update the strike count badge display logic in MorningRoutine.tsx to show strike count + 1 when a routine is checked (preview of tomorrow's count) and the current strike count when unchecked",
-      "reqIds": [
-        "REQ-3"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-implement-the-manual-reset-workflow-triggered-by-clicking-the-reset-new-day-button-save-all-currently-checked-routines-to-the-backend-incrementing-their-strike-counts-by-1-reset-all-unchecked-routines-strike-counts-to-0-in-the-backend-and-clear-all-routine-checkboxes-back-to-unchecked-state-in-the-frontend",
-      "title": "Implement the manual reset workflow triggered by clicking the 'Reset New Day' button: save all currently checked routines to the backend (incrementing their strike counts by 1), reset all unchecked routines' strike counts to 0 in the backend, and clear all routine checkboxes back to unchecked state in the frontend",
-      "reqIds": [
-        "REQ-4"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-create-a-react-query-mutation-hook-in-usequeries-ts-for-the-manual-daily-reset-operation-that-calls-the-new-backend-function-with-checked-routine-ids",
-      "title": "Create a React Query mutation hook in useQueries.ts for the manual daily reset operation that calls the new backend function with checked routine IDs",
+      "id": "feature-add-storage-usage-visualization-to-the-admin-dashboard-showing-memory-usage-as-a-percentage-of-the-4gb-canister-limit-with-a-progress-bar-or-chart",
+      "title": "Add storage usage visualization to the admin dashboard showing memory usage as a percentage of the 4GB canister limit with a progress bar or chart",
       "reqIds": [
         "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-per-user-data-breakdown-table-to-the-admin-dashboard-displaying-principal-id-routine-count-task-count-and-estimated-storage-size-for-each-user-sorted-by-storage-usage",
+      "title": "Add a per-user data breakdown table to the admin dashboard displaying Principal ID, routine count, task count, and estimated storage size for each user, sorted by storage usage",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-cycle-balance-display-to-the-admin-dashboard-showing-current-canister-cycle-balance-with-formatted-units",
+      "title": "Add cycle balance display to the admin dashboard showing current canister cycle balance with formatted units",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-frontend-access-control-for-the-admin-dashboard-route-to-restrict-access-to-authorized-administrators-only-showing-an-unauthorized-message-for-non-admin-users",
+      "title": "Implement frontend access control for the admin dashboard route to restrict access to authorized administrators only, showing an unauthorized message for non-admin users",
+      "reqIds": [
+        "REQ-9"
       ],
       "version": 1
     }
@@ -54,33 +56,47 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Add 'Reset New Day' button in app header next to dark mode toggle",
+      "summary": "Add storage monitoring system with admin dashboard showing canister metrics, user statistics, and per-user data breakdown",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "Implement frontend-only routine check/uncheck with instant visual feedback (no backend save)",
-      "reqIds": [],
+      "summary": "Add backend query functions to calculate and return canister storage metrics including total stable memory used, total heap memory used, total number of users, total number of routines across all users, and total number of tasks across all users",
+      "reqIds": [
+        "REQ-1"
+      ],
       "status": "pending"
     },
     {
       "id": "AR-3",
-      "summary": "Dynamic badge preview showing strike count + 1 when checked, current count when unchecked",
-      "reqIds": [],
+      "summary": "Add backend query function to return per-user storage breakdown including Principal ID, number of routines, number of tasks, and estimated storage size per user",
+      "reqIds": [
+        "REQ-2"
+      ],
       "status": "pending"
     },
     {
       "id": "AR-4",
-      "summary": "Manual reset workflow: Reset New Day button saves checked routines (increment strikes by 1), resets unchecked to 0, clears all checkboxes",
-      "reqIds": [],
+      "summary": "Add backend query function to return canister cycle balance",
+      "reqIds": [
+        "REQ-3"
+      ],
       "status": "pending"
     },
     {
-      "id": "AR-9",
-      "summary": "Add a backend function in main.mo to handle the manual daily reset, accepting an array of routine IDs that were checked, incrementing their strike counts by 1, and resetting strike counts to 0 for all other routines belonging to the user",
+      "id": "AR-5",
+      "summary": "Implement access control on all storage monitoring backend functions to restrict access to the canister owner only using msg.caller Principal verification",
       "reqIds": [
-        "REQ-5"
+        "REQ-4"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-11",
+      "summary": "Add a navigation link or button to access the admin dashboard from the existing Header component, visible only to admin users",
+      "reqIds": [
+        "REQ-10"
       ],
       "status": "pending"
     }
