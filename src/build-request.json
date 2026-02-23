@@ -1,203 +1,75 @@
 {
   "kind": "build_request",
-  "title": "Add storage monitoring system with admin dashboard",
-  "projectName": "Momentum",
+  "title": "Compact routine containers with scrolling and rename button",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Add backend query functions to calculate and return canister storage metrics including total stable memory used, total heap memory used, total number of users, total number of routines across all users, and total number of tasks across all users",
-      "target": "backend",
+      "text": "Modify the Morning Routine container in MorningRoutine.tsx to have a compact height that displays a maximum of 4 rows of routine items. When more than 4 rows exist, the container should become vertically scrollable while maintaining the compact height limit.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-20"
+          "msg-last"
         ],
         "quotes": [
-          "Total storage used, storage per user, number of routines/tasks"
+          "make Morning Routine and Evening Routine container height more compact for maximum 4 rows of routines, after that it will be scrollable"
         ]
       },
       "acceptanceCriteria": [
-        "Backend exposes a query function that returns total stable memory usage in bytes",
-        "Backend exposes a query function that returns total heap memory usage in bytes",
-        "Backend returns accurate count of total users in the system",
-        "Backend returns accurate count of total routines across all users",
-        "Backend returns accurate count of total tasks across all users"
+        "Morning Routine container displays maximum 4 rows of routine items at any given time",
+        "When routine items exceed 4 rows, vertical scrollbar appears",
+        "Container height remains compact and does not expand beyond the 4-row limit",
+        "Scrolling is smooth and maintains routine item interaction capabilities"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Add backend query function to return per-user storage breakdown including Principal ID, number of routines, number of tasks, and estimated storage size per user",
-      "target": "backend",
+      "text": "Modify the Evening Routine container in MorningRoutine.tsx to have a compact height that displays a maximum of 4 rows of routine items. When more than 4 rows exist, the container should become vertically scrollable while maintaining the compact height limit.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-20"
+          "msg-last"
         ],
         "quotes": [
-          "storage per user"
+          "make Morning Routine and Evening Routine container height more compact for maximum 4 rows of routines, after that it will be scrollable"
         ]
       },
       "acceptanceCriteria": [
-        "Backend returns an array of user storage data with Principal ID, routine count, and task count",
-        "Each user entry includes an estimated storage size calculation based on their data",
-        "Results are sorted by storage size in descending order"
+        "Evening Routine container displays maximum 4 rows of routine items at any given time",
+        "When routine items exceed 4 rows, vertical scrollbar appears",
+        "Container height remains compact and does not expand beyond the 4-row limit",
+        "Scrolling is smooth and maintains routine item interaction capabilities"
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Add backend query function to return canister cycle balance",
-      "target": "backend",
+      "text": "Change the button label from 'Reset New day' to 'Start New Day' in the component where the new day reset functionality is implemented (likely in TaskManager.tsx or related routine management component).",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-20"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Backend exposes a query function that returns the current cycle balance of the canister"
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Implement access control on all storage monitoring backend functions to restrict access to the canister owner only using msg.caller Principal verification",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-20"
+          "msg-last"
         ],
         "quotes": [
-          "Only you (the app owner) can access these metrics"
+          "Change Reset New day button name to \"Start New Day\" button"
         ]
       },
       "acceptanceCriteria": [
-        "All storage monitoring query functions verify that msg.caller matches the canister owner Principal",
-        "Unauthorized requests return an appropriate error or empty result",
-        "Canister owner Principal is determined by the first caller or admin configuration"
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Create a new AdminDashboard page route at /admin that displays storage monitoring metrics with overview cards showing total memory used, user count, total routines, and total tasks",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-20"
-        ],
-        "quotes": [
-          "Admin dashboard",
-          "Overview cards showing key metrics"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Admin dashboard is accessible at /admin route",
-        "Dashboard displays four overview cards with total memory used (MB/GB), user count, total routines, and total tasks",
-        "Cards have clear labels and formatting for readability",
-        "Data refreshes when the page is loaded"
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "text": "Add storage usage visualization to the admin dashboard showing memory usage as a percentage of the 4GB canister limit with a progress bar or chart",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-20"
-        ],
-        "quotes": [
-          "Storage usage visualization"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Dashboard includes a visual representation of storage usage (progress bar or chart)",
-        "Shows current usage as a percentage of the 4GB limit",
-        "Includes labels showing absolute values (e.g., '2.1 GB / 4.0 GB')",
-        "Visual indicator changes color as capacity approaches limit (e.g., warning at 75%, danger at 90%)"
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "text": "Add a per-user data breakdown table to the admin dashboard displaying Principal ID, routine count, task count, and estimated storage size for each user, sorted by storage usage",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-20"
-        ],
-        "quotes": [
-          "Per-user data breakdown",
-          "User statistics table"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Dashboard displays a table with columns for Principal ID, routine count, task count, and storage size",
-        "Table is sorted by storage size in descending order (largest users first)",
-        "Principal IDs are truncated with ellipsis and copyable on click",
-        "Storage sizes are formatted in appropriate units (KB, MB)",
-        "Table supports pagination if there are many users"
-      ]
-    },
-    {
-      "id": "REQ-8",
-      "text": "Add cycle balance display to the admin dashboard showing current canister cycle balance with formatted units",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-20"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Dashboard displays current cycle balance",
-        "Cycles are formatted with appropriate units (T for trillion, B for billion, M for million)",
-        "Display includes a label indicating this is the cycle balance"
-      ]
-    },
-    {
-      "id": "REQ-9",
-      "text": "Implement frontend access control for the admin dashboard route to restrict access to authorized administrators only, showing an unauthorized message for non-admin users",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-20"
-        ],
-        "quotes": [
-          "Only you (the app owner) can access these metrics",
-          "admin"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Admin dashboard checks if the current user is authorized before displaying content",
-        "Non-admin users see an 'Unauthorized Access' message with a return button",
-        "Authorization check uses the existing admin verification pattern from the codebase",
-        "Dashboard redirects or shows error if user is not logged in"
-      ]
-    },
-    {
-      "id": "REQ-10",
-      "text": "Add a navigation link or button to access the admin dashboard from the existing Header component, visible only to admin users",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-20"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Header includes a link or icon button to navigate to /admin",
-        "Link is only visible when user has admin privileges",
-        "Link has appropriate styling consistent with existing header elements",
-        "Clicking the link navigates to the admin dashboard page"
+        "Button displays 'Start New Day' as its label text",
+        "Button functionality remains unchanged",
+        "Button styling and placement remain consistent with current design"
       ]
     }
   ],
   "constraints": [
-    "Do not modify the single-actor backend architecture",
-    "Storage monitoring functions must not impact application performance",
-    "All monitoring functions must be query-only (no state modifications)",
-    "Frontend admin dashboard must integrate with existing authentication and routing patterns"
+    "Do not modify the routine functionality or drag-and-drop behavior",
+    "Maintain existing routine item height and spacing within the scrollable containers",
+    "Preserve all existing MorningRoutine.tsx features including display mode toggle and reorder functionality"
   ],
   "nonGoals": [
-    "Automated alerts or notifications when storage limits are reached",
-    "Historical tracking of storage usage over time",
-    "Export functionality for monitoring data",
-    "Real-time auto-refresh of metrics",
-    "Detailed breakdown of storage by data type (routines vs tasks)",
-    "Integration with external monitoring services"
+    "Changing the routine item card design or layout",
+    "Modifying backend routine logic or data structures",
+    "Altering routine completion or streak count functionality",
+    "Implementing new routine features beyond the specified UI changes"
   ],
   "imageRequirements": {
     "required": [],

@@ -393,7 +393,8 @@ export default function MorningRoutine({
       <div 
         className="w-full rounded-lg border bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden transition-all duration-300 ease-out"
         style={{
-          height: isExpanded ? '50vh' : '56px',
+          height: isExpanded ? 'auto' : '56px',
+          maxHeight: isExpanded ? '400px' : '56px',
           willChange: 'height',
         }}
       >
@@ -450,7 +451,7 @@ export default function MorningRoutine({
         <div 
           className="p-4 overflow-y-auto transition-opacity duration-300 ease-out"
           style={{
-            height: 'calc(100% - 56px)',
+            maxHeight: 'calc(400px - 56px)',
             opacity: isExpanded ? 1 : 0,
             pointerEvents: isExpanded ? 'auto' : 'none',
             willChange: 'opacity',

@@ -1,107 +1,55 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Add storage monitoring system with admin dashboard",
+  "title": "Compact routine containers with scrolling and rename button",
   "requirements": [
     {
-      "id": "REQ-5",
-      "summary": "Create AdminDashboard page route displaying storage monitoring metrics with overview cards",
+      "id": "REQ-1",
+      "summary": "Make Morning Routine container compact with 4-row height limit and vertical scrolling",
       "acceptanceCriteria": [
-        "Admin dashboard is accessible at /admin route",
-        "Dashboard displays four overview cards with total memory used (MB/GB), user count, total routines, and total tasks",
-        "Cards have clear labels and formatting for readability",
-        "Data refreshes when the page is loaded"
+        "Morning Routine container displays maximum 4 rows of routine items at any given time",
+        "When routine items exceed 4 rows, vertical scrollbar appears",
+        "Container height remains compact and does not expand beyond the 4-row limit",
+        "Scrolling is smooth and maintains routine item interaction capabilities"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/AdminDashboard.tsx",
+          "path": "frontend/src/components/MorningRoutine.tsx",
           "operation": "modify",
-          "description": "Add storage monitoring section with overview cards displaying total memory used, user count, total routines, and total tasks. Fetch data using getOverallStorageMetrics backend capability. Format memory values in MB/GB units for readability. Use existing shadcn/ui Card components for consistent styling with the user directory and tier settings sections."
+          "description": "Modify the Morning Routine section container to apply a max-height constraint that limits display to approximately 4 rows of routine items. Add overflow-y-auto class to enable vertical scrolling when content exceeds the height limit. Calculate the max-height based on typical routine item height (including padding and gaps) multiplied by 4. Ensure the scrollable container maintains drag-and-drop functionality and touch interactions for routine item reordering."
         }
       ]
     },
     {
-      "id": "REQ-6",
-      "summary": "Add storage usage visualization showing memory usage as percentage of 4GB canister limit",
+      "id": "REQ-2",
+      "summary": "Make Evening Routine container compact with 4-row height limit and vertical scrolling",
       "acceptanceCriteria": [
-        "Dashboard includes a visual representation of storage usage (progress bar or chart)",
-        "Shows current usage as a percentage of the 4GB limit",
-        "Includes labels showing absolute values (e.g., '2.1 GB / 4.0 GB')",
-        "Visual indicator changes color as capacity approaches limit (e.g., warning at 75%, danger at 90%)"
+        "Evening Routine container displays maximum 4 rows of routine items at any given time",
+        "When routine items exceed 4 rows, vertical scrollbar appears",
+        "Container height remains compact and does not expand beyond the 4-row limit",
+        "Scrolling is smooth and maintains routine item interaction capabilities"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/AdminDashboard.tsx",
+          "path": "frontend/src/components/MorningRoutine.tsx",
           "operation": "modify",
-          "description": "Add a Progress component showing storage usage percentage relative to 4GB (4,294,967,296 bytes) limit. Calculate percentage from getOverallStorageMetrics estimatedStableMemoryBytes and estimatedHeapMemoryBytes. Display absolute values with formatted units (e.g., '2.1 GB / 4.0 GB'). Apply conditional color classes: normal (<75%), warning (75-89%), danger (≥90%). Use existing shadcn/ui Progress component for consistency. Verify the component's usage instructions before implementing."
+          "description": "Modify the Evening Routine section container to apply a max-height constraint that limits display to approximately 4 rows of routine items. Add overflow-y-auto class to enable vertical scrolling when content exceeds the height limit. Calculate the max-height based on typical routine item height (including padding and gaps) multiplied by 4. Ensure the scrollable container maintains drag-and-drop functionality and touch interactions for routine item reordering."
         }
       ]
     },
     {
-      "id": "REQ-7",
-      "summary": "Add per-user data breakdown table showing Principal ID, routine count, task count, and estimated storage size",
+      "id": "REQ-3",
+      "summary": "Change 'Reset New day' button label to 'Start New Day'",
       "acceptanceCriteria": [
-        "Dashboard displays a table with columns for Principal ID, routine count, task count, and storage size",
-        "Table is sorted by storage size in descending order (largest users first)",
-        "Principal IDs are truncated with ellipsis and copyable on click",
-        "Storage sizes are formatted in appropriate units (KB, MB)",
-        "Table supports pagination if there are many users"
+        "Button displays 'Start New Day' as its label text",
+        "Button functionality remains unchanged",
+        "Button styling and placement remain consistent with current design"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/AdminDashboard.tsx",
+          "path": "frontend/src/pages/TaskManager.tsx",
           "operation": "modify",
-          "description": "Add a Table component displaying per-user storage breakdown using getAllUserStorageBreakdowns backend capability. Display columns for Principal ID (truncated with ellipsis, copyable on click similar to AdminUserDirectory), routine count, task count, and estimated storage size formatted in KB/MB. Data is pre-sorted by backend in descending order by storage size. Implement pagination if user count exceeds reasonable display limit (e.g., 50 users). Use existing shadcn/ui Table components for consistency. Verify the component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-8",
-      "summary": "Add cycle balance display showing current canister cycle balance with formatted units",
-      "acceptanceCriteria": [
-        "Dashboard displays current cycle balance",
-        "Cycles are formatted with appropriate units (T for trillion, B for billion, M for million)",
-        "Display includes a label indicating this is the cycle balance"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/AdminDashboard.tsx",
-          "operation": "modify",
-          "description": "Add cycle balance display card fetching data from backend using the appropriate query capability. Format large numbers with T (trillion), B (billion), M (million) suffixes for readability. Display with clear 'Cycle Balance' label. Position alongside other overview metric cards for visual consistency."
-        }
-      ]
-    },
-    {
-      "id": "REQ-9",
-      "summary": "Implement frontend access control for admin dashboard route to restrict access to authorized administrators",
-      "acceptanceCriteria": [
-        "Admin dashboard checks if the current user is authorized before displaying content",
-        "Non-admin users see an 'Unauthorized Access' message with a return button",
-        "Authorization check uses the existing admin verification pattern from the codebase",
-        "Dashboard redirects or shows error if user is not logged in"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/AdminDashboard.tsx",
-          "operation": "modify",
-          "description": "The AdminDashboard already has authorization checks using isCallerAdmin() from useQueries. Verify that the storage monitoring section respects this existing pattern. Ensure unauthorized users see the existing 'Unauthorized Access' message with return button. No new authorization logic is needed; the existing implementation already handles this requirement."
-        }
-      ]
-    },
-    {
-      "id": "REQ-10",
-      "summary": "Add navigation link to access admin dashboard from Header component, visible only to admin users",
-      "acceptanceCriteria": [
-        "Header includes a link or icon button to navigate to /admin",
-        "Link is only visible when user has admin privileges",
-        "Link has appropriate styling consistent with existing header elements",
-        "Clicking the link navigates to the admin dashboard page"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/Header.tsx",
-          "operation": "modify",
-          "description": "The Header already includes an admin dashboard button that checks isAdmin and navigates to /admin using setView('admin'). This requirement is already satisfied by the existing implementation. No changes needed unless the navigation mechanism needs adjustment to support the new storage monitoring features within the admin dashboard."
+          "description": "Locate the button with text 'Reset New day' in the TaskManager component and change its label text to 'Start New Day'. Preserve all existing button functionality, onClick handlers, disabled states, styling classes, and positioning within the component."
         }
       ]
     }

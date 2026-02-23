@@ -1,17 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Add a storage monitoring system with an admin dashboard to track canister resource usage and user data statistics.
+**Goal:** Make routine containers more compact with scrolling and update the new day button label.
 
 **Planned changes:**
-- Add backend query functions to calculate and return storage metrics (stable memory, heap memory, user count, routine count, task count, cycle balance)
-- Add backend query function to return per-user storage breakdown with Principal ID, routine/task counts, and estimated storage size
-- Implement access control on all monitoring functions to restrict access to canister owner only
-- Create new AdminDashboard page at /admin route displaying overview cards with key metrics
-- Add storage usage visualization showing memory usage as percentage of 4GB limit with progress bar
-- Add per-user data breakdown table sorted by storage usage
-- Display canister cycle balance with formatted units
-- Implement frontend access control for admin dashboard to show unauthorized message for non-admin users
-- Add navigation link to admin dashboard in Header component, visible only to admin users
+- Limit Morning Routine container to display maximum 4 rows with vertical scrolling for additional items
+- Limit Evening Routine container to display maximum 4 rows with vertical scrolling for additional items
+- Change button label from "Reset New day" to "Start New Day"
 
-**User-visible outcome:** The app owner can navigate to an admin dashboard to view comprehensive storage and resource monitoring, including total memory usage, user statistics, per-user storage breakdown, and cycle balance, with all data protected by admin-only access control.
+**User-visible outcome:** Users will see more compact routine containers that scroll when there are more than 4 rows of items, and a clearer button label for starting a new day.

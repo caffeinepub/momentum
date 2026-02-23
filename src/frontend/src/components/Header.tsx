@@ -123,7 +123,7 @@ export default function Header({
               className="gap-2"
             >
               <RotateCcw className={`h-4 w-4 ${isResettingDay ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Reset New Day</span>
+              <span className="hidden sm:inline">Start New Day</span>
             </Button>
           )}
           
