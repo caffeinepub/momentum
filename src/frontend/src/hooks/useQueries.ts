@@ -472,7 +472,7 @@ export function useTaskQueries() {
   const { testDate } = useTestDate();
 
   const tasksQuery = useQuery<Task[]>({
-    queryKey: ['tasks', testDate?.toISOString()],
+    queryKey: ['tasks', testDate],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getAllTasks();
@@ -481,7 +481,7 @@ export function useTaskQueries() {
   });
 
   const listsQuery = useQuery<List[]>({
-    queryKey: ['lists', testDate?.toISOString()],
+    queryKey: ['lists', testDate],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getAllLists();
@@ -489,15 +489,13 @@ export function useTaskQueries() {
     enabled: !!actor && !isFetching,
   });
 
-  const quadrantsReady = (listsQuery.data || []).filter(l => l.quadrant).length === 4;
-
-  const bootstrapQuadrantsMutation = useMutation({
+  const ensureQuadrantsMutation = useMutation({
     mutationFn: async () => {
       if (!actor) throw new Error('Actor not initialized');
       return actor.ensureAllQuadrants();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lists'] });
+      queryClient.invalidateQueries({ queryKey: ['lists', testDate] });
     },
   });
 
@@ -507,7 +505,7 @@ export function useTaskQueries() {
       return actor.createTask(input);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', testDate] });
     },
   });
 
@@ -517,7 +515,7 @@ export function useTaskQueries() {
       return actor.updateTask(id, task);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', testDate] });
     },
   });
 
@@ -527,7 +525,7 @@ export function useTaskQueries() {
       return actor.deleteTask(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', testDate] });
     },
   });
 
@@ -537,7 +535,7 @@ export function useTaskQueries() {
       return actor.moveTask(taskId, destinationListId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', testDate] });
     },
   });
 
@@ -547,7 +545,7 @@ export function useTaskQueries() {
       return actor.updateTaskPosition(taskId, positionIndex);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', testDate] });
     },
   });
 
@@ -557,7 +555,7 @@ export function useTaskQueries() {
       return actor.createList(name);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lists'] });
+      queryClient.invalidateQueries({ queryKey: ['lists', testDate] });
     },
   });
 
@@ -567,17 +565,22 @@ export function useTaskQueries() {
       return actor.deleteList(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lists'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['lists', testDate] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', testDate] });
     },
   });
 
+  const quadrants = listsQuery.data?.filter((list) => list.quadrant) || [];
+  const customLists = listsQuery.data?.filter((list) => !list.quadrant) || [];
+
   return {
-    tasks: tasksQuery.data,
-    lists: listsQuery.data,
+    tasks: tasksQuery.data || [],
+    lists: listsQuery.data || [],
+    quadrants,
+    customLists,
     isLoading: tasksQuery.isLoading || listsQuery.isLoading,
-    quadrantsReady,
-    bootstrapQuadrants: bootstrapQuadrantsMutation.mutateAsync,
+    quadrantsReady: quadrants.length === 4,
+    bootstrapQuadrants: ensureQuadrantsMutation.mutateAsync,
     createTask: createTaskMutation,
     updateTask: updateTaskMutation,
     deleteTask: deleteTaskMutation,
@@ -593,8 +596,10 @@ export function useMorningRoutineQueries() {
   const queryClient = useQueryClient();
   const { testDate } = useTestDate();
 
+  const [displayMode, setDisplayMode] = useState<'normal' | 'reorder'>('normal');
+
   const routinesQuery = useQuery<MorningRoutine[]>({
-    queryKey: ['routines', testDate?.toISOString()],
+    queryKey: ['routines', testDate],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getAllMorningRoutines();
@@ -608,7 +613,17 @@ export function useMorningRoutineQueries() {
       return actor.createMorningRoutine(text, section);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routines'] });
+      queryClient.invalidateQueries({ queryKey: ['routines', testDate] });
+    },
+  });
+
+  const updateRoutineMutation = useMutation({
+    mutationFn: async ({ id, text, section }: { id: RoutineId; text: string; section: RoutineSection }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      return actor.updateMorningRoutine(id, text, section);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['routines', testDate] });
     },
   });
 
@@ -618,7 +633,7 @@ export function useMorningRoutineQueries() {
       return actor.deleteMorningRoutine(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routines'] });
+      queryClient.invalidateQueries({ queryKey: ['routines', testDate] });
     },
   });
 
@@ -628,45 +643,29 @@ export function useMorningRoutineQueries() {
       return actor.updateRoutineItemPosition(routineId, positionIndex);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routines'] });
+      queryClient.invalidateQueries({ queryKey: ['routines', testDate] });
     },
   });
 
   const resetNewDayMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (completedRoutineIds: RoutineId[]) => {
       if (!actor) throw new Error('Actor not initialized');
-      return actor.resetNewDay();
+      return actor.resetNewDay(completedRoutineIds);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routines'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['payrollHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['routines', testDate] });
     },
   });
-
-  const resetSkippedDayMutation = useMutation({
-    mutationFn: async () => {
-      if (!actor) throw new Error('Actor not initialized');
-      return actor.resetSkippedDay();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routines'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['payrollHistory'] });
-    },
-  });
-
-  const [displayMode, setDisplayMode] = useState<'normal' | 'reorder'>('normal');
 
   return {
-    routines: routinesQuery.data,
+    routines: routinesQuery.data || [],
     isLoading: routinesQuery.isLoading,
+    displayMode,
+    setDisplayMode,
     createRoutine: createRoutineMutation,
+    updateRoutine: updateRoutineMutation,
     deleteRoutine: deleteRoutineMutation,
     updateRoutinePosition: updateRoutinePositionMutation,
     resetNewDay: resetNewDayMutation,
-    resetSkippedDay: resetSkippedDayMutation,
-    displayMode,
-    setDisplayMode,
   };
 }

@@ -21,7 +21,7 @@ interface HeaderProps {
   testDate?: Date | null;
   onTestDateChange?: (date: Date | null) => void;
   showTestDatePicker?: boolean;
-  onStartNewDay?: () => void;
+  onResetNewDay?: () => void;
   isResettingDay?: boolean;
 }
 
@@ -30,7 +30,7 @@ export default function Header({
   testDate, 
   onTestDateChange,
   showTestDatePicker = false,
-  onStartNewDay,
+  onResetNewDay,
   isResettingDay = false,
 }: HeaderProps) {
   const { login, clear, loginStatus, identity } = useInternetIdentity();
@@ -79,10 +79,7 @@ export default function Header({
   });
 
   return (
-    <header 
-      className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
-      style={{ paddingTop: 'env(safe-area-inset-top)' }}
-    >
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-14 items-center justify-between px-2 sm:px-4 gap-2">
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg overflow-hidden">
@@ -117,16 +114,16 @@ export default function Header({
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           <ThemeToggle />
           
-          {isAuthenticated && onStartNewDay && (
+          {isAuthenticated && onResetNewDay && (
             <Button
               variant="outline"
               size="sm"
-              onClick={onStartNewDay}
+              onClick={onResetNewDay}
               disabled={isResettingDay}
               className="gap-2"
             >
               <RotateCcw className={`h-4 w-4 ${isResettingDay ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Start New Day</span>
+              <span className="hidden sm:inline">Reset New Day</span>
             </Button>
           )}
           

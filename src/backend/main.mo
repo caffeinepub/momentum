@@ -7,13 +7,10 @@ import Array "mo:core/Array";
 import Text "mo:core/Text";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
-import Migration "migration";
 
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
-// specify the data migration function in with-clause
-(with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -850,60 +847,29 @@ actor {
     };
   };
 
-  // FIXED: Routines strike count should only reset to 0 if the routine is not completed
-  // FIXED: Routines strike count should be incremented by 1 if the routine is completed
-  // FIXED: Routines should not reset their strike count on skipped day reset
-  // FIXED: Strike count on skipped day reset must be 0 on newly created routines
-  public shared ({ caller }) func resetNewDay() : async () {
+  public shared ({ caller }) func resetNewDay(completedRoutineIds : [RoutineId]) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can perform this action");
     };
 
-    switch (users.get(caller)) {
-      case (null) { Runtime.trap("User not found") };
-      case (?user) {
-        let updatedRoutines = user.routines.map<RoutineId, MorningRoutine, MorningRoutine>(
-          func(_, routine) {
-            {
-              routine with
-              completed = false;
-              streakCount = if (routine.completed) { routine.streakCount + 1 : Nat } else { 0 };
-              strikeCount = if (routine.completed) { routine.strikeCount + 1 : Nat } else { 0 };
-            };
-          }
-        );
+    let user = getOrCreateUserInternal(caller);
 
-        let newUser = { user with routines = updatedRoutines };
-        users.add(caller, newUser);
-      };
-    };
-  };
+    let updatedRoutines = user.routines.map<RoutineId, MorningRoutine, MorningRoutine>(
+      func(id, routine) {
+        let isCompleted = completedRoutineIds.findIndex(func(x) { x == id }) != null;
+        {
+          routine with
+          completed = false;
+          streakCount = if (isCompleted) { routine.streakCount + 1 : Nat } else {
+            0;
+          };
+          strikeCount = if (isCompleted) { routine.strikeCount + 1 : Nat } else { 0 };
+        };
+      }
+    );
 
-  // FIXED: Routines should not reset their strike count on skipped day reset
-  // FIXED: Routines streak count should be reset to 0 on skipped day reset
-  // FIXED: Strike count on skipped day reset must be 0 on newly created routines
-  public shared ({ caller }) func resetSkippedDay() : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can perform this action");
-    };
-
-    switch (users.get(caller)) {
-      case (null) { Runtime.trap("User not found") };
-      case (?user) {
-        let updatedRoutines = user.routines.map<RoutineId, MorningRoutine, MorningRoutine>(
-          func(_, routine) {
-            {
-              routine with
-              completed = false;
-              streakCount = 0;
-            };
-          }
-        );
-
-        let newUser = { user with routines = updatedRoutines };
-        users.add(caller, newUser);
-      };
-    };
+    let newUser = { user with routines = updatedRoutines };
+    users.add(caller, newUser);
   };
 
   public query ({ caller }) func getPayrollHistory() : async [PayrollRecord] {
@@ -1527,4 +1493,3 @@ actor {
     };
   };
 };
-

@@ -1,46 +1,107 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Routine tracking app with strike count system. Features two reset modes: Next Day Reset (increments checked routines, resets unchecked to 0) and Skipped Day Reset (resets all to 0). Start new day button in header opens popup with both reset options.",
+  "summary": "Momentum productivity app with routines and tasks. Backend stores user data in a single canister using Principal-based isolation. Storage monitoring system with admin dashboard being implemented.",
   "architectural_notes": [
-    "Frontend displays strike count preview: +1 when checked, current count when unchecked (no backend calls)",
-    "Backend updates only triggered by reset buttons in Start new day popup",
-    "Multi-device sync for routine check status across user devices",
-    "Next Day Reset: checked routines increment strike count by 1, unchecked reset to 0, all checkboxes uncheck",
-    "Skipped Day Reset: all strike counts reset to 0, all checkboxes uncheck"
+    "Single canister serves all users with Principal-based data isolation",
+    "Backend stores routines and tasks in HashMaps keyed by user Principal",
+    "Data syncs across devices via Internet Identity authentication",
+    "Current architecture can scale to ~65,000 users before hitting 4GB limit",
+    "Admin dashboard restricted to canister owner Principal for monitoring"
   ],
-  "known_issues": [
-    "Strike count not updating properly after Next Day Reset or Skipped Day Reset - only works correctly on first routine creation"
+  "known_issues": [],
+  "isFixRequest": false,
+  "existing_features": [
+    {
+      "id": "feature-create-a-new-admindashboard-page-route-at-admin-that-displays-storage-monitoring-metrics-with-overview-cards-showing-total-memory-used-user-count-total-routines-and-total-tasks",
+      "title": "Create a new AdminDashboard page route at /admin that displays storage monitoring metrics with overview cards showing total memory used, user count, total routines, and total tasks",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-storage-usage-visualization-to-the-admin-dashboard-showing-memory-usage-as-a-percentage-of-the-4gb-canister-limit-with-a-progress-bar-or-chart",
+      "title": "Add storage usage visualization to the admin dashboard showing memory usage as a percentage of the 4GB canister limit with a progress bar or chart",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-per-user-data-breakdown-table-to-the-admin-dashboard-displaying-principal-id-routine-count-task-count-and-estimated-storage-size-for-each-user-sorted-by-storage-usage",
+      "title": "Add a per-user data breakdown table to the admin dashboard displaying Principal ID, routine count, task count, and estimated storage size for each user, sorted by storage usage",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-cycle-balance-display-to-the-admin-dashboard-showing-current-canister-cycle-balance-with-formatted-units",
+      "title": "Add cycle balance display to the admin dashboard showing current canister cycle balance with formatted units",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-frontend-access-control-for-the-admin-dashboard-route-to-restrict-access-to-authorized-administrators-only-showing-an-unauthorized-message-for-non-admin-users",
+      "title": "Implement frontend access control for the admin dashboard route to restrict access to authorized administrators only, showing an unauthorized message for non-admin users",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "version": 1
+    }
   ],
-  "isFixRequest": true,
-  "existing_features": [],
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Fix the backend strike count update logic in the nextDayReset function so that when 'Next Day Reset' is clicked, checked routines increment their strike count by 1 and unchecked routines reset their strike count to 0, with all checkboxes unchecked after the operation",
+      "summary": "Add storage monitoring system with admin dashboard showing canister metrics, user statistics, and per-user data breakdown",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Add backend query functions to calculate and return canister storage metrics including total stable memory used, total heap memory used, total number of users, total number of routines across all users, and total number of tasks across all users",
       "reqIds": [
         "REQ-1"
       ],
       "status": "pending"
     },
     {
-      "id": "AR-2",
-      "summary": "Fix the backend strike count update logic in the skippedDayReset function so that when 'Skipped Day Reset' is clicked, all routine strike counts reset to 0 and all checkboxes are unchecked",
+      "id": "AR-3",
+      "summary": "Add backend query function to return per-user storage breakdown including Principal ID, number of routines, number of tasks, and estimated storage size per user",
       "reqIds": [
         "REQ-2"
       ],
       "status": "pending"
     },
     {
-      "id": "AR-3",
-      "summary": "Preserve the existing frontend preview behavior where checking a routine shows strike count + 1 in the badge and unchecking shows the current strike count, with no backend calls during check/uncheck actions",
+      "id": "AR-4",
+      "summary": "Add backend query function to return canister cycle balance",
       "reqIds": [
         "REQ-3"
       ],
       "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Implement access control on all storage monitoring backend functions to restrict access to the canister owner only using msg.caller Principal verification",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-11",
+      "summary": "Add a navigation link or button to access the admin dashboard from the existing Header component, visible only to admin users",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "status": "pending"
     }
   ],
-  "projectName": "Routine Tracker",
+  "projectName": "Momentum",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

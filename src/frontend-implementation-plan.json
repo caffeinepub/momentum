@@ -1,27 +1,107 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix strike count update logic for routine reset buttons",
+  "title": "Add storage monitoring system with admin dashboard",
   "requirements": [
     {
-      "id": "REQ-3",
-      "summary": "Preserve the existing frontend preview behavior where checking a routine shows strike count + 1 in the badge and unchecking shows the current strike count, with no backend calls during check/uncheck actions",
+      "id": "REQ-5",
+      "summary": "Create AdminDashboard page route displaying storage monitoring metrics with overview cards",
       "acceptanceCriteria": [
-        "Checking a routine displays strike count + 1 in the badge as a preview",
-        "Unchecking a routine displays the current strike count in the badge",
-        "No backend calls are made during check/uncheck actions",
-        "Preview behavior updates instantly without waiting for backend responses"
+        "Admin dashboard is accessible at /admin route",
+        "Dashboard displays four overview cards with total memory used (MB/GB), user count, total routines, and total tasks",
+        "Cards have clear labels and formatting for readability",
+        "Data refreshes when the page is loaded"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/MorningRoutine.tsx",
+          "path": "frontend/src/pages/AdminDashboard.tsx",
           "operation": "modify",
-          "description": "Review and verify that the existing checkbox toggle logic in the MorningRoutine component correctly displays strike count + 1 when checked (preview) and the current strike count when unchecked, without making backend calls. Ensure the local state management for checkbox tracking (completedRoutines state) works correctly with the preview display logic. If the preview calculation is not working as expected, adjust the badge display logic to show routine.strikeCount + 1 for checked routines and routine.strikeCount for unchecked routines, using the local completedRoutines state to determine checked status."
-        },
+          "description": "Add storage monitoring section with overview cards displaying total memory used, user count, total routines, and total tasks. Fetch data using getOverallStorageMetrics backend capability. Format memory values in MB/GB units for readability. Use existing shadcn/ui Card components for consistent styling with the user directory and tier settings sections."
+        }
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "summary": "Add storage usage visualization showing memory usage as percentage of 4GB canister limit",
+      "acceptanceCriteria": [
+        "Dashboard includes a visual representation of storage usage (progress bar or chart)",
+        "Shows current usage as a percentage of the 4GB limit",
+        "Includes labels showing absolute values (e.g., '2.1 GB / 4.0 GB')",
+        "Visual indicator changes color as capacity approaches limit (e.g., warning at 75%, danger at 90%)"
+      ],
+      "file_operations": [
         {
-          "path": "frontend/src/components/DayResetDialog.tsx",
+          "path": "frontend/src/pages/AdminDashboard.tsx",
           "operation": "modify",
-          "description": "Verify that the dialog correctly passes the current checked state to the backend reset functions (resetNewDay and resetSkippedDay) without modifying the preview behavior. Ensure that after successful reset operations, the local completedRoutines state is cleared to reflect all unchecked boxes. Add error handling to display user-friendly messages if the reset operations fail. The dialog should not alter how checkboxes preview strike counts - that logic remains in MorningRoutine.tsx."
+          "description": "Add a Progress component showing storage usage percentage relative to 4GB (4,294,967,296 bytes) limit. Calculate percentage from getOverallStorageMetrics estimatedStableMemoryBytes and estimatedHeapMemoryBytes. Display absolute values with formatted units (e.g., '2.1 GB / 4.0 GB'). Apply conditional color classes: normal (<75%), warning (75-89%), danger (≥90%). Use existing shadcn/ui Progress component for consistency. Verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "summary": "Add per-user data breakdown table showing Principal ID, routine count, task count, and estimated storage size",
+      "acceptanceCriteria": [
+        "Dashboard displays a table with columns for Principal ID, routine count, task count, and storage size",
+        "Table is sorted by storage size in descending order (largest users first)",
+        "Principal IDs are truncated with ellipsis and copyable on click",
+        "Storage sizes are formatted in appropriate units (KB, MB)",
+        "Table supports pagination if there are many users"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/AdminDashboard.tsx",
+          "operation": "modify",
+          "description": "Add a Table component displaying per-user storage breakdown using getAllUserStorageBreakdowns backend capability. Display columns for Principal ID (truncated with ellipsis, copyable on click similar to AdminUserDirectory), routine count, task count, and estimated storage size formatted in KB/MB. Data is pre-sorted by backend in descending order by storage size. Implement pagination if user count exceeds reasonable display limit (e.g., 50 users). Use existing shadcn/ui Table components for consistency. Verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "summary": "Add cycle balance display showing current canister cycle balance with formatted units",
+      "acceptanceCriteria": [
+        "Dashboard displays current cycle balance",
+        "Cycles are formatted with appropriate units (T for trillion, B for billion, M for million)",
+        "Display includes a label indicating this is the cycle balance"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/AdminDashboard.tsx",
+          "operation": "modify",
+          "description": "Add cycle balance display card fetching data from backend using the appropriate query capability. Format large numbers with T (trillion), B (billion), M (million) suffixes for readability. Display with clear 'Cycle Balance' label. Position alongside other overview metric cards for visual consistency."
+        }
+      ]
+    },
+    {
+      "id": "REQ-9",
+      "summary": "Implement frontend access control for admin dashboard route to restrict access to authorized administrators",
+      "acceptanceCriteria": [
+        "Admin dashboard checks if the current user is authorized before displaying content",
+        "Non-admin users see an 'Unauthorized Access' message with a return button",
+        "Authorization check uses the existing admin verification pattern from the codebase",
+        "Dashboard redirects or shows error if user is not logged in"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/AdminDashboard.tsx",
+          "operation": "modify",
+          "description": "The AdminDashboard already has authorization checks using isCallerAdmin() from useQueries. Verify that the storage monitoring section respects this existing pattern. Ensure unauthorized users see the existing 'Unauthorized Access' message with return button. No new authorization logic is needed; the existing implementation already handles this requirement."
+        }
+      ]
+    },
+    {
+      "id": "REQ-10",
+      "summary": "Add navigation link to access admin dashboard from Header component, visible only to admin users",
+      "acceptanceCriteria": [
+        "Header includes a link or icon button to navigate to /admin",
+        "Link is only visible when user has admin privileges",
+        "Link has appropriate styling consistent with existing header elements",
+        "Clicking the link navigates to the admin dashboard page"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/Header.tsx",
+          "operation": "modify",
+          "description": "The Header already includes an admin dashboard button that checks isAdmin and navigates to /admin using setView('admin'). This requirement is already satisfied by the existing implementation. No changes needed unless the navigation mechanism needs adjustment to support the new storage monitoring features within the admin dashboard."
         }
       ]
     }
