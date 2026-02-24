@@ -1,0 +1,25 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-add-safe-area-aware-top-padding-to-the-main-app-container-in-mobile-phone-fullscreen-mode-so-that-top-elements-header-navigation-are-not-clipped-by-the-device-s-status-bar-or-notch-use-env-safe-area-inset-top-via-the-existing-safe-area-css-utilities-or-a-new-utility-class-and-apply-it-to-the-top-level-layout-wrapper-in-taskmanager-and-or-the-header-component-so-the-padding-is-active-when-the-pwa-is-launched-in-fullscreen-or-standalone-display-mode-on-ios-and-android",
+      "featureTitle": "Add safe-area-aware top padding to the main app container in mobile/phone fullscreen mode so that top elements (header, navigation) are not clipped by the device's status bar or notch. Use `env(safe-area-inset-top)` via the existing `safe-area` CSS utilities or a new utility class, and apply it to the top-level layout wrapper in TaskManager and/or the Header component so the padding is active when the PWA is launched in fullscreen or standalone display mode on iOS and Android.",
+      "files": [
+        "frontend/src/components/Header.tsx",
+        "frontend/src/index.css"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "authorization@4.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-8"
+      ],
+      "confidence": "high"
+    }
+  ]
+}

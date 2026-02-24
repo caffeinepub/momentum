@@ -1,0 +1,40 @@
+{
+  "kind": "build_request",
+  "title": "Add safe-area-aware top padding for mobile fullscreen mode",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-8",
+      "text": "Add safe-area-aware top padding to the main app container in mobile/phone fullscreen mode so that top elements (header, navigation) are not clipped by the device's status bar or notch. Use `env(safe-area-inset-top)` via the existing `safe-area` CSS utilities or a new utility class, and apply it to the top-level layout wrapper in TaskManager and/or the Header component so the padding is active when the PWA is launched in fullscreen or standalone display mode on iOS and Android.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-recent"
+        ],
+        "quotes": [
+          "implement padding on the top in phone mode so the top elements when it in full screen"
+        ]
+      },
+      "acceptanceCriteria": [
+        "When the Momentum PWA is opened in fullscreen/standalone mode on iOS, the header and top UI elements are not obscured by the notch or status bar.",
+        "When the Momentum PWA is opened in fullscreen/standalone mode on Android, the header and top UI elements are not obscured by the status bar.",
+        "The top padding uses `env(safe-area-inset-top)` (or `padding-top: env(safe-area-inset-top)`) so it adapts to each device's inset dynamically.",
+        "On desktop or non-fullscreen browser views, no extra top padding is added (the safe-area inset resolves to 0).",
+        "The viewport meta tag in index.html includes `viewport-fit=cover` to enable safe area insets (add if not already present)."
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not modify files listed in frontend.immutablePaths (useInternetIdentity.ts, useActor.ts, main.tsx, frontend/src/components/ui).",
+    "Use env(safe-area-inset-top) for the inset value — do not use a hardcoded pixel value."
+  ],
+  "nonGoals": [
+    "Adding safe-area padding to the bottom or sides (only top is requested).",
+    "Changes to backend logic.",
+    "Any other drag-and-drop or toolbar features from project state."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

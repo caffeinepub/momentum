@@ -1,0 +1,35 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Add safe-area-aware top padding for mobile fullscreen mode",
+  "requirements": [
+    {
+      "id": "REQ-8",
+      "summary": "Add safe-area-aware top padding to the main app container in mobile/phone fullscreen mode so that top elements (header, navigation) are not clipped by the device's status bar or notch",
+      "acceptanceCriteria": [
+        "When the Momentum PWA is opened in fullscreen/standalone mode on iOS, the header and top UI elements are not obscured by the notch or status bar.",
+        "When the Momentum PWA is opened in fullscreen/standalone mode on Android, the header and top UI elements are not obscured by the status bar.",
+        "The top padding uses `env(safe-area-inset-top)` (or `padding-top: env(safe-area-inset-top)`) so it adapts to each device's inset dynamically.",
+        "On desktop or non-fullscreen browser views, no extra top padding is added (the safe-area inset resolves to 0).",
+        "The viewport meta tag in index.html includes `viewport-fit=cover` to enable safe area insets (add if not already present)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/index.html",
+          "operation": "modify",
+          "description": "Add `viewport-fit=cover` to the viewport meta tag to enable safe-area insets on iOS and Android devices. Verify the current viewport meta tag and append `viewport-fit=cover` to the content attribute if not already present."
+        },
+        {
+          "path": "frontend/src/components/Header.tsx",
+          "operation": "modify",
+          "description": "Add safe-area-inset-top padding to the Header component's root element using a Tailwind utility class or inline style. Apply `pt-[env(safe-area-inset-top)]` or use the existing safe-area utility from index.css to ensure the header content is not clipped by the status bar or notch in fullscreen/standalone PWA mode. Verify the component structure before implementing."
+        },
+        {
+          "path": "frontend/src/index.css",
+          "operation": "modify",
+          "description": "Review and enhance the existing safe-area utility classes to ensure they properly apply `env(safe-area-inset-top)` for top padding. If no safe-area-top utility exists, add a new utility class (e.g., `.safe-area-top` or `.pt-safe-top`) that applies `padding-top: env(safe-area-inset-top)`. Ensure the utility resolves to 0 on desktop/non-fullscreen browsers where safe-area-inset-top is not set."
+        }
+      ]
+    }
+  ]
+}

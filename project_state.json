@@ -1,0 +1,108 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 9,
+  "summary": "Task management app (Momentum) with quadrant layout. User is implementing: (1) optimistic drag-and-drop with instant UI updates across all contexts (quadrant↔quadrant, quadrant↔list, list↔list) with background backend sync and rollback on failure, and (2) compact inline edit toolbar for task cards.",
+  "architectural_notes": [
+    "Drag-and-drop should use optimistic UI updates — apply state changes immediately on drop without waiting for backend confirmation",
+    "Cross-list drag (quadrant↔quadrant, quadrant↔list, list↔list) must also use optimistic UI — update local state immediately on drop, sync backend in background, rollback on failure"
+  ],
+  "known_issues": [
+    "Drag-and-drop has 2s+ delay due to waiting for backend before updating UI"
+  ],
+  "isFixRequest": true,
+  "existing_features": [
+    {
+      "id": "feature-add-safe-area-aware-top-padding-to-the-main-app-container-in-mobile-phone-fullscreen-mode-so-that-top-elements-header-navigation-are-not-clipped-by-the-device-s-status-bar-or-notch-use-env-safe-area-inset-top-via-the-existing-safe-area-css-utilities-or-a-new-utility-class-and-apply-it-to-the-top-level-layout-wrapper-in-taskmanager-and-or-the-header-component-so-the-padding-is-active-when-the-pwa-is-launched-in-fullscreen-or-standalone-display-mode-on-ios-and-android",
+      "title": "Add safe-area-aware top padding to the main app container in mobile/phone fullscreen mode so that top elements (header, navigation) are not clipped by the device's status bar or notch. Use `env(safe-area-inset-top)` via the existing `safe-area` CSS utilities or a new utility class, and apply it to the top-level layout wrapper in TaskManager and/or the Header component so the padding is active when the PWA is launched in fullscreen or standalone display mode on iOS and Android.",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Instant drag-and-drop with optimistic UI updates (no 2s+ delay)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Visible drop indicator line between tasks/routines during drag",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Eliminate the 2s+ drag-and-drop delay in TaskCard, CustomLists, EisenhowerMatrix, and MorningRoutine by applying optimistic UI updates: reorder/move the item in local state immediately on drop without waiting for the backend mutation to confirm. Roll back to the previous state only if the backend call fails.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Show a visible insertion indicator line between tasks and between routine items as the user drags over a valid drop target position. The line should appear between the two items where the dragged item would be inserted, update in real time as the drag moves, and disappear when the drag ends or leaves the list.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Apply optimistic UI updates to all drag-and-drop move and reorder operations in TaskCard, CustomLists, EisenhowerMatrix, and MorningRoutine. When a task or routine item is dropped, immediately update local state to reflect the new position or list assignment without waiting for the backend mutation to complete. If the backend call fails, roll back local state to the pre-drop snapshot.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Show a visible insertion indicator line between task cards and between routine items during drag. The line must appear at the exact gap where the dragged item would be inserted, update in real time as the cursor moves over different positions, and disappear when the drag ends or leaves the list. This must work in all drag contexts: within a quadrant, within a custom list, and between quadrants/lists.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Compact inline edit toolbar — condense task edit action icons into a tighter, space-efficient inline toolbar displayed beneath the task card",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "Implement optimistic drag-and-drop in TaskCard, CustomLists, EisenhowerMatrix, and MorningRoutine: on drop, immediately update local state to reflect the new position or list assignment without waiting for the backend mutation. Capture a pre-drop snapshot before applying the optimistic update and roll back to that snapshot if the backend call fails.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Show a visible insertion indicator line between task cards and between routine items during a drag operation. The line must appear at the exact gap where the dragged item would be inserted, update in real time as the cursor moves, and disappear when the drag ends or leaves the list. This must work in all drag contexts: within a quadrant, within a custom list, and between quadrants/lists.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-10",
+      "summary": "Condense the task edit action icons in TaskCard into a compact inline toolbar rendered beneath the task card. The toolbar must be space-efficient, reducing visual bulk compared to the current layout, while keeping all existing actions (edit, delete, complete, etc.) accessible.",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-11",
+      "summary": "Add safe-area-aware top padding in mobile/phone fullscreen mode so top elements aren't clipped by the status bar or notch (using env(safe-area-inset-top))",
+      "reqIds": [],
+      "status": "pending"
+    }
+  ],
+  "projectName": "Instant drag-and-drop with optimistic updates and visible drop indicator line",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}
