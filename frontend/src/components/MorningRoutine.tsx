@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { RoutineSection } from '@/backend';
 import type { MorningRoutine as MorningRoutineType } from '@/backend';
 
@@ -34,12 +35,12 @@ interface MorningRoutineProps {
 }
 
 // Height of a single routine row in pixels:
-// py-1 (4px top + 4px bottom = 8px) + text-xs leading-tight (~16px) = ~24px per row
-// gap-1 between rows = 4px
-// 4 rows: 4 * 24px + 3 * 4px = 108px
+// py-2 (8px top + 8px bottom = 16px) + text-sm leading-tight (~20px) = ~36px per row
+// gap-1.5 between rows = 6px
+// 4 rows: 4 * 36px + 3 * 6px = 162px
 // container py-1.5 padding: 6px top + 6px bottom = 12px
-// Total items area for 4 rows: 108 + 12 = 120px
-const FOUR_ROW_HEIGHT = 120;
+// Total items area for 4 rows: 162 + 12 = 174px
+const FOUR_ROW_HEIGHT = 174;
 const HEADER_HEIGHT = 44;
 
 export default function MorningRoutine({
@@ -318,7 +319,6 @@ export default function MorningRoutine({
     const streakClass = getStreakVisualizationClass(streakCount);
 
     // Live streak count: backend strikeCount + 1 if currently checked, else strikeCount
-    // This ensures the badge reflects the current session state immediately
     const liveStreakCount = strikeCount + (isChecked ? 1 : 0);
 
     // Show badge only when liveStreakCount > 0 (never show 0)
@@ -341,29 +341,28 @@ export default function MorningRoutine({
         onTouchStart={(e) => handleTouchStart(e, routine.id)}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`relative flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/50 hover:bg-accent/30 transition-all duration-300 ease-out group no-text-select ${
+        className={`relative flex items-center gap-2 px-2 py-2 rounded-lg border shadow-sm bg-card hover:bg-accent/30 transition-all duration-300 ease-out group no-text-select ${
           isReorderMode ? 'cursor-move' : 'cursor-pointer'
         } ${isDragging ? 'opacity-50 scale-95' : ''} ${isDragOver ? 'ring-2 ring-primary' : ''} ${streakClass}`}
       >
         {isReorderMode && (
-          <GripVertical className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+          <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
         )}
         
-        <input
-          type="checkbox"
+        <Checkbox
           checked={isChecked}
-          onChange={() => onToggleChecked(routine.id)}
-          className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary flex-shrink-0"
+          onCheckedChange={() => onToggleChecked(routine.id)}
+          className="flex-shrink-0"
           onClick={(e) => e.stopPropagation()}
         />
         
-        <span className={`flex-1 text-xs leading-tight ${isChecked ? 'line-through text-muted-foreground' : ''}`}>
+        <span className={`flex-1 text-sm font-medium leading-tight ${isChecked ? 'line-through text-muted-foreground' : ''}`}>
           {routine.text}
         </span>
         
         {showStreakCounter && (
           <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 flex-shrink-0">
-            <Flame className="h-2.5 w-2.5 text-orange-500" />
+            <Flame className="h-3 w-3 text-orange-500" />
             <span className="text-xs font-semibold text-orange-700 dark:text-orange-400">
               {liveStreakCount}
             </span>
@@ -375,9 +374,9 @@ export default function MorningRoutine({
             variant="ghost"
             size="sm"
             onClick={(e) => handleDeleteClick(e, routine.id)}
-            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+            className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
           >
-            <Trash2 className="h-3 w-3 text-destructive" />
+            <Trash2 className="h-3.5 w-3.5 text-destructive" />
           </Button>
         )}
       </div>
@@ -458,7 +457,7 @@ export default function MorningRoutine({
                 No routines yet. Click + to add one.
               </div>
             ) : (
-              <div className={`grid gap-1 ${isTwoColumn ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              <div className={`grid gap-1.5 ${isTwoColumn ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 {sortedRoutines.map(renderRoutineItem)}
               </div>
             )}

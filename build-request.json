@@ -1,37 +1,60 @@
 {
   "kind": "build_request",
-  "title": "Add safe-area-aware top padding for mobile fullscreen mode",
-  "priority": "normal",
+  "title": "Fix Skipped Day Reset to uncheck all boxes and reset streak to 0",
+  "projectName": "Momentum",
+  "priority": "high",
   "requirements": [
     {
-      "id": "REQ-8",
-      "text": "Add safe-area-aware top padding to the main app container in mobile/phone fullscreen mode so that top elements (header, navigation) are not clipped by the device's status bar or notch. Use `env(safe-area-inset-top)` via the existing `safe-area` CSS utilities or a new utility class, and apply it to the top-level layout wrapper in TaskManager and/or the Header component so the padding is active when the PWA is launched in fullscreen or standalone display mode on iOS and Android.",
-      "target": "frontend",
+      "id": "REQ-1",
+      "text": "Fix the Skipped Day Reset backend logic so that when a user triggers a skipped day reset, all morning and evening routine checkbox states are set to unchecked (false) and the streak counter is reset to 0.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-recent"
+          "msg-1",
+          "msg-2"
         ],
         "quotes": [
-          "implement padding on the top in phone mode so the top elements when it in full screen"
+          "skipped day reset does not work",
+          "all box not uncheck",
+          "the count streak does not reset to 0"
         ]
       },
       "acceptanceCriteria": [
-        "When the Momentum PWA is opened in fullscreen/standalone mode on iOS, the header and top UI elements are not obscured by the notch or status bar.",
-        "When the Momentum PWA is opened in fullscreen/standalone mode on Android, the header and top UI elements are not obscured by the status bar.",
-        "The top padding uses `env(safe-area-inset-top)` (or `padding-top: env(safe-area-inset-top)`) so it adapts to each device's inset dynamically.",
-        "On desktop or non-fullscreen browser views, no extra top padding is added (the safe-area inset resolves to 0).",
-        "The viewport meta tag in index.html includes `viewport-fit=cover` to enable safe area insets (add if not already present)."
+        "Calling the skipped day reset endpoint sets all routine item checked states to false (unchecked).",
+        "Calling the skipped day reset endpoint resets the streak counter to 0.",
+        "The reset persists after subsequent page loads or re-queries."
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Fix the Skipped Day Reset frontend handler in the Start New Day dialog so that after the reset mutation completes, the UI reflects all checkboxes as unchecked and the streak count displayed as 0 — by invalidating or updating the relevant React Query caches for routines and streak data.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1",
+          "msg-2"
+        ],
+        "quotes": [
+          "skipped day reset does not work",
+          "all box not uncheck",
+          "the count streak does not reset to 0"
+        ]
+      },
+      "acceptanceCriteria": [
+        "After clicking Skipped Day Reset, all routine checkboxes immediately appear unchecked in the UI.",
+        "After clicking Skipped Day Reset, the streak count displayed in the UI shows 0.",
+        "The UI state is consistent with a fresh re-fetch from the backend."
       ]
     }
   ],
   "constraints": [
-    "Do not modify files listed in frontend.immutablePaths (useInternetIdentity.ts, useActor.ts, main.tsx, frontend/src/components/ui).",
-    "Use env(safe-area-inset-top) for the inset value — do not use a hardcoded pixel value."
+    "Do not change any immutable frontend paths (hooks/useInternetIdentity.ts, hooks/useActor.ts, main.tsx, components/ui).",
+    "All Motoko logic must remain in the single main actor file (backend/main.mo)."
   ],
   "nonGoals": [
-    "Adding safe-area padding to the bottom or sides (only top is requested).",
-    "Changes to backend logic.",
-    "Any other drag-and-drop or toolbar features from project state."
+    "Adding a confirmation prompt before the reset triggers.",
+    "Changing any other reset or new-day logic beyond the Skipped Day Reset path.",
+    "Modifying task or list state as part of this reset."
   ],
   "imageRequirements": {
     "required": [],

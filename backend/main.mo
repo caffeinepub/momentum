@@ -11,6 +11,8 @@ import Principal "mo:core/Principal";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
+// Always enable migration, required for data changes in actor
+
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -873,6 +875,23 @@ actor {
     users.add(caller, newUser);
   };
 
+  public shared ({ caller }) func resetSkippedDay() : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+
+    let user = getOrCreateUserInternal(caller);
+
+    let resetRoutines = user.routines.map<RoutineId, MorningRoutine, MorningRoutine>(
+      func(_id, routine) {
+        { routine with completed = false; streakCount = 0 };
+      }
+    );
+
+    let newUser = { user with routines = resetRoutines };
+    users.add(caller, newUser);
+  };
+
   public query ({ caller }) func getPayrollHistory() : async [PayrollRecord] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can perform this action");
@@ -1265,12 +1284,7 @@ actor {
     AccessControl.assignRole(accessControlState, caller, target, #admin);
 
     if (userProfiles.get(target) == null) {
-      let defaultProfile : UserProfile = {
-        name = "";
-        earningsEnabled = false;
-        tier = #basic;
-        email = null;
-      };
+      let defaultProfile : UserProfile = { name = ""; earningsEnabled = false; tier = #basic; email = null };
       userProfiles.add(target, defaultProfile);
     };
   };

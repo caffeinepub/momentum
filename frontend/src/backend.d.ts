@@ -220,6 +220,7 @@ export interface backendInterface {
     removeAdmin(target: Principal): Promise<void>;
     reorderTask(taskId: TaskId, newPosition: bigint): Promise<void>;
     resetNewDay(completedRoutineIds: Array<RoutineId>): Promise<void>;
+    resetSkippedDay(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveMonetarySettings(settings: MonetarySettings): Promise<void>;
     setUserTier(targetUser: Principal, newTier: UserTier): Promise<void>;

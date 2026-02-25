@@ -1,5 +1,5 @@
-import { memo, useState, useRef, useCallback } from 'react';
-import { GripVertical, Pencil, Trash2, Minus, Clock } from 'lucide-react';
+import { memo, useRef, useCallback } from 'react';
+import { GripVertical, Pencil, X, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,9 @@ interface TaskCardProps {
   isDragTarget?: boolean;
   onDragEnter?: () => void;
   onDragLeave?: () => void;
+  // Shared edit mode state (lifted to parent) — uses string | null (localId)
+  editTaskId: string | null;
+  setEditTaskId: (id: string | null) => void;
 }
 
 const TaskCard = memo(function TaskCard({
@@ -31,42 +34,45 @@ const TaskCard = memo(function TaskCard({
   isDragTarget = false,
   onDragEnter,
   onDragLeave,
+  editTaskId,
+  setEditTaskId,
 }: TaskCardProps) {
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isEditMode = editTaskId === task.localId;
   const isDraggingRef = useRef(false);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const draggedTaskRef = useRef<LocalTask | null>(null);
+  const isDraggingStateRef = useRef(false);
+
+  const enterEditMode = useCallback(() => {
+    setEditTaskId(task.localId);
+  }, [setEditTaskId, task.localId]);
+
+  const exitEditMode = useCallback(() => {
+    setEditTaskId(null);
+  }, [setEditTaskId]);
 
   // Touch event handlers for mobile drag-and-drop
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (!isEditMode) {
-      // Long press detection for entering edit mode
       isDraggingRef.current = false;
       longPressTimerRef.current = setTimeout(() => {
         if (!isDraggingRef.current) {
-          setIsEditMode(true);
+          enterEditMode();
         }
       }, 500);
       return;
     }
 
-    // In edit mode: start drag operation immediately
     const touch = e.touches[0];
     touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
     draggedTaskRef.current = task;
-    
-    // Start visual drag feedback immediately
-    setIsDragging(true);
-    
-    // Prevent default to stop scrolling during drag
+    isDraggingStateRef.current = true;
     e.preventDefault();
-  }, [isEditMode, task]);
+  }, [isEditMode, task, enterEditMode]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (longPressTimerRef.current) {
-      // Cancel long press if user moves finger
       isDraggingRef.current = true;
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
@@ -77,45 +83,32 @@ const TaskCard = memo(function TaskCard({
       return;
     }
 
-    // Prevent scrolling during drag
     e.preventDefault();
   }, [isEditMode]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    // Clear long press timer
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
 
-    if (!isEditMode || !draggedTaskRef.current || !isDragging) {
-      setIsDragging(false);
+    if (!isEditMode || !draggedTaskRef.current || !isDraggingStateRef.current) {
+      isDraggingStateRef.current = false;
       draggedTaskRef.current = null;
       touchStartPosRef.current = null;
       return;
     }
 
-    // Get touch end position
     const touch = e.changedTouches[0];
     const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-    
+
     if (dropTarget) {
-      // Find the closest list container
-      let listElement = dropTarget.closest('[data-list-id]') as HTMLElement | null;
-      
+      const listElement = dropTarget.closest('[data-list-id]') as HTMLElement | null;
+
       if (listElement) {
         const targetListId = listElement.getAttribute('data-list-id');
-        
+
         if (targetListId && onTouchDrop) {
-          // Serialize task data with BigInt conversion
-          const serializedTask = {
-            ...draggedTaskRef.current,
-            id: draggedTaskRef.current.id,
-            listId: draggedTaskRef.current.listId,
-            order: draggedTaskRef.current.order,
-          };
-          
-          // Find target index by checking if we're over a specific task
           let targetIndex: number | undefined = undefined;
           const taskElement = dropTarget.closest('[data-task-index]') as HTMLElement | null;
           if (taskElement) {
@@ -124,29 +117,27 @@ const TaskCard = memo(function TaskCard({
               targetIndex = parseInt(indexStr, 10);
             }
           }
-          
-          onTouchDrop(serializedTask, BigInt(targetListId), targetIndex);
+
+          onTouchDrop(draggedTaskRef.current, BigInt(targetListId), targetIndex);
         }
       }
     }
 
-    // Reset drag state but keep edit mode active
-    setIsDragging(false);
+    isDraggingStateRef.current = false;
     draggedTaskRef.current = null;
     touchStartPosRef.current = null;
-  }, [isEditMode, isDragging, onTouchDrop]);
+  }, [isEditMode, onTouchDrop]);
 
-  // Mouse event handlers for desktop
   const handleMouseDown = useCallback(() => {
     if (!isEditMode) {
       isDraggingRef.current = false;
       longPressTimerRef.current = setTimeout(() => {
         if (!isDraggingRef.current) {
-          setIsEditMode(true);
+          enterEditMode();
         }
       }, 500);
     }
-  }, [isEditMode]);
+  }, [isEditMode, enterEditMode]);
 
   const handleMouseUp = useCallback(() => {
     if (longPressTimerRef.current) {
@@ -182,20 +173,18 @@ const TaskCard = memo(function TaskCard({
   };
 
   const handleDragStartWrapper = (e: React.DragEvent) => {
-    // Only allow drag in edit mode
     if (!isEditMode) {
       e.preventDefault();
       return;
     }
     isDraggingRef.current = true;
-    setIsDragging(true);
+    isDraggingStateRef.current = true;
     onDragStart(e, task);
   };
 
   const handleDragEnd = () => {
-    // Keep edit mode active after drag ends
     isDraggingRef.current = false;
-    setIsDragging(false);
+    isDraggingStateRef.current = false;
   };
 
   const handleDropWrapper = (e: React.DragEvent) => {
@@ -209,14 +198,9 @@ const TaskCard = memo(function TaskCard({
     onEdit();
   };
 
-  const handleDeleteClick = (e: React.MouseEvent | React.TouchEvent) => {
-    e.stopPropagation();
-    onDelete();
-  };
-
   const handleExitEditMode = (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
-    setIsEditMode(false);
+    exitEditMode();
   };
 
   return (
@@ -236,84 +220,94 @@ const TaskCard = memo(function TaskCard({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
       className={cn(
-        'relative rounded-lg border shadow-sm transition-all duration-300 ease-out hover:shadow-md w-full no-text-select',
-        isEditMode 
-          ? 'cursor-move hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-br from-blue-50/80 via-indigo-50/60 to-purple-50/40 dark:from-blue-950/30 dark:via-indigo-950/20 dark:to-purple-950/10 border-blue-200 dark:border-blue-800' 
+        'relative rounded-lg border shadow-sm transition-all duration-300 ease-out hover:shadow-md w-full no-text-select overflow-hidden',
+        isEditMode
+          ? 'cursor-move bg-gradient-to-br from-blue-50/80 via-indigo-50/60 to-purple-50/40 dark:from-blue-950/30 dark:via-indigo-950/20 dark:to-purple-950/10 border-blue-200 dark:border-blue-800'
           : 'cursor-default bg-card',
-        isDragging && 'opacity-50 scale-95',
         isDragTarget && 'bg-blue-100 dark:bg-blue-900/40 shadow-lg ring-2 ring-blue-400 dark:ring-blue-600',
-        task.completed && 'opacity-60',
+        task.completed && !isEditMode && 'opacity-60',
         'py-2 px-2'
       )}
       style={{
         touchAction: isEditMode ? 'none' : 'auto',
-        willChange: isDragging ? 'transform, opacity' : 'auto',
       }}
     >
-      {/* Regular mode: checkbox + title in single row */}
-      <div className="flex items-center gap-2 w-full">
-        <Checkbox
-          checked={task.completed}
-          onCheckedChange={onToggleComplete}
-          className="flex-shrink-0 ml-0.5"
-        />
-        
-        <h4 
-          className={cn(
-            'font-medium text-sm leading-tight transition-all duration-200 min-w-0 truncate',
-            task.completed && 'line-through text-muted-foreground',
-            task.important && !task.completed && 'text-red-600 dark:text-red-400'
-          )}
-          style={{ maxWidth: '75%' }}
-          title={task.title}
-        >
-          {task.title}
-        </h4>
-
-        {/* Long Task Badge - only visible when isLongTask is true */}
-        {task.isLongTask && (
-          <div className="flex-shrink-0 ml-1">
-            <Clock className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-          </div>
-        )}
-
-        {/* Drag handle - only visible in edit mode with larger size */}
-        {isEditMode && (
-          <div className="flex-shrink-0 ml-auto">
-            <GripVertical className="h-7 w-7 text-blue-600 dark:text-blue-400" />
-          </div>
-        )}
-      </div>
-
-      {/* Edit mode: second line with edit, delete, and exit icons */}
+      {/* ✕ exit button — top-right corner, only in edit mode */}
       {isEditMode && (
-        <div className="flex items-center justify-center gap-6 mt-3 pt-2 border-t border-blue-200 dark:border-blue-800">
+        <button
+          className="absolute top-0 right-0 z-10 flex items-center justify-center w-7 h-7 rounded-bl-lg bg-blue-200/80 dark:bg-blue-800/80 text-blue-700 dark:text-blue-200 hover:bg-blue-300 dark:hover:bg-blue-700 transition-colors"
+          onClick={handleExitEditMode}
+          onTouchEnd={handleExitEditMode}
+          aria-label="Exit edit mode"
+          style={{ minWidth: 28, minHeight: 28 }}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
+
+      {/* Normal mode: checkbox + title in single row */}
+      {!isEditMode && (
+        <div className="flex items-center gap-2 w-full">
+          <Checkbox
+            checked={task.completed}
+            onCheckedChange={onToggleComplete}
+            className="flex-shrink-0 ml-0.5"
+          />
+
+          <h4
+            className={cn(
+              'font-medium text-sm leading-tight transition-all duration-200 flex-1 min-w-0 truncate',
+              task.completed && 'line-through text-muted-foreground',
+              task.important && !task.completed && 'text-red-600 dark:text-red-400'
+            )}
+            title={task.title}
+          >
+            {task.title}
+          </h4>
+
+          {task.isLongTask && (
+            <div className="flex-shrink-0">
+              <Clock className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Edit mode: single-line row — drag icon | title | edit icon (no delete — moved to EditTaskDialog) */}
+      {isEditMode && (
+        <div className="flex items-center gap-1.5 w-full pr-7">
+          {/* 1. Drag icon on the far left */}
+          <div className="flex-shrink-0 cursor-grab active:cursor-grabbing">
+            <GripVertical className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          </div>
+
+          {/* 2. Task title — flex-1, truncated */}
+          <h4
+            className={cn(
+              'flex-1 min-w-0 font-medium text-sm leading-tight truncate',
+              task.important && 'text-red-600 dark:text-red-400'
+            )}
+            title={task.title}
+          >
+            {task.title}
+          </h4>
+
+          {task.isLongTask && (
+            <div className="flex-shrink-0">
+              <Clock className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
+            </div>
+          )}
+
+          {/* 3. Edit icon */}
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 transition-transform duration-200 hover:scale-110"
+            className="flex-shrink-0 h-8 w-8 hover:bg-blue-100 dark:hover:bg-blue-900/40"
             onClick={handleEditClick}
             onTouchEnd={handleEditClick}
+            aria-label="Edit task"
           >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 text-destructive hover:text-destructive transition-transform duration-200 hover:scale-110"
-            onClick={handleDeleteClick}
-            onTouchEnd={handleDeleteClick}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 transition-transform duration-200 hover:scale-110"
-            onClick={handleExitEditMode}
-            onTouchEnd={handleExitEditMode}
-          >
-            <Minus className="h-4 w-4" />
+            <Pencil className="h-3.5 w-3.5" />
           </Button>
         </div>
       )}
@@ -332,7 +326,8 @@ const TaskCard = memo(function TaskCard({
     prevProps.task.listId === nextProps.task.listId &&
     prevProps.task.order === nextProps.task.order &&
     prevProps.index === nextProps.index &&
-    prevProps.isDragTarget === nextProps.isDragTarget
+    prevProps.isDragTarget === nextProps.isDragTarget &&
+    prevProps.editTaskId === nextProps.editTaskId
   );
 });
 

@@ -1,22 +1,35 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T20:33:13.049Z",
-  "summary": "The diff implements REQ-8 partially but is missing the viewport meta tag update. The safe-area-top CSS utility using env(safe-area-inset-top) was added to index.css, and the class was applied to the header element in Header.tsx. However, there is no evidence that viewport-fit=cover was added to the viewport meta tag in index.html.",
+  "generatedAt": "2026-02-24T23:14:01.460Z",
+  "summary": "The diff addresses both REQ-1 (backend) and REQ-2 (frontend). The frontend handler in Header.tsx applies optimistic cache updates for morningRoutines and useResetSkippedDay in useQueries.ts invalidates the morningRoutines query key on success. However, the backend main.mo is truncated and the actual skipped-day-reset logic cannot be confirmed from the visible portion. REQ-2 frontend fixes appear present but the streak counter cache invalidation coverage is uncertain.",
   "missing_requirements": [
     {
-      "id": "REQ-8",
-      "requirement": "The viewport meta tag in index.html includes viewport-fit=cover to enable safe area insets (add if not already present).",
-      "reason": "No modification to index.html is present in the diff. The viewport-fit=cover attribute is required for env(safe-area-inset-top) to return non-zero values on iOS and Android in fullscreen/standalone mode.",
-      "evidence": []
+      "id": "REQ-1",
+      "requirement": "Fix the Skipped Day Reset backend logic so that all morning and evening routine checkbox states are set to unchecked (false) and the streak counter is reset to 0.",
+      "reason": "The backend/main.mo diff is truncated and the actual resetSkippedDay function body (which should set completed=false and streakCount=0 for all routines) is not visible in the diff. Cannot confirm the backend logic was correctly implemented.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "requirement": "After clicking Skipped Day Reset, the streak count displayed in the UI shows 0.",
+      "reason": "The optimistic cache update in Header.tsx sets streakCount to BigInt(0) on morningRoutines items, but there is no evidence of a separate streak counter query cache being invalidated or updated. If streak count is stored and displayed from a separate query key, that cache is not updated in the diff.",
+      "evidence": [
+        "frontend/src/components/Header.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ]
     }
   ],
   "hallucinated_features": [],
-  "confidence": 0.88,
+  "confidence": 0.55,
   "changed_files": [
+    "backend/main.mo",
     "frontend-file-summaries.txt",
     "frontend/src/components/Header.tsx",
-    "frontend/src/index.css",
+    "frontend/src/components/admin/TierSettings.tsx",
+    "frontend/src/hooks/useQueries.ts",
     "project_state.json"
   ]
 }

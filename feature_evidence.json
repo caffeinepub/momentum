@@ -2,11 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-add-safe-area-aware-top-padding-to-the-main-app-container-in-mobile-phone-fullscreen-mode-so-that-top-elements-header-navigation-are-not-clipped-by-the-device-s-status-bar-or-notch-use-env-safe-area-inset-top-via-the-existing-safe-area-css-utilities-or-a-new-utility-class-and-apply-it-to-the-top-level-layout-wrapper-in-taskmanager-and-or-the-header-component-so-the-padding-is-active-when-the-pwa-is-launched-in-fullscreen-or-standalone-display-mode-on-ios-and-android",
-      "featureTitle": "Add safe-area-aware top padding to the main app container in mobile/phone fullscreen mode so that top elements (header, navigation) are not clipped by the device's status bar or notch. Use `env(safe-area-inset-top)` via the existing `safe-area` CSS utilities or a new utility class, and apply it to the top-level layout wrapper in TaskManager and/or the Header component so the padding is active when the PWA is launched in fullscreen or standalone display mode on iOS and Android.",
+      "featureId": "feature-fix-the-skipped-day-reset-frontend-handler-in-the-start-new-day-dialog-so-that-after-the-reset-mutation-completes-the-ui-reflects-all-checkboxes-as-unchecked-and-the-streak-count-displayed-as-0-by-invalidating-or-updating-the-relevant-react-query-caches-for-routines-and-streak-data",
+      "featureTitle": "Fix the Skipped Day Reset frontend handler in the Start New Day dialog so that after the reset mutation completes, the UI reflects all checkboxes as unchecked and the streak count displayed as 0 — by invalidating or updating the relevant React Query caches for routines and streak data.",
       "files": [
         "frontend/src/components/Header.tsx",
-        "frontend/src/index.css"
+        "frontend/src/hooks/useQueries.ts"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -17,7 +17,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-8"
+        "REQ-2"
       ],
       "confidence": "high"
     }

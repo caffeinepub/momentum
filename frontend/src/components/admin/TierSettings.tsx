@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Save, Infinity } from 'lucide-react';
+import { Loader2, Save } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -94,8 +94,9 @@ export default function TierSettings() {
   const handleSave = async (tier: UserTier) => {
     setSavingTier(tier);
     try {
-      const limits = convertToBackendLimits(tierStates[tier]);
-      await updateTierLimits.mutateAsync({ tier, limits });
+      const newLimits = convertToBackendLimits(tierStates[tier]);
+      // Use `newLimits` to match the updated mutation parameter name
+      await updateTierLimits.mutateAsync({ tier, newLimits });
       toast.success(`${getAllTiers().find(t => t.value === tier)?.label} tier limits updated successfully`);
     } catch (error: any) {
       console.error('Failed to update tier limits:', error);
@@ -172,14 +173,12 @@ export default function TierSettings() {
                     id={`${tier}-tasks`}
                     type="number"
                     min="0"
-                    value={state.maxTasksUnlimited ? '' : state.maxTasks || ''}
+                    value={state.maxTasksUnlimited ? '' : (state.maxTasks ?? '')}
                     onChange={(e) => handleValueChange(tier, 'maxTasks', e.target.value)}
                     disabled={state.maxTasksUnlimited}
-                    placeholder={state.maxTasksUnlimited ? 'Unlimited' : '0'}
+                    placeholder={state.maxTasksUnlimited ? 'Unlimited' : 'Enter limit'}
+                    className="pr-10"
                   />
-                  {state.maxTasksUnlimited && (
-                    <Infinity className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  )}
                 </div>
               </div>
 
@@ -203,14 +202,12 @@ export default function TierSettings() {
                     id={`${tier}-lists`}
                     type="number"
                     min="0"
-                    value={state.maxCustomListsUnlimited ? '' : state.maxCustomLists || ''}
+                    value={state.maxCustomListsUnlimited ? '' : (state.maxCustomLists ?? '')}
                     onChange={(e) => handleValueChange(tier, 'maxCustomLists', e.target.value)}
                     disabled={state.maxCustomListsUnlimited}
-                    placeholder={state.maxCustomListsUnlimited ? 'Unlimited' : '0'}
+                    placeholder={state.maxCustomListsUnlimited ? 'Unlimited' : 'Enter limit'}
+                    className="pr-10"
                   />
-                  {state.maxCustomListsUnlimited && (
-                    <Infinity className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  )}
                 </div>
               </div>
 
@@ -234,14 +231,12 @@ export default function TierSettings() {
                     id={`${tier}-routines`}
                     type="number"
                     min="0"
-                    value={state.maxRoutinesUnlimited ? '' : state.maxRoutines || ''}
+                    value={state.maxRoutinesUnlimited ? '' : (state.maxRoutines ?? '')}
                     onChange={(e) => handleValueChange(tier, 'maxRoutines', e.target.value)}
                     disabled={state.maxRoutinesUnlimited}
-                    placeholder={state.maxRoutinesUnlimited ? 'Unlimited' : '0'}
+                    placeholder={state.maxRoutinesUnlimited ? 'Unlimited' : 'Enter limit'}
+                    className="pr-10"
                   />
-                  {state.maxRoutinesUnlimited && (
-                    <Infinity className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  )}
                 </div>
               </div>
 

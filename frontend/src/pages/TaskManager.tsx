@@ -1,6 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useGetCallerUserProfile, useTaskQueries, useMorningRoutineQueries, useAppMode, useEarningsEnabled, useMonetarySettings, useSpendRecords, useSpendPresets, useSaveCallerUserProfile } from '../hooks/useQueries';
+import {
+  useGetCallerUserProfile,
+  useTaskQueries,
+  useMorningRoutineQueries,
+  useAppMode,
+  useEarningsEnabled,
+  useMonetarySettings,
+  useSpendRecords,
+  useSpendPresets,
+  useSaveCallerUserProfile,
+  usePayrollHistory,
+} from '../hooks/useQueries';
 import { toLocalTask, toLocalList, type LocalTask, type LocalList } from '../lib/types';
 import { writeDragPayload, readDragPayload } from '../utils/dragPayload';
 import { parseTierError } from '../utils/tierErrors';
@@ -38,17 +49,15 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
 
   const principalString = identity?.getPrincipal().toString() || null;
 
-  // TEST-ONLY: Test date management for routine debugging
   const { testDate, setTestDate } = useTestDate();
 
   const { data: userProfile, isLoading: profileLoading, isFetched } = useGetCallerUserProfile();
   const saveProfile = useSaveCallerUserProfile();
-  const { 
-    tasks, 
-    lists, 
-    isLoading: dataLoading, 
-    quadrantsReady,
-    bootstrapQuadrants,
+  const {
+    tasks,
+    lists,
+    isLoading: dataLoading,
+    ensureQuadrants,
     createTask,
     updateTask,
     completeTask,
@@ -58,22 +67,24 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
     createList,
     deleteList,
   } = useTaskQueries();
-  
-  const { 
-    routines, 
+
+  const {
+    routines,
     resetNewDay,
     createRoutine,
     deleteRoutine,
-    updateRoutinePosition,
-    displayMode,
-    setDisplayMode,
+    updateRoutineItemPosition,
   } = useMorningRoutineQueries();
-  
+
+  // Local display mode state for routine reorder toggle
+  const [displayMode, setDisplayMode] = useState<'normal' | 'reorder'>('normal');
+
   const { appMode, setAppMode } = useAppMode();
   const { earningsEnabled, toggleEarningsSystem } = useEarningsEnabled();
   const { monetarySettings, saveMonetarySettings, addPayroll } = useMonetarySettings();
   const { spends, createSpend, deleteSpend } = useSpendRecords();
   const { presets, createPreset, updatePreset, deletePreset } = useSpendPresets();
+  const { payrollHistory, submitPayrollLog, editPayrollLog } = usePayrollHistory();
   const { shouldShow: shouldShowPlanTip, isChecking: isCheckingPlanTip, markAsShown: markPlanTipAsShown } = usePlanModeTip(principalString);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -86,7 +97,7 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
   const [editingTask, setEditingTask] = useState<LocalTask | null>(null);
   const [preSelectedListId, setPreSelectedListId] = useState<bigint | null>(null);
   const [planTipOpen, setPlanTipOpen] = useState(false);
-  
+
   const [isMatrixExpanded, setIsMatrixExpanded] = useState(true);
   const [isMorningExpanded, setIsMorningExpanded] = useState(true);
   const [isEveningExpanded, setIsEveningExpanded] = useState(true);
@@ -94,10 +105,25 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
 
   const [planLayout, setPlanLayout] = useState<'lists' | 'homeLike'>('lists');
 
-  // Local state for routine checkboxes (frontend-only)
   const [checkedRoutineIds, setCheckedRoutineIds] = useState<Set<bigint>>(new Set());
 
+  // Shared edit mode state — only one task can be in edit mode at a time (uses localId string)
+  const [editTaskId, setEditTaskIdRaw] = useState<string | null>(null);
+
+  const setEditTaskId = useCallback((id: string | null) => {
+    setEditTaskIdRaw(id);
+  }, []);
+
+  const handleMainAreaClick = useCallback(() => {
+    if (editTaskId !== null) {
+      setEditTaskIdRaw(null);
+    }
+  }, [editTaskId]);
+
   const showProfileSetup = isAuthenticated && !profileLoading && isFetched && userProfile === null;
+
+  // Derive quadrantsReady from lists data
+  const quadrantsReady = (lists || []).some(l => l.quadrant);
 
   useEffect(() => {
     if (!isAuthenticated || !userProfile || bootstrapState !== 'idle') return;
@@ -105,7 +131,7 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
     const bootstrap = async () => {
       setBootstrapState('running');
       try {
-        await bootstrapQuadrants();
+        await ensureQuadrants.mutateAsync();
         setBootstrapState('complete');
       } catch (error: any) {
         console.error('Bootstrap error:', error);
@@ -119,7 +145,7 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
     } else {
       setBootstrapState('complete');
     }
-  }, [isAuthenticated, userProfile, quadrantsReady, bootstrapState, bootstrapQuadrants]);
+  }, [isAuthenticated, userProfile, quadrantsReady, bootstrapState]);
 
   useEffect(() => {
     if (appMode === 1) {
@@ -171,10 +197,10 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
 
   const localTasks: LocalTask[] = (tasks || []).map(toLocalTask);
   const localLists: LocalList[] = (lists || []).map(toLocalList);
-  
+
   const morningRoutines = routines?.filter(r => r.section === RoutineSection.top) || [];
   const eveningRoutines = routines?.filter(r => r.section === RoutineSection.bottom) || [];
-  
+
   const quadrantLists = localLists.filter(l => l.quadrant);
   const customLists = localLists.filter(l => !l.quadrant);
 
@@ -237,7 +263,6 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
     }
   };
 
-  // Uses the dedicated completeTask mutation with optimistic updates for instant checkbox feedback
   const handleToggleComplete = async (taskId: bigint, updates: Partial<LocalTask>) => {
     const newCompleted = updates.completed ?? false;
     try {
@@ -298,6 +323,16 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
       await updateTask.mutateAsync({ id: taskId, task: input });
     } catch (error) {
       console.error('Update task error:', error);
+    }
+  };
+
+  const handleDeleteTask = async (taskId: bigint) => {
+    try {
+      await deleteTask.mutateAsync(taskId);
+      toast.success('Task deleted');
+    } catch (error) {
+      console.error('Delete task error:', error);
+      toast.error('Failed to delete task');
     }
   };
 
@@ -375,17 +410,30 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
     }
   };
 
-  // Convert displayMode to number for MorningRoutine component
+  const handleSaveProfile = async (profile: typeof userProfile) => {
+    if (!profile) return;
+    try {
+      await saveProfile.mutateAsync(profile);
+      toast.success('Profile saved');
+    } catch (error) {
+      console.error('Save profile error:', error);
+      toast.error('Failed to save profile');
+    }
+  };
+
   const displayModeNumber = displayMode === 'reorder' ? 1 : 0;
-  
+
   const handleToggleDisplayMode = (mode: number) => {
     setDisplayMode(mode === 1 ? 'reorder' : 'normal');
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted pb-20">
+    <div
+      className={`min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted pb-20${isPlanMode ? ' pt-safe' : ''}`}
+      onClick={handleMainAreaClick}
+    >
       {(isHomeMode || (isPlanMode && planLayout === 'homeLike')) && (
-        <Header 
+        <Header
           onOpenAdminDashboard={onOpenAdminDashboard}
           testDate={testDate}
           onTestDateChange={setTestDate}
@@ -405,7 +453,7 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
               await deleteRoutine.mutateAsync(id);
             }}
             onReorderRoutine={async (routineId, positionIndex) => {
-              await updateRoutinePosition.mutateAsync({ routineId, positionIndex });
+              await updateRoutineItemPosition.mutateAsync({ routineId, positionIndex });
             }}
             displayMode={displayModeNumber}
             onToggleDisplayMode={handleToggleDisplayMode}
@@ -431,6 +479,8 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
           onToggleExpand={() => setIsMatrixExpanded(!isMatrixExpanded)}
           isPlanMode={isPlanMode}
           onSwitchToPlanMode={handleSwitchToPlanMode}
+          editTaskId={editTaskId}
+          setEditTaskId={setEditTaskId}
         />
 
         {(isHomeMode || (isPlanMode && planLayout === 'homeLike')) && (
@@ -442,7 +492,7 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
               await deleteRoutine.mutateAsync(id);
             }}
             onReorderRoutine={async (routineId, positionIndex) => {
-              await updateRoutinePosition.mutateAsync({ routineId, positionIndex });
+              await updateRoutineItemPosition.mutateAsync({ routineId, positionIndex });
             }}
             displayMode={displayModeNumber}
             onToggleDisplayMode={handleToggleDisplayMode}
@@ -469,8 +519,9 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
             onCreateTask={() => handleOpenAddTask()}
             onCreateList={() => setCreateListOpen(true)}
             onQuickAddTask={(listId) => handleOpenAddTask(listId)}
-            isHidden={false}
             isPlanMode={isPlanMode}
+            editTaskId={editTaskId}
+            setEditTaskId={setEditTaskId}
           />
         )}
       </main>
@@ -483,33 +534,33 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
         onAddTask={() => handleOpenAddTask()}
         onAddList={() => setCreateListOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenUserInfo={() => setUserInfoOpen(true)}
         onOpenTodayEarns={() => setTodayEarnsOpen(true)}
         onOpenSpendPlan={() => setSpendPlanOpen(true)}
         onOpenInsights={() => setInsightsOpen(true)}
-        onOpenUserInfo={() => setUserInfoOpen(true)}
         earningsEnabled={earningsEnabled}
       />
+
+      <Footer />
 
       <SettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
+        onToggleEarnings={handleToggleEarnings}
+        isTogglingEarnings={toggleEarningsSystem.isPending}
+        earningsEnabled={earningsEnabled}
         monetarySettings={monetarySettings}
         onSaveSettings={async (settings) => {
           await saveMonetarySettings.mutateAsync(settings);
         }}
-        earningsEnabled={earningsEnabled}
-        onToggleEarnings={handleToggleEarnings}
         isSaving={saveMonetarySettings.isPending}
-        isTogglingEarnings={toggleEarningsSystem.isPending}
       />
 
       <UserInfoDialog
         open={userInfoOpen}
         onOpenChange={setUserInfoOpen}
-        userProfile={userProfile}
-        onSaveProfile={async (profile) => {
-          await saveProfile.mutateAsync(profile);
-        }}
+        userProfile={userProfile ?? null}
+        onSaveProfile={handleSaveProfile}
         isSavingProfile={saveProfile.isPending}
       />
 
@@ -530,20 +581,14 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
         presets={presets || []}
         monetarySettings={monetarySettings}
         onCreateSpend={async (input) => {
-          return createSpend.mutateAsync(input);
+          return await createSpend.mutateAsync(input);
         }}
-        onDeleteSpend={async (id) => {
-          await deleteSpend.mutateAsync(id);
-        }}
+        onDeleteSpend={async (id) => { await deleteSpend.mutateAsync(id); }}
         onCreatePreset={async (preset) => {
-          return createPreset.mutateAsync(preset);
+          return await createPreset.mutateAsync(preset);
         }}
-        onUpdatePreset={async (id, preset) => {
-          await updatePreset.mutateAsync({ id, preset });
-        }}
-        onDeletePreset={async (id) => {
-          await deletePreset.mutateAsync(id);
-        }}
+        onUpdatePreset={async (id, preset) => { await updatePreset.mutateAsync({ id, preset }); }}
+        onDeletePreset={async (id) => { await deletePreset.mutateAsync(id); }}
         isCreating={createSpend.isPending}
         isDeleting={deleteSpend.isPending}
       />
@@ -561,8 +606,8 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
         lists={localLists}
         onCreateTask={handleCreateTask}
         isLoading={createTask.isPending}
-        quadrantsReady={quadrantsReady}
         preSelectedListId={preSelectedListId}
+        quadrantsReady={quadrantsReady}
       />
 
       <CreateListDialog
@@ -575,13 +620,12 @@ export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) 
       {editingTask && (
         <EditTaskDialog
           open={!!editingTask}
-          onOpenChange={(open) => {
-            if (!open) setEditingTask(null);
-          }}
+          onOpenChange={(open) => { if (!open) setEditingTask(null); }}
           task={editingTask}
           lists={localLists}
           onUpdateTask={handleUpdateTask}
-          isLoading={updateTask.isPending}
+          onDeleteTask={handleDeleteTask}
+          isLoading={updateTask.isPending || deleteTask.isPending}
         />
       )}
 

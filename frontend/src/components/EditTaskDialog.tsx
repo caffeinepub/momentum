@@ -6,14 +6,16 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Trash2, Loader2 } from 'lucide-react';
 import type { LocalTask, LocalList } from '@/lib/types';
 
 interface EditTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  task: LocalTask;
+  task: LocalTask | null;
   lists: LocalList[];
   onUpdateTask: (taskId: bigint, updates: Partial<LocalTask>) => void;
+  onDeleteTask: (taskId: bigint) => void;
   isLoading: boolean;
 }
 
@@ -23,25 +25,31 @@ export default function EditTaskDialog({
   task,
   lists,
   onUpdateTask,
+  onDeleteTask,
   isLoading,
 }: EditTaskDialogProps) {
-  const [title, setTitle] = useState(task.title);
-  const [description, setDescription] = useState(task.description);
-  const [listId, setListId] = useState(task.listId.toString());
-  const [urgent, setUrgent] = useState(task.urgent);
-  const [important, setImportant] = useState(task.important);
-  const [isLongTask, setIsLongTask] = useState(task.isLongTask);
-  const [completed, setCompleted] = useState(task.completed);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [listId, setListId] = useState('');
+  const [urgent, setUrgent] = useState(false);
+  const [important, setImportant] = useState(false);
+  const [isLongTask, setIsLongTask] = useState(false);
+  const [completed, setCompleted] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    setTitle(task.title);
-    setDescription(task.description);
-    setListId(task.listId.toString());
-    setUrgent(task.urgent);
-    setImportant(task.important);
-    setIsLongTask(task.isLongTask);
-    setCompleted(task.completed);
+    if (task) {
+      setTitle(task.title);
+      setDescription(task.description);
+      setListId(task.listId.toString());
+      setUrgent(task.urgent);
+      setImportant(task.important);
+      setIsLongTask(task.isLongTask);
+      setCompleted(task.completed);
+    }
   }, [task]);
+
+  if (!task) return null;
 
   const selectedList = lists.find(l => l.id.toString() === listId);
   const isQuadrantList = selectedList?.quadrant ?? false;
@@ -63,6 +71,17 @@ export default function EditTaskDialog({
     }
   };
 
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDeleting(true);
+    try {
+      onDeleteTask(task.id);
+      onOpenChange(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -73,7 +92,7 @@ export default function EditTaskDialog({
               Update task details and properties.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div>
               <Label htmlFor="edit-task-title">Title</Label>
@@ -125,7 +144,7 @@ export default function EditTaskDialog({
                   Priority flags are automatically set by the quadrant and cannot be edited.
                 </div>
               )}
-              
+
               {isCustomList && (
                 <>
                   <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md mb-2">
@@ -170,13 +189,45 @@ export default function EditTaskDialog({
             </div>
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
-              Cancel
+          <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+            {/* Delete button on the left */}
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting || isLoading}
+              className="w-full sm:w-auto"
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Delete
             </Button>
-            <Button type="submit" disabled={!title.trim() || isLoading}>
-              {isLoading ? 'Saving...' : 'Save Changes'}
-            </Button>
+
+            {/* Save / Cancel on the right */}
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isDeleting || isLoading}
+                className="flex-1 sm:flex-none"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!title.trim() || isDeleting || isLoading}
+                className="flex-1 sm:flex-none"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : null}
+                Save
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

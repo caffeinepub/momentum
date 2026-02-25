@@ -18,14 +18,12 @@ interface EisenhowerMatrixProps {
   onToggleExpand: () => void;
   isPlanMode: boolean;
   onSwitchToPlanMode?: () => void;
+  // Shared edit mode state
+  editTaskId: string | null;
+  setEditTaskId: (id: string | null) => void;
 }
 
 const HEADER_HEIGHT = 56;
-
-// Approximate height for 4 task cards:
-// Each task card: ~40px (py-2 + single row content)
-// space-y-2 gap: 8px between items → 3 gaps = 24px
-// Total ≈ 4×40 + 24 = 184px, use 200px for a bit of breathing room
 const TASK_LIST_MAX_HEIGHT = 200;
 
 const EisenhowerMatrix = memo(function EisenhowerMatrix({
@@ -42,6 +40,8 @@ const EisenhowerMatrix = memo(function EisenhowerMatrix({
   onToggleExpand,
   isPlanMode,
   onSwitchToPlanMode,
+  editTaskId,
+  setEditTaskId,
 }: EisenhowerMatrixProps) {
   const [dragTargetTaskId, setDragTargetTaskId] = useState<string | null>(null);
 
@@ -172,7 +172,7 @@ const EisenhowerMatrix = memo(function EisenhowerMatrix({
                 </div>
               </div>
 
-              {/* 2×2 Quadrant Grid — fills remaining space, no overflow on the grid itself */}
+              {/* 2×2 Quadrant Grid */}
               <div className="grid grid-cols-2 grid-rows-2 gap-2 md:gap-4 flex-1 min-h-0">
                 {orderedQuadrants.map((quadrant) => {
                   const quadrantTasks = getQuadrantTasks(quadrant.id);
@@ -185,28 +185,33 @@ const EisenhowerMatrix = memo(function EisenhowerMatrix({
                       onDragOver={handleDragOver}
                       onDrop={(e) => handleDropWrapper(e, quadrant.id)}
                     >
-                      {/* Quadrant header — always visible, never scrolls */}
-                      <div className="mb-2 md:mb-3 flex-shrink-0">
-                        <h3 className="text-sm md:text-base font-semibold leading-tight">{getQuadrantDisplayName(quadrant.name)}</h3>
+                      {/* Quadrant header */}
+                      <div className="flex items-center justify-between mb-1.5 flex-shrink-0 px-0.5">
+                        <h3 className="text-xs font-semibold text-muted-foreground truncate">
+                          {getQuadrantDisplayName(quadrant.name)}
+                        </h3>
+                        <span className="text-xs text-muted-foreground/70 ml-1 flex-shrink-0">
+                          {quadrantTasks.length}
+                        </span>
                       </div>
 
-                      {/* Task list — scrollable only when more than 4 tasks */}
+                      {/* Task list — scrolls internally when > 4 tasks */}
                       <div
-                        className="space-y-2 overflow-y-auto"
+                        className="flex-1 overflow-y-auto space-y-1.5 min-h-0"
                         style={{ maxHeight: `${TASK_LIST_MAX_HEIGHT}px` }}
                       >
                         {quadrantTasks.length === 0 ? (
-                          <div className="flex items-center justify-center h-20 text-xs md:text-sm text-muted-foreground border-2 border-dashed rounded-lg transition-all duration-200 hover:border-solid hover:bg-muted/20">
-                            Drop tasks here
+                          <div className="flex items-center justify-center h-16 text-xs text-muted-foreground/60 border border-dashed rounded-lg">
+                            Drop here
                           </div>
                         ) : (
-                          quadrantTasks.map((task, index) => (
+                          quadrantTasks.map((task, taskIndex) => (
                             <TaskCard
                               key={task.localId}
                               task={task}
-                              index={index}
+                              index={taskIndex}
                               onDragStart={onDragStart}
-                              onDrop={(e) => handleDropWrapper(e, quadrant.id, index)}
+                              onDrop={(e) => handleDropWrapper(e, quadrant.id, taskIndex)}
                               onTouchDrop={onTouchDrop}
                               onEdit={() => onEditTask(task)}
                               onDelete={() => onDeleteTask(task.id)}
@@ -214,6 +219,8 @@ const EisenhowerMatrix = memo(function EisenhowerMatrix({
                               isDragTarget={dragTargetTaskId === task.localId}
                               onDragEnter={() => handleDragEnter(task.localId)}
                               onDragLeave={handleDragLeave}
+                              editTaskId={editTaskId}
+                              setEditTaskId={setEditTaskId}
                             />
                           ))
                         )}
@@ -222,28 +229,11 @@ const EisenhowerMatrix = memo(function EisenhowerMatrix({
                   );
                 })}
               </div>
-
-              {/* Footer Row */}
-              <div className="grid grid-cols-2 gap-2 md:gap-4 flex-shrink-0">
-                <div className="h-8 flex items-center justify-center">
-                  <span className="text-xs md:text-sm font-semibold text-muted-foreground">Not Important × Urgent</span>
-                </div>
-                <div className="h-8 flex items-center justify-center">
-                  <span className="text-xs md:text-sm font-semibold text-muted-foreground">Not Important × Not Urgent</span>
-                </div>
-              </div>
             </>
           )}
         </div>
       )}
     </div>
-  );
-}, (prevProps, nextProps) => {
-  return (
-    prevProps.tasks === nextProps.tasks &&
-    prevProps.quadrantLists === nextProps.quadrantLists &&
-    prevProps.isExpanded === nextProps.isExpanded &&
-    prevProps.isPlanMode === nextProps.isPlanMode
   );
 });
 

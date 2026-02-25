@@ -21,6 +21,9 @@ interface CustomListsProps {
   onQuickAddTask: (listId: bigint) => void;
   isHidden?: boolean;
   isPlanMode?: boolean;
+  // Shared edit mode state
+  editTaskId: string | null;
+  setEditTaskId: (id: string | null) => void;
 }
 
 const CustomLists = memo(function CustomLists({
@@ -39,6 +42,8 @@ const CustomLists = memo(function CustomLists({
   onQuickAddTask,
   isHidden = false,
   isPlanMode = false,
+  editTaskId,
+  setEditTaskId,
 }: CustomListsProps) {
   const [dragTargetTaskId, setDragTargetTaskId] = useState<string | null>(null);
 
@@ -124,7 +129,7 @@ const CustomLists = memo(function CustomLists({
             <div className="flex gap-4 pb-4">
               {lists.map((list) => {
                 const listTasks = getListTasks(list.id);
-                
+
                 return (
                   <div
                     key={list.localId}
@@ -155,7 +160,7 @@ const CustomLists = memo(function CustomLists({
                         </Button>
                       </div>
                     </div>
-                    
+
                     <div className="flex-1 overflow-y-auto space-y-2">
                       {listTasks.length === 0 ? (
                         <div className="flex items-center justify-center h-32 text-sm text-muted-foreground border-2 border-dashed rounded-lg">
@@ -176,6 +181,8 @@ const CustomLists = memo(function CustomLists({
                             isDragTarget={dragTargetTaskId === task.localId}
                             onDragEnter={() => handleDragEnter(task.localId)}
                             onDragLeave={handleDragLeave}
+                            editTaskId={editTaskId}
+                            setEditTaskId={setEditTaskId}
                           />
                         ))
                       )}
@@ -195,7 +202,8 @@ const CustomLists = memo(function CustomLists({
     prevProps.tasks === nextProps.tasks &&
     prevProps.lists === nextProps.lists &&
     prevProps.isHidden === nextProps.isHidden &&
-    prevProps.isPlanMode === nextProps.isPlanMode
+    prevProps.isPlanMode === nextProps.isPlanMode &&
+    prevProps.editTaskId === nextProps.editTaskId
   );
 });
 

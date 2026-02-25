@@ -1,11 +1,10 @@
 # Specification
 
 ## Summary
-**Goal:** Add safe-area-aware top padding to the Momentum PWA so that header and top UI elements are not clipped by the device's notch or status bar when running in fullscreen/standalone mode on iOS and Android.
+**Goal:** Fix the Skipped Day Reset feature so that it correctly unchecks all routine checkboxes and resets the streak counter to 0, both in the backend and the frontend UI.
 
 **Planned changes:**
-- Add `viewport-fit=cover` to the viewport meta tag in `index.html` if not already present
-- Apply `padding-top: env(safe-area-inset-top)` to the top-level layout wrapper in the TaskManager and/or Header component using existing safe-area CSS utilities or a new utility class
-- Ensure the padding resolves to 0 on desktop/non-fullscreen views (dynamic via `env()`)
+- Fix backend Skipped Day Reset logic to set all morning and evening routine checkbox states to unchecked (false) and reset the streak counter to 0.
+- Fix the frontend Start New Day dialog handler so that after the skipped day reset mutation completes, the React Query caches for routines and streak data are invalidated/updated, causing the UI to reflect all checkboxes as unchecked and the streak count as 0.
 
-**User-visible outcome:** When launching the Momentum PWA in fullscreen or standalone mode on a phone, the header and top navigation elements will no longer be hidden behind the notch or status bar.
+**User-visible outcome:** When a user triggers a Skipped Day Reset, all routine checkboxes immediately appear unchecked and the streak count displays 0, both immediately in the UI and after subsequent page reloads.

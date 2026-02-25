@@ -1,7 +1,8 @@
-import { LogOut, User, Shield, RotateCcw } from 'lucide-react';
+import { useState } from 'react';
+import { LogOut, User, Shield, RotateCcw, Zap, SkipForward, Loader2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useInternetIdentity } from '@/hooks/useInternetIdentity';
-import { useGetCallerUserProfile, useIsCallerAdmin } from '@/hooks/useQueries';
+import { useGetCallerUserProfile, useIsCallerAdmin, useResetSkippedDay } from '@/hooks/useQueries';
 import { getUserTierLabel } from '@/lib/userTier';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,6 +13,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import ThemeToggle from './ThemeToggle';
 import TestDatePicker from './TestDatePicker';
 import { toast } from 'sonner';
@@ -25,9 +36,9 @@ interface HeaderProps {
   isResettingDay?: boolean;
 }
 
-export default function Header({ 
-  onOpenAdminDashboard, 
-  testDate, 
+export default function Header({
+  onOpenAdminDashboard,
+  testDate,
   onTestDateChange,
   showTestDatePicker = false,
   onResetNewDay,
@@ -37,9 +48,13 @@ export default function Header({
   const { data: userProfile } = useGetCallerUserProfile();
   const { data: isAdmin } = useIsCallerAdmin();
   const queryClient = useQueryClient();
+  const resetSkippedDayMutation = useResetSkippedDay();
+
+  const [startNewDayOpen, setStartNewDayOpen] = useState(false);
 
   const isAuthenticated = !!identity;
   const isLoggingIn = loginStatus === 'logging-in';
+  const isResettingSkipped = resetSkippedDayMutation.isPending;
 
   const handleAuth = async () => {
     if (isAuthenticated) {
@@ -62,6 +77,39 @@ export default function Header({
     }
   };
 
+  const handleResetNewDay = async () => {
+    setStartNewDayOpen(false);
+    if (onResetNewDay) {
+      onResetNewDay();
+    }
+  };
+
+  const handleSkippedDayReset = async () => {
+    try {
+      await resetSkippedDayMutation.mutateAsync();
+      // Optimistically update the cache so UI reflects reset immediately
+      queryClient.setQueryData(['morningRoutines'], (old: any) => {
+        if (!old) return old;
+        return old.map((r: any) => ({ ...r, completed: false, streakCount: BigInt(0) }));
+      });
+      // Also update the testDate-keyed variant if present
+      const allKeys = queryClient.getQueryCache().getAll();
+      allKeys.forEach((query) => {
+        const key = query.queryKey;
+        if (Array.isArray(key) && key[0] === 'morningRoutines') {
+          queryClient.setQueryData(key, (old: any) => {
+            if (!old) return old;
+            return old.map((r: any) => ({ ...r, completed: false, streakCount: BigInt(0) }));
+          });
+        }
+      });
+      setStartNewDayOpen(false);
+      toast.success('Skipped day reset — all streaks cleared and routines unchecked.');
+    } catch (err: any) {
+      toast.error('Failed to reset skipped day. Please try again.');
+    }
+  };
+
   // Full date format for larger screens
   const displayDate = testDate || new Date();
   const fullDate = displayDate.toLocaleDateString('en-US', {
@@ -79,104 +127,152 @@ export default function Header({
   });
 
   return (
-    <header className="safe-area-top sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-14 items-center justify-between px-2 sm:px-4 gap-2">
-        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-          <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg overflow-hidden">
-            <img 
-              src="/assets/Momentum.png" 
-              alt="Momentum Logo" 
-              className="h-full w-full object-contain"
-            />
-          </div>
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight">Momentum</h1>
-        </div>
-
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="flex-shrink-0">
-            <p className="text-xs sm:text-sm font-medium text-muted-foreground whitespace-nowrap">
-              <span className="hidden lg:inline">{fullDate}</span>
-              <span className="lg:hidden">{shortDate}</span>
-            </p>
-          </div>
-          
-          {/* TEST-ONLY: Date picker for routine testing - hidden on mobile */}
-          {showTestDatePicker && onTestDateChange && (
-            <div className="hidden md:block">
-              <TestDatePicker 
-                selectedDate={testDate || null} 
-                onDateChange={onTestDateChange}
+    <>
+      <header className="safe-area-top sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto flex h-14 items-center justify-between px-2 sm:px-4 gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg overflow-hidden">
+              <img
+                src="/assets/Momentum.png"
+                alt="Momentum Logo"
+                className="h-full w-full object-contain"
               />
             </div>
-          )}
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight">Momentum</h1>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex-shrink-0">
+              <p className="text-xs sm:text-sm font-medium text-muted-foreground whitespace-nowrap">
+                <span className="hidden lg:inline">{fullDate}</span>
+                <span className="lg:hidden">{shortDate}</span>
+              </p>
+            </div>
+
+            {/* TEST-ONLY: Date picker for routine testing - hidden on mobile */}
+            {showTestDatePicker && onTestDateChange && (
+              <div className="hidden md:block">
+                <TestDatePicker
+                  selectedDate={testDate || null}
+                  onDateChange={onTestDateChange}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <ThemeToggle />
+
+            {isAuthenticated && onResetNewDay && (
+              /* Start New Day button — opens confirmation dialog */
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setStartNewDayOpen(true)}
+                disabled={isResettingDay || isResettingSkipped}
+                className="gap-2"
+                title="Start New Day"
+              >
+                <Zap className={`h-4 w-4 ${isResettingDay ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Start New Day</span>
+              </Button>
+            )}
+
+            {isAuthenticated && isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenAdminDashboard}
+                className="gap-2"
+              >
+                <Shield className="h-4 w-4" />
+                <span className="hidden sm:inline">Admin</span>
+              </Button>
+            )}
+
+            {isAuthenticated ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="rounded-full h-8 w-8 sm:h-9 sm:w-9">
+                    <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {userProfile?.name || 'User'}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        Tier: {getUserTierLabel(userProfile?.tier)}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleAuth} className="cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                onClick={handleAuth}
+                disabled={isLoggingIn}
+                variant="default"
+                size="sm"
+                className="gap-2"
+              >
+                {isLoggingIn ? 'Logging in...' : 'Log in'}
+              </Button>
+            )}
+          </div>
         </div>
-        
-        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-          <ThemeToggle />
-          
-          {isAuthenticated && onResetNewDay && (
+      </header>
+
+      {/* Start New Day confirmation dialog */}
+      <AlertDialog open={startNewDayOpen} onOpenChange={setStartNewDayOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-yellow-500" />
+              Start New Day
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Ready to begin a fresh day? This will reset all your routines and update your streaks based on what you completed today.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel disabled={isResettingDay || isResettingSkipped}>
+              Cancel
+            </AlertDialogCancel>
+
+            {/* Skipped Day Reset — destructive: resets all streaks to 0 and unchecks all */}
             <Button
-              variant="outline"
-              size="sm"
-              onClick={onResetNewDay}
-              disabled={isResettingDay}
-              className="gap-2"
+              variant="destructive"
+              onClick={handleSkippedDayReset}
+              disabled={isResettingDay || isResettingSkipped}
+              className="gap-2 w-full sm:w-auto"
+            >
+              {isResettingSkipped ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <SkipForward className="h-4 w-4" />
+              )}
+              {isResettingSkipped ? 'Resetting...' : 'Skipped Day Reset'}
+            </Button>
+
+            <AlertDialogAction
+              onClick={handleResetNewDay}
+              disabled={isResettingDay || isResettingSkipped}
+              className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <RotateCcw className={`h-4 w-4 ${isResettingDay ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Reset New Day</span>
-            </Button>
-          )}
-          
-          {isAuthenticated && isAdmin && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onOpenAdminDashboard}
-              className="gap-2"
-            >
-              <Shield className="h-4 w-4" />
-              <span className="hidden sm:inline">Admin</span>
-            </Button>
-          )}
-          
-          {isAuthenticated ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="rounded-full h-8 w-8 sm:h-9 sm:w-9">
-                  <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {userProfile?.name || 'User'}
-                    </p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      Tier: {getUserTierLabel(userProfile?.tier)}
-                    </p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleAuth} className="cursor-pointer">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button
-              onClick={handleAuth}
-              disabled={isLoggingIn}
-              variant="default"
-              size="sm"
-              className="gap-2"
-            >
-              {isLoggingIn ? 'Logging in...' : 'Log in'}
-            </Button>
-          )}
-        </div>
-      </div>
-    </header>
+              {isResettingDay ? 'Resetting...' : 'Reset New Day'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

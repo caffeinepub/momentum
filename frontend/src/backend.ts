@@ -303,6 +303,7 @@ export interface backendInterface {
     removeAdmin(target: Principal): Promise<void>;
     reorderTask(taskId: TaskId, newPosition: bigint): Promise<void>;
     resetNewDay(completedRoutineIds: Array<RoutineId>): Promise<void>;
+    resetSkippedDay(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveMonetarySettings(settings: MonetarySettings): Promise<void>;
     setUserTier(targetUser: Principal, newTier: UserTier): Promise<void>;
@@ -1089,6 +1090,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.resetNewDay(arg0);
+            return result;
+        }
+    }
+    async resetSkippedDay(): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.resetSkippedDay();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.resetSkippedDay();
             return result;
         }
     }

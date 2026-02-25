@@ -1,9 +1,33 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import type { Task, List, TaskCreateInput, TaskUpdateInput, TaskId, ListId, UserProfile, MorningRoutine, RoutineSection, RoutineId, MonetarySettings, PayrollRecord, SpendRecord, SpendInput, SpendId, SpendPreset, UserMetadata, UserTier, TierLimitsConfig, TierLimits, StorageMetrics, UserStorageBreakdown } from '@/backend';
+import type {
+  Task,
+  List,
+  TaskCreateInput,
+  TaskUpdateInput,
+  TaskId,
+  ListId,
+  UserProfile,
+  MorningRoutine,
+  RoutineSection,
+  RoutineId,
+  MonetarySettings,
+  PayrollRecord,
+  SpendRecord,
+  SpendInput,
+  SpendId,
+  SpendPreset,
+  UserMetadata,
+  UserTier,
+  TierLimitsConfig,
+  TierLimits,
+  StorageMetrics,
+  UserStorageBreakdown,
+} from '@/backend';
 import type { Principal } from '@icp-sdk/core/principal';
-import { useState } from 'react';
 import { useTestDate } from './useTestDate';
+
+// ─── User Profile ─────────────────────────────────────────────────────────────
 
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
@@ -39,6 +63,8 @@ export function useSaveCallerUserProfile() {
     },
   });
 }
+
+// ─── Admin ────────────────────────────────────────────────────────────────────
 
 export function useIsCallerAdmin() {
   const { actor, isFetching } = useActor();
@@ -133,9 +159,9 @@ export function useUpdateTierLimits() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ tier, limits }: { tier: UserTier; limits: TierLimits }) => {
+    mutationFn: async ({ tier, newLimits }: { tier: UserTier; newLimits: TierLimits }) => {
       if (!actor) throw new Error('Actor not initialized');
-      return actor.updateTierLimits(tier, limits);
+      return actor.updateTierLimits(tier, newLimits);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tierLimits'] });
@@ -200,6 +226,8 @@ export function useGetRegisteredUserCount() {
   });
 }
 
+// ─── App Mode (client-only) ───────────────────────────────────────────────────
+
 export function useAppMode() {
   const queryClient = useQueryClient();
 
@@ -234,6 +262,8 @@ export function useAppMode() {
     setAppMode: setAppModeMutation,
   };
 }
+
+// ─── Earnings ─────────────────────────────────────────────────────────────────
 
 export function useEarningsEnabled() {
   const { actor, isFetching } = useActor();
@@ -276,6 +306,8 @@ export function useEarningsEnabled() {
     toggleEarningsSystem: toggleEarningsSystemMutation,
   };
 }
+
+// ─── Monetary Settings ────────────────────────────────────────────────────────
 
 export function useMonetarySettings() {
   const { actor, isFetching } = useActor();
@@ -329,6 +361,8 @@ export function useMonetarySettings() {
   };
 }
 
+// ─── Payroll History ──────────────────────────────────────────────────────────
+
 export function usePayrollHistory() {
   const { actor, isFetching } = useActor();
   const queryClient = useQueryClient();
@@ -370,6 +404,8 @@ export function usePayrollHistory() {
     editPayrollLog: editPayrollLogMutation,
   };
 }
+
+// ─── Spend Records ────────────────────────────────────────────────────────────
 
 export function useSpendRecords() {
   const { actor, isFetching } = useActor();
@@ -413,6 +449,8 @@ export function useSpendRecords() {
     deleteSpend: deleteSpendMutation,
   };
 }
+
+// ─── Spend Presets ────────────────────────────────────────────────────────────
 
 export function useSpendPresets() {
   const { actor, isFetching } = useActor();
@@ -465,6 +503,8 @@ export function useSpendPresets() {
     deletePreset: deletePresetMutation,
   };
 }
+
+// ─── Tasks + Lists (composite) ────────────────────────────────────────────────
 
 export function useTaskQueries() {
   const { actor, isFetching } = useActor();
@@ -573,33 +613,27 @@ export function useTaskQueries() {
     onMutate: async ({ taskId, positionIndex }) => {
       await queryClient.cancelQueries({ queryKey: ['tasks', testDate] });
       const previousTasks = queryClient.getQueryData<Task[]>(['tasks', testDate]);
-
       queryClient.setQueryData<Task[]>(['tasks', testDate], (old) => {
         if (!old) return old;
         const task = old.find((t) => t.id === taskId);
         if (!task) return old;
-
-        // Get tasks in the same list sorted by current order
-        const sameList = [...old]
+        const listTasks = old
           .filter((t) => t.listId === task.listId)
           .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
-
-        // Remove the dragged task, then insert at new position
-        const withoutDragged = sameList.filter((t) => t.id !== taskId);
-        const pos = Math.max(0, Math.min(Number(positionIndex), withoutDragged.length));
-        withoutDragged.splice(pos, 0, task);
-
-        // Assign synthetic order values so the list renders in the right order
-        const reordered = withoutDragged.map((t, i) => ({ ...t, order: BigInt((i + 1) * 1000) }));
-
-        // Merge back with tasks from other lists
-        const otherTasks = old.filter((t) => t.listId !== task.listId);
-        return [...otherTasks, ...reordered];
+        const idx = Number(positionIndex);
+        const newOrder =
+          listTasks.length === 0
+            ? BigInt(1000)
+            : idx >= listTasks.length
+            ? listTasks[listTasks.length - 1].order + BigInt(1000)
+            : idx === 0
+            ? listTasks[0].order / BigInt(2)
+            : (listTasks[idx - 1].order + listTasks[idx].order) / BigInt(2);
+        return old.map((t) => (t.id === taskId ? { ...t, order: newOrder } : t));
       });
-
       return { previousTasks };
     },
-    onError: (_err, _vars, context) => {
+    onError: (_err, _variables, context) => {
       if (context?.previousTasks !== undefined) {
         queryClient.setQueryData(['tasks', testDate], context.previousTasks);
       }
@@ -630,17 +664,11 @@ export function useTaskQueries() {
     },
   });
 
-  const quadrants = listsQuery.data?.filter((list) => list.quadrant) || [];
-  const customLists = listsQuery.data?.filter((list) => !list.quadrant) || [];
-
   return {
-    tasks: tasksQuery.data || [],
-    lists: listsQuery.data || [],
-    quadrants,
-    customLists,
+    tasks: tasksQuery.data,
+    lists: listsQuery.data,
     isLoading: tasksQuery.isLoading || listsQuery.isLoading,
-    quadrantsReady: quadrants.length === 4,
-    bootstrapQuadrants: ensureQuadrantsMutation.mutateAsync,
+    ensureQuadrants: ensureQuadrantsMutation,
     createTask: createTaskMutation,
     updateTask: updateTaskMutation,
     completeTask: completeTaskMutation,
@@ -652,14 +680,15 @@ export function useTaskQueries() {
   };
 }
 
+// ─── Morning Routines (composite) ────────────────────────────────────────────
+
 export function useMorningRoutineQueries() {
   const { actor, isFetching } = useActor();
   const queryClient = useQueryClient();
   const { testDate } = useTestDate();
-  const [displayMode, setDisplayModeState] = useState<'normal' | 'reorder'>('normal');
 
   const routinesQuery = useQuery<MorningRoutine[]>({
-    queryKey: ['routines', testDate],
+    queryKey: ['morningRoutines', testDate],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getAllMorningRoutines();
@@ -673,7 +702,7 @@ export function useMorningRoutineQueries() {
       return actor.createMorningRoutine(text, section);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routines', testDate] });
+      queryClient.invalidateQueries({ queryKey: ['morningRoutines', testDate] });
     },
   });
 
@@ -683,7 +712,31 @@ export function useMorningRoutineQueries() {
       return actor.updateMorningRoutine(id, text, section);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routines', testDate] });
+      queryClient.invalidateQueries({ queryKey: ['morningRoutines', testDate] });
+    },
+  });
+
+  const completeRoutineMutation = useMutation({
+    mutationFn: async ({ id, completed }: { id: RoutineId; completed: boolean }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      return actor.completeMorningRoutine(id, completed);
+    },
+    onMutate: async ({ id, completed }) => {
+      await queryClient.cancelQueries({ queryKey: ['morningRoutines', testDate] });
+      const previousRoutines = queryClient.getQueryData<MorningRoutine[]>(['morningRoutines', testDate]);
+      queryClient.setQueryData<MorningRoutine[]>(['morningRoutines', testDate], (old) => {
+        if (!old) return old;
+        return old.map((r) => (r.id === id ? { ...r, completed } : r));
+      });
+      return { previousRoutines };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousRoutines !== undefined) {
+        queryClient.setQueryData(['morningRoutines', testDate], context.previousRoutines);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['morningRoutines', testDate] });
     },
   });
 
@@ -693,62 +746,17 @@ export function useMorningRoutineQueries() {
       return actor.deleteMorningRoutine(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routines', testDate] });
+      queryClient.invalidateQueries({ queryKey: ['morningRoutines', testDate] });
     },
   });
 
-  const completeRoutineMutation = useMutation({
-    mutationFn: async ({ id, completed }: { id: RoutineId; completed: boolean }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      return actor.completeMorningRoutine(id, completed);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routines', testDate] });
-    },
-  });
-
-  // updateRoutineItemPosition with optimistic reorder — updates cache instantly, rolls back on error
-  const updateRoutinePositionMutation = useMutation({
+  const updateRoutineItemPositionMutation = useMutation({
     mutationFn: async ({ routineId, positionIndex }: { routineId: RoutineId; positionIndex: bigint }) => {
       if (!actor) throw new Error('Actor not initialized');
       return actor.updateRoutineItemPosition(routineId, positionIndex);
     },
-    onMutate: async ({ routineId, positionIndex }) => {
-      await queryClient.cancelQueries({ queryKey: ['routines', testDate] });
-      const previousRoutines = queryClient.getQueryData<MorningRoutine[]>(['routines', testDate]);
-
-      queryClient.setQueryData<MorningRoutine[]>(['routines', testDate], (old) => {
-        if (!old) return old;
-        const routine = old.find((r) => r.id === routineId);
-        if (!routine) return old;
-
-        // Get routines in the same section sorted by current order
-        const sameSection = [...old]
-          .filter((r) => r.section === routine.section)
-          .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
-
-        // Remove the dragged routine, then insert at new position
-        const withoutDragged = sameSection.filter((r) => r.id !== routineId);
-        const pos = Math.max(0, Math.min(Number(positionIndex), withoutDragged.length));
-        withoutDragged.splice(pos, 0, routine);
-
-        // Assign synthetic order values so the list renders in the right order
-        const reordered = withoutDragged.map((r, i) => ({ ...r, order: BigInt((i + 1) * 1000) }));
-
-        // Merge back with routines from other sections
-        const otherRoutines = old.filter((r) => r.section !== routine.section);
-        return [...otherRoutines, ...reordered];
-      });
-
-      return { previousRoutines };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previousRoutines !== undefined) {
-        queryClient.setQueryData(['routines', testDate], context.previousRoutines);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['routines', testDate] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['morningRoutines', testDate] });
     },
   });
 
@@ -758,28 +766,42 @@ export function useMorningRoutineQueries() {
       return actor.resetNewDay(completedRoutineIds);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routines', testDate] });
+      queryClient.invalidateQueries({ queryKey: ['morningRoutines', testDate] });
     },
   });
 
-  const setDisplayMode = (mode: 'normal' | 'reorder' | number) => {
-    if (typeof mode === 'number') {
-      setDisplayModeState(mode === 1 ? 'reorder' : 'normal');
-    } else {
-      setDisplayModeState(mode);
-    }
-  };
-
   return {
-    routines: routinesQuery.data || [],
+    routines: routinesQuery.data,
     isLoading: routinesQuery.isLoading,
-    displayMode,
-    setDisplayMode,
     createRoutine: createRoutineMutation,
     updateRoutine: updateRoutineMutation,
-    deleteRoutine: deleteRoutineMutation,
     completeRoutine: completeRoutineMutation,
-    updateRoutinePosition: updateRoutinePositionMutation,
+    deleteRoutine: deleteRoutineMutation,
+    updateRoutineItemPosition: updateRoutineItemPositionMutation,
     resetNewDay: resetNewDayMutation,
   };
 }
+
+// ─── Skipped Day Reset ────────────────────────────────────────────────────────
+
+export function useResetSkippedDay() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  const { testDate } = useTestDate();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!actor) throw new Error('Actor not initialized');
+      return actor.resetSkippedDay();
+    },
+    onSuccess: () => {
+      // Invalidate all routine query key variants so UI reflects reset state
+      queryClient.invalidateQueries({ queryKey: ['morningRoutines'] });
+      queryClient.invalidateQueries({ queryKey: ['morningRoutines', testDate] });
+      queryClient.invalidateQueries({ queryKey: ['allRoutines'] });
+    },
+  });
+}
+
+// Legacy alias
+export const useSkippedDayReset = useResetSkippedDay;
