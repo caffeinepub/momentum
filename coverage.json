@@ -1,55 +1,26 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-26T18:55:14.554Z",
+  "generatedAt": "2026-02-26T17:04:50.994Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 3,
+    "total": 1,
+    "implemented": 1,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "When a task is dropped into a new list or reordered within a list, immediately update the task's listId and order in local state (optimistic UI) using the 1000-based ordering method: new order = average of the two neighboring tasks' order values, or existing neighbor ± 1000 when inserting at the top or bottom.",
+        "summary": "Add a visual drop indicator line to task drag-and-drop reordering in all task containers (Eisenhower Matrix quadrants and Custom Lists), matching the same drop indicator line behavior that already exists for routine item reordering in MorningRoutine.tsx.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/components/TaskCard.tsx",
           "frontend/src/components/EisenhowerMatrix.tsx",
           "frontend/src/components/CustomLists.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/EisenhowerMatrix.tsx",
-          "frontend/src/components/CustomLists.tsx"
-        ]
-      },
-      {
-        "id": "REQ-2",
-        "summary": "After applying the optimistic update, sync the task's new listId and order to the backend in the background. If the backend call fails, roll back the task to its previous listId and order in local state.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/EisenhowerMatrix.tsx",
-          "frontend/src/components/CustomLists.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/EisenhowerMatrix.tsx",
-          "frontend/src/components/CustomLists.tsx"
-        ]
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Ensure there are zero visual changes compared to v195 — all existing UI, styling, layout, and drag-and-drop visual feedback must remain identical.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/EisenhowerMatrix.tsx",
-          "frontend/src/components/CustomLists.tsx",
-          "frontend/src/components/TaskCard.tsx"
-        ],
-        "matchedFiles": [
+          "frontend/src/components/TaskCard.tsx",
           "frontend/src/components/EisenhowerMatrix.tsx",
           "frontend/src/components/CustomLists.tsx"
         ]
@@ -63,8 +34,7 @@
     "frontend-implementation-plan.json",
     "frontend/src/components/CustomLists.tsx",
     "frontend/src/components/EisenhowerMatrix.tsx",
-    "frontend/src/components/PayrollHistoryDialog.tsx",
-    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/components/TaskCard.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

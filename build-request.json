@@ -1,76 +1,41 @@
 {
   "kind": "build_request",
-  "title": "Drag-and-Drop Cross-List Fix — Optimistic UI on Drop",
+  "title": "Add drop indicator line to task drag-and-drop reordering",
   "projectName": "Momentum",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "When a task is dropped into a new list or reordered within a list, immediately update the task's listId and order in local state (optimistic UI) using the 1000-based ordering method: new order = average of the two neighboring tasks' order values, or existing neighbor ± 1000 when inserting at the top or bottom.",
+      "text": "Add a visual drop indicator line to task drag-and-drop reordering in all task containers (Eisenhower Matrix quadrants and Custom Lists), matching the same drop indicator line behavior that already exists for routine item reordering in MorningRoutine.tsx.",
       "target": "frontend",
       "source": {
         "messageIds": [
+          "msg-4",
           "msg-6"
         ],
         "quotes": [
-          "optimistic UI on drop: task's listId and order update instantly using 1000-based method (average of neighbors, ±1000 at top/bottom)"
+          "in version 193 only routine appears indicator line, tasks dont have it",
+          "build it"
         ]
       },
       "acceptanceCriteria": [
-        "Dropping a task into a different list immediately reflects the new listId in the UI without waiting for the backend response.",
-        "The task's display order updates instantly on drop using the 1000-based averaging method.",
-        "Inserting at the top assigns order = lowestNeighborOrder - 1000.",
-        "Inserting at the bottom assigns order = highestNeighborOrder + 1000.",
-        "Inserting between two tasks assigns order = (prevOrder + nextOrder) / 2."
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "text": "After applying the optimistic update, sync the task's new listId and order to the backend in the background. If the backend call fails, roll back the task to its previous listId and order in local state.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-6"
-        ],
-        "quotes": [
-          "backend syncs in background; rollback on failure"
-        ]
-      },
-      "acceptanceCriteria": [
-        "The backend update call is made asynchronously after the optimistic state update is applied.",
-        "If the backend call returns an error, the task reverts to its original listId and order.",
-        "No loading spinner or visual delay is introduced during the background sync.",
-        "On success, the backend-confirmed state replaces the optimistic state without visible disruption."
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "text": "Ensure there are zero visual changes compared to v195 — all existing UI, styling, layout, and drag-and-drop visual feedback must remain identical.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-6"
-        ],
-        "quotes": [
-          "zero visual changes from v195"
-        ]
-      },
-      "acceptanceCriteria": [
-        "No changes to colors, typography, spacing, or component layout.",
-        "Drop indicator lines, drag ghost styles, and hover states are unchanged.",
-        "EisenhowerMatrix, CustomLists, and TaskCard components appear visually identical to v195."
+        "When dragging a task over a valid drop target within a task list, a visible indicator line appears between task items showing the insertion position.",
+        "The indicator line updates dynamically as the user drags over different positions in the list.",
+        "The indicator line disappears when the drag ends (drop or cancel).",
+        "The drop indicator line visual style matches the existing drop indicator line used in MorningRoutine.tsx for routine items.",
+        "The indicator line works in all task container contexts: Eisenhower Matrix quadrants and Custom Lists.",
+        "Existing task drag-and-drop reorder functionality continues to work correctly after the change."
       ]
     }
   ],
   "constraints": [
-    "Zero visual changes from v195 — no UI, styling, or layout modifications.",
-    "Do not change the backend schema or any backend data models.",
-    "All ordering logic must use the 1000-based method (average of neighbors, ±1000 at top/bottom)."
+    "Do not modify the routine drag-and-drop indicator logic in MorningRoutine.tsx — only replicate/mirror its pattern for tasks.",
+    "Do not alter backend logic or data persistence for task reordering."
   ],
   "nonGoals": [
-    "Backend-side reordering algorithm changes.",
-    "Any new UI features or visual enhancements beyond the optimistic update behavior.",
-    "Changes to MorningRoutine or EisenhowerMatrix drag logic unless directly required for cross-list fix."
+    "Changing the visual style of the routine drop indicator.",
+    "Adding drop indicators for cross-container task drag operations.",
+    "Any backend changes."
   ],
   "imageRequirements": {
     "required": [],

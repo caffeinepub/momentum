@@ -61,10 +61,10 @@ export default function PayrollHistoryDialog({
   const formatDate = (date: bigint) => {
     const dateNum = Number(date);
     const dateObj = new Date(dateNum * 24 * 60 * 60 * 1000);
-    return dateObj.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return dateObj.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
     });
   };
 

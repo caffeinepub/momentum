@@ -4,12 +4,6 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import TaskCard from './TaskCard';
 import type { LocalTask, LocalList } from '@/lib/types';
-import { useTaskQueries } from '@/hooks/useQueries';
-import { useQueryClient } from '@tanstack/react-query';
-import type { Task } from '@/backend';
-import { readDragPayload } from '@/utils/dragPayload';
-import { toast } from 'sonner';
-import { useTestDate } from '@/hooks/useTestDate';
 
 interface CustomListsProps {
   tasks: LocalTask[];
@@ -61,10 +55,6 @@ const CustomLists = memo(function CustomLists({
   // Refs to each list's task container for measuring card positions
   const listContainerRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const { moveTask } = useTaskQueries();
-  const queryClient = useQueryClient();
-  const { testDate } = useTestDate();
-
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
@@ -84,30 +74,6 @@ const CustomLists = memo(function CustomLists({
     }
     return cardElements.length;
   }, []);
-
-  // Calculate optimistic order using 1000-based method
-  const calculateOptimisticOrder = useCallback((targetListId: bigint, dropIndex: number): bigint => {
-    const allTasks = queryClient.getQueryData<Task[]>(['tasks', testDate]) ?? [];
-    const listTasks = allTasks
-      .filter(t => t.listId === targetListId)
-      .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
-
-    if (listTasks.length === 0) return BigInt(1000);
-
-    if (dropIndex <= 0) {
-      const lowestOrder = listTasks[0].order;
-      const newOrder = lowestOrder - BigInt(1000);
-      return newOrder > BigInt(0) ? newOrder : BigInt(1);
-    }
-
-    if (dropIndex >= listTasks.length) {
-      return listTasks[listTasks.length - 1].order + BigInt(1000);
-    }
-
-    const prevOrder = listTasks[dropIndex - 1].order;
-    const nextOrder = listTasks[dropIndex].order;
-    return (prevOrder + nextOrder) / BigInt(2);
-  }, [queryClient, testDate]);
 
   const handleListDragOver = useCallback((e: React.DragEvent, listLocalId: string) => {
     e.preventDefault();
@@ -147,35 +113,8 @@ const CustomLists = memo(function CustomLists({
       [listLocalId]: { dropIndicatorIndex: null },
     }));
 
-    // Read payload to check if this is a cross-list move
-    const payload = readDragPayload(e.dataTransfer);
-    if (payload) {
-      const taskId = BigInt(payload.taskId);
-      const sourceListId = BigInt(payload.sourceListId);
-
-      if (sourceListId !== listId && dropIndex !== undefined) {
-        // Cross-list drop: use optimistic update via moveTask
-        const optimisticOrder = calculateOptimisticOrder(listId, dropIndex);
-        moveTask.mutate(
-          {
-            taskId,
-            destinationListId: listId,
-            newPosition: BigInt(dropIndex),
-            optimisticOrder,
-          },
-          {
-            onError: () => {
-              toast.error('Failed to move task. Changes have been reverted.');
-            },
-          }
-        );
-        return;
-      }
-    }
-
-    // Fall back to parent handler for same-list reorder
     onDrop(e, listId, dropIndex);
-  }, [onDrop, listDragStates, moveTask, calculateOptimisticOrder]);
+  }, [onDrop, listDragStates]);
 
   const getListTasks = (listId: bigint) => {
     return tasks

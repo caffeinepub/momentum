@@ -1,40 +1,32 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Task management app with drag-and-drop cross-list functionality. Optimistic UI updates task listId and order instantly on drop using 1000-based ordering method (average of neighbors, ±1000 at top/bottom); backend syncs in background with rollback on failure.",
+  "summary": "Project with drag-and-drop task/routine reordering functionality. Task drop indicator line is missing and needs to be added to match routine behavior.",
   "architectural_notes": [
-    "Drag-and-drop cross-list ordering uses 1000-based method: new order = average of neighbors, ±1000 at top/bottom",
-    "Optimistic UI on drop: task listId and order update instantly; backend syncs in background; rollback on failure"
+    "Routines have drop indicator line on drag-and-drop; tasks need the same behavior added"
   ],
-  "known_issues": [],
+  "known_issues": [
+    "Task drag-and-drop reorder missing drop indicator line (routines have it, tasks do not)"
+  ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-when-a-task-is-dropped-into-a-new-list-or-reordered-within-a-list-immediately-update-the-task-s-listid-and-order-in-local-state-optimistic-ui-using-the-1000-based-ordering-method-new-order-average-of-the-two-neighboring-tasks-order-values-or-existing-neighbor-1000-when-inserting-at-the-top-or-bottom",
-      "title": "When a task is dropped into a new list or reordered within a list, immediately update the task's listId and order in local state (optimistic UI) using the 1000-based ordering method: new order = average of the two neighboring tasks' order values, or existing neighbor ± 1000 when inserting at the top or bottom.",
+      "id": "feature-add-a-visual-drop-indicator-line-to-task-drag-and-drop-reordering-in-all-task-containers-eisenhower-matrix-quadrants-and-custom-lists-matching-the-same-drop-indicator-line-behavior-that-already-exists-for-routine-item-reordering-in-morningroutine-tsx",
+      "title": "Add a visual drop indicator line to task drag-and-drop reordering in all task containers (Eisenhower Matrix quadrants and Custom Lists), matching the same drop indicator line behavior that already exists for routine item reordering in MorningRoutine.tsx.",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
-    },
-    {
-      "id": "feature-after-applying-the-optimistic-update-sync-the-task-s-new-listid-and-order-to-the-backend-in-the-background-if-the-backend-call-fails-roll-back-the-task-to-its-previous-listid-and-order-in-local-state",
-      "title": "After applying the optimistic update, sync the task's new listId and order to the backend in the background. If the backend call fails, roll back the task to its previous listId and order in local state.",
-      "reqIds": [
-        "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-ensure-there-are-zero-visual-changes-compared-to-v195-all-existing-ui-styling-layout-and-drag-and-drop-visual-feedback-must-remain-identical",
-      "title": "Ensure there are zero visual changes compared to v195 — all existing UI, styling, layout, and drag-and-drop visual feedback must remain identical.",
-      "reqIds": [
-        "REQ-3"
-      ],
-      "version": 1
     }
   ],
-  "new_feature_requests": [],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Add drop indicator line to task drag-and-drop reordering to match existing routine behavior",
+      "reqIds": [],
+      "status": "pending"
+    }
+  ],
   "gameProjectType": "none",
   "projectName": "Momentum",
   "clarification_mode": "instant",

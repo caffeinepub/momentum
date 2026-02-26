@@ -1,17 +1,16 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-26T18:55:14.552Z",
-  "summary": "The diff implements optimistic UI for drag-and-drop cross-list task reordering. REQ-1 (1000-based ordering on drop), REQ-2 (background sync with rollback), and REQ-3 (no visual changes) appear to be addressed. The implementation adds calculateOptimisticOrder functions in both CustomLists.tsx and EisenhowerMatrix.tsx using the 1000-based method, and useTaskQueries.moveTask is upgraded with onMutate/onError/onSettled hooks. No visual changes are introduced. No missing requirements or hallucinated features were detected based on the available diff evidence.",
+  "generatedAt": "2026-02-26T17:04:50.990Z",
+  "summary": "The diff implements REQ-1 by adding a visual drop indicator line to task drag-and-drop reordering in both EisenhowerMatrix.tsx and CustomLists.tsx, matching the MorningRoutine.tsx pattern. TaskCard.tsx receives a data-task-card attribute for position measurement. All acceptance criteria appear to be addressed: dynamic indicator updates on drag-over, clearing on drag-end/leave, consistent visual style, and coverage of both container types.",
   "missing_requirements": [],
   "hallucinated_features": [],
-  "confidence": 0.8,
+  "confidence": 0.92,
   "changed_files": [
     "frontend-file-summaries.txt",
     "frontend/src/components/CustomLists.tsx",
     "frontend/src/components/EisenhowerMatrix.tsx",
-    "frontend/src/components/PayrollHistoryDialog.tsx",
-    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/components/TaskCard.tsx",
     "project_state.json"
   ]
 }

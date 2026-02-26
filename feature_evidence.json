@@ -2,12 +2,12 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-when-a-task-is-dropped-into-a-new-list-or-reordered-within-a-list-immediately-update-the-task-s-listid-and-order-in-local-state-optimistic-ui-using-the-1000-based-ordering-method-new-order-average-of-the-two-neighboring-tasks-order-values-or-existing-neighbor-1000-when-inserting-at-the-top-or-bottom",
-      "featureTitle": "When a task is dropped into a new list or reordered within a list, immediately update the task's listId and order in local state (optimistic UI) using the 1000-based ordering method: new order = average of the two neighboring tasks' order values, or existing neighbor ± 1000 when inserting at the top or bottom.",
+      "featureId": "feature-add-a-visual-drop-indicator-line-to-task-drag-and-drop-reordering-in-all-task-containers-eisenhower-matrix-quadrants-and-custom-lists-matching-the-same-drop-indicator-line-behavior-that-already-exists-for-routine-item-reordering-in-morningroutine-tsx",
+      "featureTitle": "Add a visual drop indicator line to task drag-and-drop reordering in all task containers (Eisenhower Matrix quadrants and Custom Lists), matching the same drop indicator line behavior that already exists for routine item reordering in MorningRoutine.tsx.",
       "files": [
         "frontend/src/components/CustomLists.tsx",
         "frontend/src/components/EisenhowerMatrix.tsx",
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/components/TaskCard.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -19,47 +19,6 @@
       ],
       "testIds": [
         "REQ-1"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-after-applying-the-optimistic-update-sync-the-task-s-new-listid-and-order-to-the-backend-in-the-background-if-the-backend-call-fails-roll-back-the-task-to-its-previous-listid-and-order-in-local-state",
-      "featureTitle": "After applying the optimistic update, sync the task's new listId and order to the backend in the background. If the backend call fails, roll back the task to its previous listId and order in local state.",
-      "files": [
-        "frontend/src/components/CustomLists.tsx",
-        "frontend/src/components/EisenhowerMatrix.tsx",
-        "frontend/src/hooks/useQueries.ts"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "authorization@4.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-2"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-ensure-there-are-zero-visual-changes-compared-to-v195-all-existing-ui-styling-layout-and-drag-and-drop-visual-feedback-must-remain-identical",
-      "featureTitle": "Ensure there are zero visual changes compared to v195 — all existing UI, styling, layout, and drag-and-drop visual feedback must remain identical.",
-      "files": [
-        "frontend/src/components/CustomLists.tsx",
-        "frontend/src/components/EisenhowerMatrix.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "authorization@4.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-3"
       ],
       "confidence": "high"
     }

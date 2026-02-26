@@ -1,86 +1,34 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Drag-and-Drop Cross-List Fix — Optimistic UI on Drop",
+  "title": "Add drop indicator line to task drag-and-drop reordering",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Implement optimistic UI update on task drop using 1000-based ordering",
+      "summary": "Add visual drop indicator line to task drag-and-drop reordering matching MorningRoutine.tsx behavior",
       "acceptanceCriteria": [
-        "Dropping a task into a different list immediately reflects the new listId in the UI without waiting for the backend response.",
-        "The task's display order updates instantly on drop using the 1000-based averaging method.",
-        "Inserting at the top assigns order = lowestNeighborOrder - 1000.",
-        "Inserting at the bottom assigns order = highestNeighborOrder + 1000.",
-        "Inserting between two tasks assigns order = (prevOrder + nextOrder) / 2."
+        "When dragging a task over a valid drop target within a task list, a visible indicator line appears between task items showing the insertion position.",
+        "The indicator line updates dynamically as the user drags over different positions in the list.",
+        "The indicator line disappears when the drag ends (drop or cancel).",
+        "The drop indicator line visual style matches the existing drop indicator line used in MorningRoutine.tsx for routine items.",
+        "The indicator line works in all task container contexts: Eisenhower Matrix quadrants and Custom Lists.",
+        "Existing task drag-and-drop reorder functionality continues to work correctly after the change."
       ],
       "file_operations": [
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add optimistic update logic to the moveTaskToList mutation. Before calling the backend, immediately update the local QueryClient cache to reflect the task's new listId and calculated order using the 1000-based method: for top insertion use lowestNeighborOrder - 1000, for bottom use highestNeighborOrder + 1000, for middle use (prevOrder + nextOrder) / 2. Store the previous task state for rollback on error."
-        },
-        {
-          "path": "frontend/src/components/EisenhowerMatrix.tsx",
-          "operation": "modify",
-          "description": "Update the onDrop handler to calculate the new order value using the 1000-based method based on drop position (top/bottom/between) relative to existing tasks in the target quadrant, then pass this calculated order to the moveTaskToList mutation. Ensure the UI updates instantly via the optimistic cache update without waiting for the backend response."
-        },
-        {
-          "path": "frontend/src/components/CustomLists.tsx",
-          "operation": "modify",
-          "description": "Update the onDrop handler to calculate the new order value using the 1000-based method based on drop position (top/bottom/between) relative to existing tasks in the target list, then pass this calculated order to the moveTaskToList mutation. Ensure the UI updates instantly via the optimistic cache update without waiting for the backend response."
-        }
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "summary": "Add background sync with rollback on failure",
-      "acceptanceCriteria": [
-        "The backend update call is made asynchronously after the optimistic state update is applied.",
-        "If the backend call returns an error, the task reverts to its original listId and order.",
-        "No loading spinner or visual delay is introduced during the background sync.",
-        "On success, the backend-confirmed state replaces the optimistic state without visible disruption."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Extend the moveTaskToList mutation's onError handler to restore the previously stored task state (listId and order) to the QueryClient cache, effectively rolling back the optimistic update. Ensure the mutation runs asynchronously without blocking the UI. On success, let the backend-confirmed state replace the optimistic state naturally via query invalidation."
-        },
-        {
-          "path": "frontend/src/components/EisenhowerMatrix.tsx",
-          "operation": "modify",
-          "description": "Ensure the moveTaskToList mutation is invoked asynchronously (do not await) in the onDrop handler so the UI remains responsive. Add error handling to display a toast notification if the backend sync fails and the rollback occurs."
-        },
-        {
-          "path": "frontend/src/components/CustomLists.tsx",
-          "operation": "modify",
-          "description": "Ensure the moveTaskToList mutation is invoked asynchronously (do not await) in the onDrop handler so the UI remains responsive. Add error handling to display a toast notification if the backend sync fails and the rollback occurs."
-        }
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "summary": "Ensure zero visual changes compared to v195",
-      "acceptanceCriteria": [
-        "No changes to colors, typography, spacing, or component layout.",
-        "Drop indicator lines, drag ghost styles, and hover states are unchanged.",
-        "EisenhowerMatrix, CustomLists, and TaskCard components appear visually identical to v195."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/EisenhowerMatrix.tsx",
-          "operation": "modify",
-          "description": "Verify that all existing CSS classes, inline styles, drop indicator rendering, and drag ghost styles remain unchanged. Only modify the onDrop handler logic for optimistic updates without altering any visual presentation."
-        },
-        {
-          "path": "frontend/src/components/CustomLists.tsx",
-          "operation": "modify",
-          "description": "Verify that all existing CSS classes, inline styles, drop indicator rendering, and drag ghost styles remain unchanged. Only modify the onDrop handler logic for optimistic updates without altering any visual presentation."
-        },
         {
           "path": "frontend/src/components/TaskCard.tsx",
           "operation": "modify",
-          "description": "Verify that no visual changes are introduced. Ensure drag-and-drop event handlers, hover states, long-press edit mode, and all styling remain identical to v195. No modifications should be needed unless the component's drop handling must be updated to support the new ordering calculation."
+          "description": "Add drop indicator line state and rendering logic to TaskCard component. Mirror the pattern from MorningRoutine.tsx routine items: add local state to track when the card is a drag-over target, add onDragEnter/onDragLeave/onDrop handlers to manage indicator visibility, and render a visual indicator line (similar styling to routine drop indicator) above or below the card based on drag position. Ensure the indicator clears on drag end and does not interfere with existing drag-and-drop reorder functionality."
+        },
+        {
+          "path": "frontend/src/components/EisenhowerMatrix.tsx",
+          "operation": "modify",
+          "description": "Update EisenhowerMatrix quadrant rendering to support drop indicator line display. Ensure that each quadrant's task list container properly propagates drag events to TaskCard components and that the indicator line is visible within the quadrant boundaries. Verify that existing drag-and-drop reorder logic continues to work correctly with the new indicator."
+        },
+        {
+          "path": "frontend/src/components/CustomLists.tsx",
+          "operation": "modify",
+          "description": "Update CustomLists task rendering to support drop indicator line display. Ensure that each custom list's task container properly propagates drag events to TaskCard components and that the indicator line is visible within the list boundaries. Verify that existing drag-and-drop reorder logic continues to work correctly with the new indicator."
         }
       ]
     }
