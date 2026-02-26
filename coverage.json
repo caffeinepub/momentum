@@ -1,7 +1,7 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-26T15:49:17.033Z",
+  "generatedAt": "2026-02-26T18:55:14.554Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
@@ -12,73 +12,59 @@
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Add a visual drop indicator line to task drag-and-drop: a thin horizontal bar that appears between task cards at the target insert position while dragging, updates live as the dragged card moves within or between containers, and disappears on drop or cancel. This should match the same visual style as the routine drop indicator line already implemented in MorningRoutine.tsx.",
+        "summary": "When a task is dropped into a new list or reordered within a list, immediately update the task's listId and order in local state (optimistic UI) using the 1000-based ordering method: new order = average of the two neighboring tasks' order values, or existing neighbor ± 1000 when inserting at the top or bottom.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/TaskCard.tsx",
+          "frontend/src/hooks/useQueries.ts",
           "frontend/src/components/EisenhowerMatrix.tsx",
-          "frontend/src/components/CustomLists.tsx",
-          "frontend/src/index.css"
+          "frontend/src/components/CustomLists.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/TaskCard.tsx",
+          "frontend/src/hooks/useQueries.ts",
           "frontend/src/components/EisenhowerMatrix.tsx",
-          "frontend/src/components/CustomLists.tsx",
-          "frontend/src/index.css"
+          "frontend/src/components/CustomLists.tsx"
         ]
       },
       {
         "id": "REQ-2",
-        "summary": "Implement cross-container task drag-and-drop between Eisenhower Matrix quadrants and custom lists. A task dragged from one quadrant or list to another should snap optimistically to the exact insert position chosen, with no status changes. On drop, update the task's container identity (quadrantId or listId, whichever applies) and recalculate its order value using 1000-based sparse indexing based on its new neighbors. Fire a backend sync call after the optimistic update; if the backend call fails, roll back the task to its original container and position. Routines must be excluded from all drag scopes — no dragging into or out of routine sections.",
+        "summary": "After applying the optimistic update, sync the task's new listId and order to the backend in the background. If the backend call fails, roll back the task to its previous listId and order in local state.",
         "status": "implemented",
         "plannedFiles": [
+          "frontend/src/hooks/useQueries.ts",
           "frontend/src/components/EisenhowerMatrix.tsx",
-          "frontend/src/components/CustomLists.tsx",
-          "frontend/src/components/TaskCard.tsx",
-          "frontend/src/utils/dragPayload.ts",
-          "frontend/src/pages/TaskManager.tsx"
+          "frontend/src/components/CustomLists.tsx"
         ],
         "matchedFiles": [
+          "frontend/src/hooks/useQueries.ts",
           "frontend/src/components/EisenhowerMatrix.tsx",
-          "frontend/src/components/CustomLists.tsx",
-          "frontend/src/components/TaskCard.tsx",
-          "frontend/src/utils/dragPayload.ts",
-          "frontend/src/pages/TaskManager.tsx"
+          "frontend/src/components/CustomLists.tsx"
         ]
       },
       {
         "id": "REQ-3",
-        "summary": "Ensure all existing routine features listed below remain fully intact after implementing the task drag-and-drop changes. Specifically: Morning/Evening sections, compact 4-row containers with scroll, 1-tap check/uncheck, 1-tap delete, press-and-hold reorder, text-selection disabled on cards, routine-scoped drop indicator line, optimistic snap with 1000-based sparse indexing, streak badge (streak+1 preview on check), streak weight ranges, Start New Day reset with next-day and skipped-day logic, configurable reset time, routine weight contributions to earnings, onboarding seed routines, and desktop-only test date dropdown.",
+        "summary": "Ensure there are zero visual changes compared to v195 — all existing UI, styling, layout, and drag-and-drop visual feedback must remain identical.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/MorningRoutine.tsx",
-          "frontend/src/components/Header.tsx",
-          "frontend/src/pages/TaskManager.tsx"
+          "frontend/src/components/EisenhowerMatrix.tsx",
+          "frontend/src/components/CustomLists.tsx",
+          "frontend/src/components/TaskCard.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/TaskManager.tsx"
+          "frontend/src/components/EisenhowerMatrix.tsx",
+          "frontend/src/components/CustomLists.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
     "frontend/src/components/CustomLists.tsx",
     "frontend/src/components/EisenhowerMatrix.tsx",
-    "frontend/src/components/TaskCard.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
+    "frontend/src/components/PayrollHistoryDialog.tsx",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/index.css",
-    "frontend/src/pages/TaskManager.tsx",
-    "frontend/src/utils/dragPayload.ts",
-    "frontend/src/utils/tierErrors.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

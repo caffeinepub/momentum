@@ -255,10 +255,9 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'moveTask' : IDL.Func([TaskId, ListId], [], []),
+  'moveTaskToList' : IDL.Func([TaskId, ListId, IDL.Nat], [], []),
   'promoteToAdmin' : IDL.Func([IDL.Principal], [], []),
   'removeAdmin' : IDL.Func([IDL.Principal], [], []),
-  'reorderTask' : IDL.Func([TaskId, IDL.Nat], [], []),
   'resetNewDay' : IDL.Func([IDL.Vec(RoutineId)], [], []),
   'resetSkippedDay' : IDL.Func([], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
@@ -274,12 +273,6 @@ export const idlService = IDL.Service({
   'updatePreset' : IDL.Func([IDL.Nat, SpendPreset], [], []),
   'updateRoutineItemPosition' : IDL.Func([RoutineId, IDL.Nat], [], []),
   'updateTask' : IDL.Func([TaskId, TaskUpdateInput], [], []),
-  'updateTaskContainerAndPosition' : IDL.Func(
-      [TaskId, ListId, IDL.Nat],
-      [],
-      [],
-    ),
-  'updateTaskPosition' : IDL.Func([TaskId, IDL.Nat], [], []),
   'updateTierLimits' : IDL.Func([UserTier, TierLimits], [], []),
 });
 
@@ -544,10 +537,9 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'moveTask' : IDL.Func([TaskId, ListId], [], []),
+    'moveTaskToList' : IDL.Func([TaskId, ListId, IDL.Nat], [], []),
     'promoteToAdmin' : IDL.Func([IDL.Principal], [], []),
     'removeAdmin' : IDL.Func([IDL.Principal], [], []),
-    'reorderTask' : IDL.Func([TaskId, IDL.Nat], [], []),
     'resetNewDay' : IDL.Func([IDL.Vec(RoutineId)], [], []),
     'resetSkippedDay' : IDL.Func([], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
@@ -563,12 +555,6 @@ export const idlFactory = ({ IDL }) => {
     'updatePreset' : IDL.Func([IDL.Nat, SpendPreset], [], []),
     'updateRoutineItemPosition' : IDL.Func([RoutineId, IDL.Nat], [], []),
     'updateTask' : IDL.Func([TaskId, TaskUpdateInput], [], []),
-    'updateTaskContainerAndPosition' : IDL.Func(
-        [TaskId, ListId, IDL.Nat],
-        [],
-        [],
-      ),
-    'updateTaskPosition' : IDL.Func([TaskId, IDL.Nat], [], []),
     'updateTierLimits' : IDL.Func([UserTier, TierLimits], [], []),
   });
 };

@@ -1,228 +1,335 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { Check, Pencil, X, GripVertical } from 'lucide-react';
-import { LocalTask } from '@/lib/types';
-import { writeTaskDragPayload } from '@/utils/dragPayload';
+import { memo, useRef, useCallback } from 'react';
+import { GripVertical, Pencil, X, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
+import type { LocalTask } from '@/lib/types';
 
 interface TaskCardProps {
   task: LocalTask;
-  onToggleComplete: (taskId: string) => void;
-  onEditTask: (taskId: string) => void;
+  index: number;
+  onDragStart: (e: React.DragEvent, task: LocalTask) => void;
+  onDrop: (e: React.DragEvent) => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onToggleComplete: () => void;
+  onTouchDrop?: (task: LocalTask, targetListId: bigint, targetIndex?: number) => void;
+  isDragTarget?: boolean;
+  onDragEnter?: () => void;
+  onDragLeave?: () => void;
+  // Shared edit mode state (lifted to parent) — uses string | null (localId)
   editTaskId: string | null;
   setEditTaskId: (id: string | null) => void;
-  isDragEnabled?: boolean;
-  onDragStart?: (e: React.DragEvent, task: LocalTask) => void;
-  onDragEnd?: (e: React.DragEvent) => void;
 }
 
-// Drop indicator position: 'above' | 'below' | null
-type DropPosition = 'above' | 'below' | null;
-
-const TaskCard: React.FC<TaskCardProps> = ({
+const TaskCard = memo(function TaskCard({
   task,
+  index,
+  onDragStart,
+  onDrop,
+  onEdit,
+  onDelete,
   onToggleComplete,
-  onEditTask,
+  onTouchDrop,
+  isDragTarget = false,
+  onDragEnter,
+  onDragLeave,
   editTaskId,
   setEditTaskId,
-  isDragEnabled = true,
-  onDragStart,
-  onDragEnd,
-}) => {
-  const isEditing = editTaskId === task.localId;
-  const [dropPosition, setDropPosition] = useState<DropPosition>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
+}: TaskCardProps) {
+  const isEditMode = editTaskId === task.localId;
+  const isDraggingRef = useRef(false);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const draggedTaskRef = useRef<LocalTask | null>(null);
+  const isDraggingStateRef = useRef(false);
 
-  const handleLongPressStart = useCallback(() => {
-    longPressTimer.current = setTimeout(() => {
-      setEditTaskId(task.localId);
-    }, 500);
-  }, [task.localId, setEditTaskId]);
+  const enterEditMode = useCallback(() => {
+    setEditTaskId(task.localId);
+  }, [setEditTaskId, task.localId]);
 
-  const handleLongPressEnd = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
+  const exitEditMode = useCallback(() => {
+    setEditTaskId(null);
+  }, [setEditTaskId]);
+
+  // Touch event handlers for mobile drag-and-drop
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!isEditMode) {
+      isDraggingRef.current = false;
+      longPressTimerRef.current = setTimeout(() => {
+        if (!isDraggingRef.current) {
+          enterEditMode();
+        }
+      }, 500);
+      return;
+    }
+
+    const touch = e.touches[0];
+    touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+    draggedTaskRef.current = task;
+    isDraggingStateRef.current = true;
+    e.preventDefault();
+  }, [isEditMode, task, enterEditMode]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (longPressTimerRef.current) {
+      isDraggingRef.current = true;
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+      return;
+    }
+
+    if (!isEditMode || !draggedTaskRef.current || !touchStartPosRef.current) {
+      return;
+    }
+
+    e.preventDefault();
+  }, [isEditMode]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+
+    if (!isEditMode || !draggedTaskRef.current || !isDraggingStateRef.current) {
+      isDraggingStateRef.current = false;
+      draggedTaskRef.current = null;
+      touchStartPosRef.current = null;
+      return;
+    }
+
+    const touch = e.changedTouches[0];
+    const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+
+    if (dropTarget) {
+      const listElement = dropTarget.closest('[data-list-id]') as HTMLElement | null;
+
+      if (listElement) {
+        const targetListId = listElement.getAttribute('data-list-id');
+
+        if (targetListId && onTouchDrop) {
+          let targetIndex: number | undefined = undefined;
+          const taskElement = dropTarget.closest('[data-task-index]') as HTMLElement | null;
+          if (taskElement) {
+            const indexStr = taskElement.getAttribute('data-task-index');
+            if (indexStr) {
+              targetIndex = parseInt(indexStr, 10);
+            }
+          }
+
+          onTouchDrop(draggedTaskRef.current, BigInt(targetListId), targetIndex);
+        }
+      }
+    }
+
+    isDraggingStateRef.current = false;
+    draggedTaskRef.current = null;
+    touchStartPosRef.current = null;
+  }, [isEditMode, onTouchDrop]);
+
+  const handleMouseDown = useCallback(() => {
+    if (!isEditMode) {
+      isDraggingRef.current = false;
+      longPressTimerRef.current = setTimeout(() => {
+        if (!isDraggingRef.current) {
+          enterEditMode();
+        }
+      }, 500);
+    }
+  }, [isEditMode, enterEditMode]);
+
+  const handleMouseUp = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
     }
   }, []);
 
-  const handleDragStart = useCallback(
-    (e: React.DragEvent) => {
-      setIsDragging(true);
-      writeTaskDragPayload(e.dataTransfer, {
-        type: 'task',
-        taskId: Number(task.id),
-        listId: Number(task.listId),
-        order: Number(task.order),
-      });
-      if (onDragStart) onDragStart(e, task);
-    },
-    [task, onDragStart]
-  );
+  const handleMouseLeave = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
 
-  const handleDragEnd = useCallback(
-    (e: React.DragEvent) => {
-      setIsDragging(false);
-      setDropPosition(null);
-      if (onDragEnd) onDragEnd(e);
-    },
-    [onDragEnd]
-  );
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
+  };
 
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const midY = rect.top + rect.height / 2;
-    setDropPosition(e.clientY < midY ? 'above' : 'below');
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    // Only clear if leaving the card entirely
-    if (cardRef.current && !cardRef.current.contains(e.relatedTarget as Node)) {
-      setDropPosition(null);
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (onDragEnter) {
+      onDragEnter();
     }
-  }, []);
+  };
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (onDragLeave) {
+      onDragLeave();
+    }
+  };
+
+  const handleDragStartWrapper = (e: React.DragEvent) => {
+    if (!isEditMode) {
+      e.preventDefault();
+      return;
+    }
+    isDraggingRef.current = true;
+    isDraggingStateRef.current = true;
+    onDragStart(e, task);
+  };
+
+  const handleDragEnd = () => {
+    isDraggingRef.current = false;
+    isDraggingStateRef.current = false;
+  };
+
+  const handleDropWrapper = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setDropPosition(null);
-  }, []);
+    onDrop(e);
+  };
 
-  const handleClick = useCallback(() => {
-    if (!isEditing) {
-      onToggleComplete(task.localId);
-    }
-  }, [isEditing, onToggleComplete, task.localId]);
+  const handleEditClick = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    onEdit();
+  };
 
-  const handleEditClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      onEditTask(task.localId);
-    },
-    [onEditTask, task.localId]
-  );
-
-  const handleExitEdit = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setEditTaskId(null);
-    },
-    [setEditTaskId]
-  );
-
-  const streakRangeClass = '';
+  const handleExitEditMode = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    exitEditMode();
+  };
 
   return (
     <div
-      ref={cardRef}
-      className="relative"
+      data-task-card
+      data-task-index={index}
+      draggable={isEditMode}
+      onDragStart={handleDragStartWrapper}
+      onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      onDrop={handleDropWrapper}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
+      className={cn(
+        'relative rounded-lg border shadow-sm transition-all duration-300 ease-out hover:shadow-md w-full no-text-select overflow-hidden',
+        isEditMode
+          ? 'cursor-move bg-gradient-to-br from-blue-50/80 via-indigo-50/60 to-purple-50/40 dark:from-blue-950/30 dark:via-indigo-950/20 dark:to-purple-950/10 border-blue-200 dark:border-blue-800'
+          : 'cursor-default bg-card',
+        isDragTarget && 'bg-blue-100 dark:bg-blue-900/40 shadow-lg ring-2 ring-blue-400 dark:ring-blue-600',
+        task.completed && !isEditMode && 'opacity-60',
+        'py-2 px-2'
+      )}
+      style={{
+        touchAction: isEditMode ? 'none' : 'auto',
+      }}
     >
-      {/* Drop indicator above */}
-      {dropPosition === 'above' && (
-        <div className="drop-indicator" />
+      {/* ✕ exit button — top-right corner, only in edit mode */}
+      {isEditMode && (
+        <button
+          className="absolute top-0 right-0 z-10 flex items-center justify-center w-7 h-7 rounded-bl-lg bg-blue-200/80 dark:bg-blue-800/80 text-blue-700 dark:text-blue-200 hover:bg-blue-300 dark:hover:bg-blue-700 transition-colors"
+          onClick={handleExitEditMode}
+          onTouchEnd={handleExitEditMode}
+          aria-label="Exit edit mode"
+          style={{ minWidth: 28, minHeight: 28 }}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
       )}
 
-      <div
-        draggable={isDragEnabled && !isEditing}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        onMouseDown={handleLongPressStart}
-        onMouseUp={handleLongPressEnd}
-        onMouseLeave={handleLongPressEnd}
-        onTouchStart={handleLongPressStart}
-        onTouchEnd={handleLongPressEnd}
-        onClick={handleClick}
-        className={`
-          task-card group flex items-center gap-2 px-3 py-2 rounded-lg
-          border border-border/50 bg-card/80 backdrop-blur-sm
-          cursor-pointer select-none transition-all duration-150
-          hover:border-border hover:bg-card
-          ${task.completed ? 'opacity-60' : ''}
-          ${isDragging ? 'opacity-40 scale-95' : ''}
-          ${isEditing ? 'ring-1 ring-primary/50 border-primary/30' : ''}
-          ${streakRangeClass}
-        `}
-        style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
-      >
-        {/* Drag handle */}
-        {isDragEnabled && (
-          <div className="drag-handle flex-shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors">
-            <GripVertical size={14} />
-          </div>
-        )}
+      {/* Normal mode: checkbox + title in single row */}
+      {!isEditMode && (
+        <div className="flex items-center gap-2 w-full">
+          <Checkbox
+            checked={task.completed}
+            onCheckedChange={onToggleComplete}
+            className="flex-shrink-0 ml-0.5"
+          />
 
-        {/* Checkbox */}
-        <div
-          className={`
-            flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center
-            transition-all duration-150
-            ${task.completed
-              ? 'bg-primary border-primary'
-              : 'border-muted-foreground/40 hover:border-primary/60'
-            }
-          `}
-        >
-          {task.completed && <Check size={10} strokeWidth={3} className="text-primary-foreground" />}
-        </div>
-
-        {/* Task title */}
-        <span
-          className={`
-            flex-1 text-sm leading-tight min-w-0 truncate
-            ${task.completed ? 'line-through text-muted-foreground' : 'text-foreground'}
-          `}
-        >
-          {task.title}
-        </span>
-
-        {/* Long task indicator */}
-        {task.isLongTask && (
-          <span className="flex-shrink-0 text-xs text-muted-foreground/60">⏱</span>
-        )}
-
-        {/* Edit mode actions */}
-        {isEditing ? (
-          <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={handleEditClick}
-              className="p-1 rounded hover:bg-primary/10 text-primary transition-colors"
-              title="Edit task"
-            >
-              <Pencil size={12} />
-            </button>
-            <button
-              onClick={handleExitEdit}
-              className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-              title="Exit edit mode"
-            >
-              <X size={12} />
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={handleEditClick}
-            className="flex-shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all duration-150"
-            title="Edit task"
+          <h4
+            className={cn(
+              'font-medium text-sm leading-tight transition-all duration-200 flex-1 min-w-0 truncate',
+              task.completed && 'line-through text-muted-foreground',
+              task.important && !task.completed && 'text-red-600 dark:text-red-400'
+            )}
+            title={task.title}
           >
-            <Pencil size={12} />
-          </button>
-        )}
-      </div>
+            {task.title}
+          </h4>
 
-      {/* Drop indicator below */}
-      {dropPosition === 'below' && (
-        <div className="drop-indicator" />
+          {task.isLongTask && (
+            <div className="flex-shrink-0">
+              <Clock className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Edit mode: single-line row — drag icon | title | edit icon (no delete — moved to EditTaskDialog) */}
+      {isEditMode && (
+        <div className="flex items-center gap-1.5 w-full pr-7">
+          {/* 1. Drag icon on the far left */}
+          <div className="flex-shrink-0 cursor-grab active:cursor-grabbing">
+            <GripVertical className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          </div>
+
+          {/* 2. Task title — flex-1, truncated */}
+          <h4
+            className={cn(
+              'flex-1 min-w-0 font-medium text-sm leading-tight truncate',
+              task.important && 'text-red-600 dark:text-red-400'
+            )}
+            title={task.title}
+          >
+            {task.title}
+          </h4>
+
+          {task.isLongTask && (
+            <div className="flex-shrink-0">
+              <Clock className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
+            </div>
+          )}
+
+          {/* 3. Edit icon */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="flex-shrink-0 h-8 w-8 hover:bg-blue-100 dark:hover:bg-blue-900/40"
+            onClick={handleEditClick}
+            onTouchEnd={handleEditClick}
+            aria-label="Edit task"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       )}
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.task.id === nextProps.task.id &&
+    prevProps.task.title === nextProps.task.title &&
+    prevProps.task.description === nextProps.task.description &&
+    prevProps.task.completed === nextProps.task.completed &&
+    prevProps.task.urgent === nextProps.task.urgent &&
+    prevProps.task.important === nextProps.task.important &&
+    prevProps.task.isLongTask === nextProps.task.isLongTask &&
+    prevProps.task.weight === nextProps.task.weight &&
+    prevProps.task.listId === nextProps.task.listId &&
+    prevProps.task.order === nextProps.task.order &&
+    prevProps.index === nextProps.index &&
+    prevProps.isDragTarget === nextProps.isDragTarget &&
+    prevProps.editTaskId === nextProps.editTaskId
+  );
+});
 
 export default TaskCard;

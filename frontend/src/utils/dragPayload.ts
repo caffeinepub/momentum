@@ -1,73 +1,72 @@
-// Drag payload utilities for task and routine drag-and-drop
-// Uses MIME types to distinguish between task and routine payloads
+/**
+ * Utility for writing and reading stable drag payloads to/from DataTransfer.
+ * This ensures drop operations work reliably even if React state is cleared during drag.
+ */
 
-const TASK_MIME_TYPE = 'application/x-task-payload';
-const ROUTINE_MIME_TYPE = 'application/x-routine-id';
-
-export interface TaskDragPayload {
-  type: 'task';
-  taskId: number;
-  listId: number;
-  order: number;
+export interface DragPayload {
+  taskId: string;
+  sourceListId: string;
 }
 
-export function writeTaskDragPayload(
-  dataTransfer: DataTransfer,
-  payload: TaskDragPayload
-): void {
-  dataTransfer.effectAllowed = 'move';
-  dataTransfer.setData(TASK_MIME_TYPE, JSON.stringify(payload));
-  // Also set as text for fallback
-  dataTransfer.setData('text/plain', JSON.stringify(payload));
-}
+const DRAG_MIME_TYPE = 'application/x-momentum-task';
+const FALLBACK_MIME_TYPE = 'text/plain';
 
-export function readTaskDragPayload(
-  dataTransfer: DataTransfer
-): TaskDragPayload | null {
+/**
+ * Write drag payload to DataTransfer with multiple MIME types for compatibility
+ */
+export function writeDragPayload(dataTransfer: DataTransfer, payload: DragPayload): void {
+  const jsonString = JSON.stringify(payload);
+  
   try {
-    const raw =
-      dataTransfer.getData(TASK_MIME_TYPE) ||
-      dataTransfer.getData('text/plain');
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed && parsed.type === 'task') {
-      return parsed as TaskDragPayload;
-    }
-    return null;
-  } catch {
-    return null;
+    // Primary: custom MIME type
+    dataTransfer.setData(DRAG_MIME_TYPE, jsonString);
+  } catch (e) {
+    console.warn('Failed to set custom MIME type:', e);
+  }
+  
+  try {
+    // Fallback: text/plain for broader compatibility
+    dataTransfer.setData(FALLBACK_MIME_TYPE, jsonString);
+  } catch (e) {
+    console.warn('Failed to set fallback MIME type:', e);
   }
 }
 
-export function isTaskDragEvent(dataTransfer: DataTransfer): boolean {
-  return (
-    dataTransfer.types.includes(TASK_MIME_TYPE) ||
-    (() => {
-      try {
-        const raw = dataTransfer.getData('text/plain');
-        if (!raw) return false;
-        const parsed = JSON.parse(raw);
-        return parsed && parsed.type === 'task';
-      } catch {
-        return false;
-      }
-    })()
-  );
-}
-
-export function writeRoutineDragPayload(
-  dataTransfer: DataTransfer,
-  routineId: number
-): void {
-  dataTransfer.effectAllowed = 'move';
-  dataTransfer.setData(ROUTINE_MIME_TYPE, String(routineId));
-}
-
-export function readRoutineDragPayload(
-  dataTransfer: DataTransfer
-): number | null {
-  const raw = dataTransfer.getData(ROUTINE_MIME_TYPE);
-  if (!raw) return null;
-  const id = parseInt(raw, 10);
-  return isNaN(id) ? null : id;
+/**
+ * Read drag payload from DataTransfer with fallback handling
+ */
+export function readDragPayload(dataTransfer: DataTransfer): DragPayload | null {
+  let jsonString: string | null = null;
+  
+  // Try custom MIME type first
+  try {
+    jsonString = dataTransfer.getData(DRAG_MIME_TYPE);
+  } catch (e) {
+    console.warn('Failed to read custom MIME type:', e);
+  }
+  
+  // Fallback to text/plain
+  if (!jsonString) {
+    try {
+      jsonString = dataTransfer.getData(FALLBACK_MIME_TYPE);
+    } catch (e) {
+      console.warn('Failed to read fallback MIME type:', e);
+    }
+  }
+  
+  // Parse and validate
+  if (!jsonString) {
+    return null;
+  }
+  
+  try {
+    const parsed = JSON.parse(jsonString);
+    if (parsed && typeof parsed.taskId === 'string' && typeof parsed.sourceListId === 'string') {
+      return parsed as DragPayload;
+    }
+  } catch (e) {
+    console.warn('Failed to parse drag payload:', e);
+  }
+  
+  return null;
 }

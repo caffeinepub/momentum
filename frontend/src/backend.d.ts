@@ -215,10 +215,9 @@ export interface backendInterface {
     getTotalUsers(): Promise<bigint>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
-    moveTask(taskId: TaskId, destinationListId: ListId): Promise<void>;
+    moveTaskToList(taskId: TaskId, destinationListId: ListId, newPosition: bigint): Promise<void>;
     promoteToAdmin(target: Principal): Promise<void>;
     removeAdmin(target: Principal): Promise<void>;
-    reorderTask(taskId: TaskId, newPosition: bigint): Promise<void>;
     resetNewDay(completedRoutineIds: Array<RoutineId>): Promise<void>;
     resetSkippedDay(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
@@ -230,7 +229,5 @@ export interface backendInterface {
     updatePreset(id: bigint, updatedPreset: SpendPreset): Promise<void>;
     updateRoutineItemPosition(routineId: RoutineId, positionIndex: bigint): Promise<void>;
     updateTask(id: TaskId, updatedTask: TaskUpdateInput): Promise<void>;
-    updateTaskContainerAndPosition(taskId: TaskId, newContainerId: ListId, positionIndex: bigint): Promise<void>;
-    updateTaskPosition(taskId: TaskId, positionIndex: bigint): Promise<void>;
     updateTierLimits(tier: UserTier, newLimits: TierLimits): Promise<void>;
 }

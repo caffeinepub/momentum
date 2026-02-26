@@ -207,10 +207,9 @@ export interface _SERVICE {
   'getTotalUsers' : ActorMethod<[], bigint>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'moveTask' : ActorMethod<[TaskId, ListId], undefined>,
+  'moveTaskToList' : ActorMethod<[TaskId, ListId, bigint], undefined>,
   'promoteToAdmin' : ActorMethod<[Principal], undefined>,
   'removeAdmin' : ActorMethod<[Principal], undefined>,
-  'reorderTask' : ActorMethod<[TaskId, bigint], undefined>,
   'resetNewDay' : ActorMethod<[Array<RoutineId>], undefined>,
   'resetSkippedDay' : ActorMethod<[], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
@@ -225,11 +224,6 @@ export interface _SERVICE {
   'updatePreset' : ActorMethod<[bigint, SpendPreset], undefined>,
   'updateRoutineItemPosition' : ActorMethod<[RoutineId, bigint], undefined>,
   'updateTask' : ActorMethod<[TaskId, TaskUpdateInput], undefined>,
-  'updateTaskContainerAndPosition' : ActorMethod<
-    [TaskId, ListId, bigint],
-    undefined
-  >,
-  'updateTaskPosition' : ActorMethod<[TaskId, bigint], undefined>,
   'updateTierLimits' : ActorMethod<[UserTier, TierLimits], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;

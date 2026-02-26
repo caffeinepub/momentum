@@ -1,91 +1,76 @@
 {
   "kind": "build_request",
-  "title": "Cross-container task drag & drop with drop indicator line",
+  "title": "Drag-and-Drop Cross-List Fix — Optimistic UI on Drop",
   "projectName": "Momentum",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Add a visual drop indicator line to task drag-and-drop: a thin horizontal bar that appears between task cards at the target insert position while dragging, updates live as the dragged card moves within or between containers, and disappears on drop or cancel. This should match the same visual style as the routine drop indicator line already implemented in MorningRoutine.tsx.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-1",
-          "msg-2"
-        ],
-        "quotes": [
-          "Drop indicator line — thin horizontal bar appears between items at the target insert position",
-          "same as Routine"
-        ]
-      },
-      "acceptanceCriteria": [
-        "A thin horizontal line appears between task cards at the hover insert position during drag",
-        "The line updates in real time as the drag moves through a container",
-        "The line disappears when the drag ends or is cancelled",
-        "The visual style matches the routine drop indicator line"
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "text": "Implement cross-container task drag-and-drop between Eisenhower Matrix quadrants and custom lists. A task dragged from one quadrant or list to another should snap optimistically to the exact insert position chosen, with no status changes. On drop, update the task's container identity (quadrantId or listId, whichever applies) and recalculate its order value using 1000-based sparse indexing based on its new neighbors. Fire a backend sync call after the optimistic update; if the backend call fails, roll back the task to its original container and position. Routines must be excluded from all drag scopes — no dragging into or out of routine sections.",
-      "target": "both",
-      "source": {
-        "messageIds": [
-          "msg-3",
-          "msg-4",
-          "msg-5"
-        ],
-        "quotes": [
-          "it should appear as the drop position, only between quadrants and lists ( not routines), no status change",
-          "On cross-container drop: task gets a new order value calculated between its neighbors in the target container",
-          "Container identity (quadrant or list) is updated to reflect the new home",
-          "Rollback restores original container + position if backend fails"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Tasks can be dragged from any quadrant and dropped into any other quadrant at the chosen insert position",
-        "Tasks can be dragged from any quadrant into any custom list and vice versa",
-        "Tasks can be dragged between different custom lists",
-        "On drop into a different container, the task's container field and order value are updated",
-        "Order is recalculated using 1000-based sparse indexing between the new neighbors",
-        "The task appears instantly at the drop position (optimistic update) before backend confirmation",
-        "If the backend call fails, the task returns to its original container and original position",
-        "No status, title, description, tags, or other metadata fields change on drop",
-        "Routine sections cannot be drag targets or drag sources for tasks",
-        "Same-container drops reorder in place using the same indicator line and optimistic logic"
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "text": "Ensure all existing routine features listed below remain fully intact after implementing the task drag-and-drop changes. Specifically: Morning/Evening sections, compact 4-row containers with scroll, 1-tap check/uncheck, 1-tap delete, press-and-hold reorder, text-selection disabled on cards, routine-scoped drop indicator line, optimistic snap with 1000-based sparse indexing, streak badge (streak+1 preview on check), streak weight ranges, Start New Day reset with next-day and skipped-day logic, configurable reset time, routine weight contributions to earnings, onboarding seed routines, and desktop-only test date dropdown.",
+      "text": "When a task is dropped into a new list or reordered within a list, immediately update the task's listId and order in local state (optimistic UI) using the 1000-based ordering method: new order = average of the two neighboring tasks' order values, or existing neighbor ± 1000 when inserting at the top or bottom.",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-6"
         ],
         "quotes": [
-          "from now i want you to keep all of each features"
+          "optimistic UI on drop: task's listId and order update instantly using 1000-based method (average of neighbors, ±1000 at top/bottom)"
         ]
       },
       "acceptanceCriteria": [
-        "All routine drag-and-drop behavior (within-section only, indicator line, optimistic snap, rollback) is unchanged",
-        "Streak badge, streak preview, streak weight, and streak reset logic are unchanged",
-        "Start New Day button behavior for next-day and skipped-day resets is unchanged",
-        "Onboarding seed routines still auto-populate for new users",
-        "Desktop-only test date dropdown still works and only affects routine logic"
+        "Dropping a task into a different list immediately reflects the new listId in the UI without waiting for the backend response.",
+        "The task's display order updates instantly on drop using the 1000-based averaging method.",
+        "Inserting at the top assigns order = lowestNeighborOrder - 1000.",
+        "Inserting at the bottom assigns order = highestNeighborOrder + 1000.",
+        "Inserting between two tasks assigns order = (prevOrder + nextOrder) / 2."
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "After applying the optimistic update, sync the task's new listId and order to the backend in the background. If the backend call fails, roll back the task to its previous listId and order in local state.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6"
+        ],
+        "quotes": [
+          "backend syncs in background; rollback on failure"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The backend update call is made asynchronously after the optimistic state update is applied.",
+        "If the backend call returns an error, the task reverts to its original listId and order.",
+        "No loading spinner or visual delay is introduced during the background sync.",
+        "On success, the backend-confirmed state replaces the optimistic state without visible disruption."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Ensure there are zero visual changes compared to v195 — all existing UI, styling, layout, and drag-and-drop visual feedback must remain identical.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6"
+        ],
+        "quotes": [
+          "zero visual changes from v195"
+        ]
+      },
+      "acceptanceCriteria": [
+        "No changes to colors, typography, spacing, or component layout.",
+        "Drop indicator lines, drag ghost styles, and hover states are unchanged.",
+        "EisenhowerMatrix, CustomLists, and TaskCard components appear visually identical to v195."
       ]
     }
   ],
   "constraints": [
-    "Routines must never be drag targets or drag sources for tasks",
-    "No task fields other than container identity and order may change on cross-container drop",
-    "All existing routine features must be preserved exactly as specified"
+    "Zero visual changes from v195 — no UI, styling, or layout modifications.",
+    "Do not change the backend schema or any backend data models.",
+    "All ordering logic must use the 1000-based method (average of neighbors, ±1000 at top/bottom)."
   ],
   "nonGoals": [
-    "Dragging tasks into or out of routine sections",
-    "Changing task status, completion, tags, or any metadata on drop",
-    "Real-time collaboration or multi-user drag state sync",
-    "Drag-and-drop for lists themselves (only tasks within/between lists)"
+    "Backend-side reordering algorithm changes.",
+    "Any new UI features or visual enhancements beyond the optimistic update behavior.",
+    "Changes to MorningRoutine or EisenhowerMatrix drag logic unless directly required for cross-list fix."
   ],
   "imageRequirements": {
     "required": [],

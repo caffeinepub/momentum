@@ -1,40 +1,17 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-26T15:49:17.029Z",
-  "summary": "The diff implements cross-container task drag-and-drop with drop indicator lines across EisenhowerMatrix.tsx and CustomLists.tsx, shared drop-indicator CSS, dragPayload utilities, TaskCard updates, and backend/hook plumbing. Most requirements appear addressed, but there is one notable gap around cross-container drag between EisenhowerMatrix quadrants and CustomLists (they appear to be separate components with separate drag state, making true cross-component drops unclear). Routine preservation (REQ-3) appears intact based on file summaries.",
-  "missing_requirements": [
-    {
-      "requirement": "Tasks can be dragged from any quadrant into any custom list and vice versa (cross-component drag between EisenhowerMatrix and CustomLists)",
-      "reason": "EisenhowerMatrix.tsx and CustomLists.tsx are separate React components with isolated drag state (separate dropState, optimisticTasks, dragPayloadRef). The diff shows no shared drag context or parent-level coordination that would allow a drag starting in EisenhowerMatrix to be received as a drop in CustomLists or vice versa. Each component only handles drops within its own container list.",
-      "evidence": [
-        "frontend/src/components/EisenhowerMatrix.tsx",
-        "frontend/src/components/CustomLists.tsx",
-        "frontend/src/pages/TaskManager.tsx"
-      ]
-    }
-  ],
-  "hallucinated_features": [
-    {
-      "description": "Per-card drop indicator (above/below) rendered inside TaskCard based on cursor Y position during dragover",
-      "reason": "TaskCard.tsx implements its own dragover/dragleave/drop handlers and renders above/below drop indicators per card. The build request specifies the indicator line should appear between task cards matching the routine drop indicator pattern which uses container-level insert-index tracking, not per-card state managed inside each individual card.",
-      "evidence": [
-        "frontend/src/components/TaskCard.tsx"
-      ]
-    }
-  ],
-  "confidence": 0.62,
+  "generatedAt": "2026-02-26T18:55:14.552Z",
+  "summary": "The diff implements optimistic UI for drag-and-drop cross-list task reordering. REQ-1 (1000-based ordering on drop), REQ-2 (background sync with rollback), and REQ-3 (no visual changes) appear to be addressed. The implementation adds calculateOptimisticOrder functions in both CustomLists.tsx and EisenhowerMatrix.tsx using the 1000-based method, and useTaskQueries.moveTask is upgraded with onMutate/onError/onSettled hooks. No visual changes are introduced. No missing requirements or hallucinated features were detected based on the available diff evidence.",
+  "missing_requirements": [],
+  "hallucinated_features": [],
+  "confidence": 0.8,
   "changed_files": [
-    "backend/main.mo",
     "frontend-file-summaries.txt",
     "frontend/src/components/CustomLists.tsx",
     "frontend/src/components/EisenhowerMatrix.tsx",
-    "frontend/src/components/TaskCard.tsx",
+    "frontend/src/components/PayrollHistoryDialog.tsx",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/index.css",
-    "frontend/src/pages/TaskManager.tsx",
-    "frontend/src/utils/dragPayload.ts",
-    "frontend/src/utils/tierErrors.ts",
     "project_state.json"
   ]
 }

@@ -298,10 +298,9 @@ export interface backendInterface {
     getTotalUsers(): Promise<bigint>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
-    moveTask(taskId: TaskId, destinationListId: ListId): Promise<void>;
+    moveTaskToList(taskId: TaskId, destinationListId: ListId, newPosition: bigint): Promise<void>;
     promoteToAdmin(target: Principal): Promise<void>;
     removeAdmin(target: Principal): Promise<void>;
-    reorderTask(taskId: TaskId, newPosition: bigint): Promise<void>;
     resetNewDay(completedRoutineIds: Array<RoutineId>): Promise<void>;
     resetSkippedDay(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
@@ -313,8 +312,6 @@ export interface backendInterface {
     updatePreset(id: bigint, updatedPreset: SpendPreset): Promise<void>;
     updateRoutineItemPosition(routineId: RoutineId, positionIndex: bigint): Promise<void>;
     updateTask(id: TaskId, updatedTask: TaskUpdateInput): Promise<void>;
-    updateTaskContainerAndPosition(taskId: TaskId, newContainerId: ListId, positionIndex: bigint): Promise<void>;
-    updateTaskPosition(taskId: TaskId, positionIndex: bigint): Promise<void>;
     updateTierLimits(tier: UserTier, newLimits: TierLimits): Promise<void>;
 }
 import type { MorningRoutine as _MorningRoutine, RoutineId as _RoutineId, RoutineSection as _RoutineSection, SpendId as _SpendId, SpendInput as _SpendInput, SpendPreset as _SpendPreset, SpendRecord as _SpendRecord, SpendType as _SpendType, TierLimits as _TierLimits, TierLimitsConfig as _TierLimitsConfig, UserMetadata as _UserMetadata, UserProfile as _UserProfile, UserRole as _UserRole, UserTier as _UserTier } from "./declarations/backend.did.d.ts";
@@ -1024,17 +1021,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async moveTask(arg0: TaskId, arg1: ListId): Promise<void> {
+    async moveTaskToList(arg0: TaskId, arg1: ListId, arg2: bigint): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.moveTask(arg0, arg1);
+                const result = await this.actor.moveTaskToList(arg0, arg1, arg2);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.moveTask(arg0, arg1);
+            const result = await this.actor.moveTaskToList(arg0, arg1, arg2);
             return result;
         }
     }
@@ -1063,20 +1060,6 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.removeAdmin(arg0);
-            return result;
-        }
-    }
-    async reorderTask(arg0: TaskId, arg1: bigint): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.reorderTask(arg0, arg1);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.reorderTask(arg0, arg1);
             return result;
         }
     }
@@ -1231,34 +1214,6 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.updateTask(arg0, arg1);
-            return result;
-        }
-    }
-    async updateTaskContainerAndPosition(arg0: TaskId, arg1: ListId, arg2: bigint): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.updateTaskContainerAndPosition(arg0, arg1, arg2);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.updateTaskContainerAndPosition(arg0, arg1, arg2);
-            return result;
-        }
-    }
-    async updateTaskPosition(arg0: TaskId, arg1: bigint): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.updateTaskPosition(arg0, arg1);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.updateTaskPosition(arg0, arg1);
             return result;
         }
     }
