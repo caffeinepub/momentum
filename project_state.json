@@ -1,18 +1,38 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Habit tracker app with streak counting and daily checkboxes. Currently fixing Skipped Day Reset button to properly uncheck all boxes and reset streak count to 0.",
-  "architectural_notes": [],
-  "known_issues": [
-    "Skipped Day Reset button does not uncheck all boxes or reset streak count to 0"
+  "summary": "Productivity app with Morning/Evening routine system and task management. Features drag-and-drop reordering for both routines and tasks, streak tracking, daily reset system, and cross-container task movement between quadrants and lists.",
+  "architectural_notes": [
+    "Routine drag-and-drop: within-section only, drop indicator line, optimistic snap, 1000-based sparse order indexing, backend sync with rollback",
+    "Task drag-and-drop: cross-container between quadrants/lists only (not routines), drop indicator line, optimistic snap, updates containerId + order on cross-container drop, backend sync with rollback",
+    "Streak system: badge shows streak+1 on check (frontend preview), backend only updates on Start New Day reset",
+    "Start New Day reset: user-configurable reset time, next-day = streak+1 for checked/reset for unchecked, skipped-day = all streaks reset to 0",
+    "Test Date Dropdown: desktop-only in Home header, affects routine logic only (not tasks or earnings)"
   ],
-  "isFixRequest": true,
+  "known_issues": [],
+  "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-fix-the-skipped-day-reset-frontend-handler-in-the-start-new-day-dialog-so-that-after-the-reset-mutation-completes-the-ui-reflects-all-checkboxes-as-unchecked-and-the-streak-count-displayed-as-0-by-invalidating-or-updating-the-relevant-react-query-caches-for-routines-and-streak-data",
-      "title": "Fix the Skipped Day Reset frontend handler in the Start New Day dialog so that after the reset mutation completes, the UI reflects all checkboxes as unchecked and the streak count displayed as 0 — by invalidating or updating the relevant React Query caches for routines and streak data.",
+      "id": "feature-add-a-visual-drop-indicator-line-to-task-drag-and-drop-a-thin-horizontal-bar-that-appears-between-task-cards-at-the-target-insert-position-while-dragging-updates-live-as-the-dragged-card-moves-within-or-between-containers-and-disappears-on-drop-or-cancel-this-should-match-the-same-visual-style-as-the-routine-drop-indicator-line-already-implemented-in-morningroutine-tsx",
+      "title": "Add a visual drop indicator line to task drag-and-drop: a thin horizontal bar that appears between task cards at the target insert position while dragging, updates live as the dragged card moves within or between containers, and disappears on drop or cancel. This should match the same visual style as the routine drop indicator line already implemented in MorningRoutine.tsx.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-cross-container-task-drag-and-drop-between-eisenhower-matrix-quadrants-and-custom-lists-a-task-dragged-from-one-quadrant-or-list-to-another-should-snap-optimistically-to-the-exact-insert-position-chosen-with-no-status-changes-on-drop-update-the-task-s-container-identity-quadrantid-or-listid-whichever-applies-and-recalculate-its-order-value-using-1000-based-sparse-indexing-based-on-its-new-neighbors-fire-a-backend-sync-call-after-the-optimistic-update-if-the-backend-call-fails-roll-back-the-task-to-its-original-container-and-position-routines-must-be-excluded-from-all-drag-scopes-no-dragging-into-or-out-of-routine-sections",
+      "title": "Implement cross-container task drag-and-drop between Eisenhower Matrix quadrants and custom lists. A task dragged from one quadrant or list to another should snap optimistically to the exact insert position chosen, with no status changes. On drop, update the task's container identity (quadrantId or listId, whichever applies) and recalculate its order value using 1000-based sparse indexing based on its new neighbors. Fire a backend sync call after the optimistic update; if the backend call fails, roll back the task to its original container and position. Routines must be excluded from all drag scopes — no dragging into or out of routine sections.",
       "reqIds": [
         "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-all-existing-routine-features-listed-below-remain-fully-intact-after-implementing-the-task-drag-and-drop-changes-specifically-morning-evening-sections-compact-4-row-containers-with-scroll-1-tap-check-uncheck-1-tap-delete-press-and-hold-reorder-text-selection-disabled-on-cards-routine-scoped-drop-indicator-line-optimistic-snap-with-1000-based-sparse-indexing-streak-badge-streak-1-preview-on-check-streak-weight-ranges-start-new-day-reset-with-next-day-and-skipped-day-logic-configurable-reset-time-routine-weight-contributions-to-earnings-onboarding-seed-routines-and-desktop-only-test-date-dropdown",
+      "title": "Ensure all existing routine features listed below remain fully intact after implementing the task drag-and-drop changes. Specifically: Morning/Evening sections, compact 4-row containers with scroll, 1-tap check/uncheck, 1-tap delete, press-and-hold reorder, text-selection disabled on cards, routine-scoped drop indicator line, optimistic snap with 1000-based sparse indexing, streak badge (streak+1 preview on check), streak weight ranges, Start New Day reset with next-day and skipped-day logic, configurable reset time, routine weight contributions to earnings, onboarding seed routines, and desktop-only test date dropdown.",
+      "reqIds": [
+        "REQ-3"
       ],
       "version": 1
     }
@@ -20,10 +40,14 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Fix the Skipped Day Reset backend logic so that when a user triggers a skipped day reset, all morning and evening routine checkbox states are set to unchecked (false) and the streak counter is reset to 0.",
-      "reqIds": [
-        "REQ-1"
-      ],
+      "summary": "Drop indicator line for task drag-and-drop (same as routine)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Cross-container task drag-and-drop between quadrants and lists (updates containerId + order, optimistic snap, rollback on failure)",
+      "reqIds": [],
       "status": "pending"
     }
   ],

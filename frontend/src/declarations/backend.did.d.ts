@@ -225,6 +225,10 @@ export interface _SERVICE {
   'updatePreset' : ActorMethod<[bigint, SpendPreset], undefined>,
   'updateRoutineItemPosition' : ActorMethod<[RoutineId, bigint], undefined>,
   'updateTask' : ActorMethod<[TaskId, TaskUpdateInput], undefined>,
+  'updateTaskContainerAndPosition' : ActorMethod<
+    [TaskId, ListId, bigint],
+    undefined
+  >,
   'updateTaskPosition' : ActorMethod<[TaskId, bigint], undefined>,
   'updateTierLimits' : ActorMethod<[UserTier, TierLimits], undefined>,
 }

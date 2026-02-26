@@ -1,240 +1,283 @@
-import { memo, useState, useCallback } from 'react';
-import { ChevronDown, Calendar } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React, { useState, useRef, useCallback } from 'react';
+import { LocalTask, LocalList } from '@/lib/types';
 import TaskCard from './TaskCard';
-import type { LocalTask, LocalList } from '@/lib/types';
+import { readTaskDragPayload, writeTaskDragPayload } from '@/utils/dragPayload';
+import { toast } from 'sonner';
 
 interface EisenhowerMatrixProps {
   tasks: LocalTask[];
-  quadrantLists: LocalList[];
-  onDragStart: (e: React.DragEvent, task: LocalTask) => void;
-  onDrop: (e: React.DragEvent, listId: bigint, index?: number) => void;
-  onTouchDrop: (task: LocalTask, targetListId: bigint, targetIndex?: number) => void;
-  onReorder: (taskId: bigint, listId: bigint, newIndex: number) => void;
-  onEditTask: (task: LocalTask) => void;
-  onDeleteTask: (taskId: bigint) => void;
-  onToggleComplete: (taskId: bigint, updates: Partial<LocalTask>) => void;
-  isExpanded: boolean;
-  onToggleExpand: () => void;
-  isPlanMode: boolean;
-  onSwitchToPlanMode?: () => void;
-  // Shared edit mode state
+  lists: LocalList[];
+  onToggleComplete: (taskId: string) => void;
+  onEditTask: (taskId: string) => void;
   editTaskId: string | null;
   setEditTaskId: (id: string | null) => void;
+  onUpdateTaskContainerAndPosition: (
+    taskId: bigint,
+    newContainerId: bigint,
+    positionIndex: bigint
+  ) => Promise<void>;
+  onReorderTask?: (taskId: bigint, positionIndex: bigint) => Promise<void>;
 }
 
-const HEADER_HEIGHT = 56;
-const TASK_LIST_MAX_HEIGHT = 200;
+interface DropState {
+  containerId: number | null;
+  insertIndex: number | null;
+}
 
-const EisenhowerMatrix = memo(function EisenhowerMatrix({
+const QUADRANT_IDS = [1, 2, 3, 4];
+
+const QUADRANT_LABELS: Record<number, { title: string; subtitle: string; color: string }> = {
+  1: { title: 'Must Do', subtitle: 'Urgent & Important', color: 'border-red-500/30 bg-red-500/5' },
+  2: { title: 'Should Do', subtitle: 'Important, Not Urgent', color: 'border-blue-500/30 bg-blue-500/5' },
+  3: { title: 'Delegate', subtitle: 'Urgent, Not Important', color: 'border-yellow-500/30 bg-yellow-500/5' },
+  4: { title: 'May Do', subtitle: 'Not Urgent or Important', color: 'border-green-500/30 bg-green-500/5' },
+};
+
+function calcNewOrder(tasks: LocalTask[], insertIndex: number): number {
+  const sorted = [...tasks].sort((a, b) => Number(a.order) - Number(b.order));
+  const n = sorted.length;
+  if (n === 0) return 1000;
+  if (insertIndex <= 0) {
+    const first = Number(sorted[0].order);
+    return first > 1 ? Math.floor(first / 2) : 1000;
+  }
+  if (insertIndex >= n) {
+    return Number(sorted[n - 1].order) + 1000;
+  }
+  const before = Number(sorted[insertIndex - 1].order);
+  const after = Number(sorted[insertIndex].order);
+  return Math.floor((before + after) / 2);
+}
+
+const EisenhowerMatrix: React.FC<EisenhowerMatrixProps> = ({
   tasks,
-  quadrantLists,
-  onDragStart,
-  onDrop,
-  onTouchDrop,
-  onReorder,
-  onEditTask,
-  onDeleteTask,
+  lists,
   onToggleComplete,
-  isExpanded,
-  onToggleExpand,
-  isPlanMode,
-  onSwitchToPlanMode,
+  onEditTask,
   editTaskId,
   setEditTaskId,
-}: EisenhowerMatrixProps) {
-  const [dragTargetTaskId, setDragTargetTaskId] = useState<string | null>(null);
+  onUpdateTaskContainerAndPosition,
+  onReorderTask,
+}) => {
+  const [dropState, setDropState] = useState<DropState>({ containerId: null, insertIndex: null });
+  const [draggingTaskId, setDraggingTaskId] = useState<number | null>(null);
+  const [optimisticTasks, setOptimisticTasks] = useState<LocalTask[] | null>(null);
+  const dragPayloadRef = useRef<{ taskId: number; listId: number; order: number } | null>(null);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
+  const displayTasks = optimisticTasks ?? tasks;
 
-  const handleDragEnter = useCallback((taskLocalId: string) => {
-    setDragTargetTaskId(taskLocalId);
-  }, []);
+  const getQuadrantTasks = useCallback(
+    (quadrantId: number) => {
+      return [...displayTasks.filter((t) => Number(t.listId) === quadrantId)].sort(
+        (a, b) => Number(a.order) - Number(b.order)
+      );
+    },
+    [displayTasks]
+  );
 
-  const handleDragLeave = useCallback(() => {
-    setDragTargetTaskId(null);
-  }, []);
-
-  const handleDropWrapper = useCallback((e: React.DragEvent, listId: bigint, index?: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragTargetTaskId(null);
-    onDrop(e, listId, index);
-  }, [onDrop]);
-
-  const getQuadrantTasks = (listId: bigint) => {
-    return tasks
-      .filter(task => task.listId === listId)
-      .sort((a, b) => Number(a.order) - Number(b.order));
-  };
-
-  const getQuadrantColor = (urgent: boolean, important: boolean) => {
-    if (urgent && important) {
-      return 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900';
-    } else if (!urgent && important) {
-      return 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900';
-    } else if (urgent && !important) {
-      return 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900';
-    } else {
-      return 'bg-gray-50 dark:bg-gray-950/20 border-gray-200 dark:border-gray-900';
-    }
-  };
-
-  const getQuadrantDisplayName = (name: string) => {
-    const nameMap: Record<string, string> = {
-      'Must Do': 'Must Do',
-      'Should Do': 'Should Do',
-      'Delegate / Could Do': 'Delegate / Could Do',
-      'May Do': 'May Do',
+  const handleDragStart = useCallback((e: React.DragEvent, task: LocalTask) => {
+    setDraggingTaskId(Number(task.id));
+    dragPayloadRef.current = {
+      taskId: Number(task.id),
+      listId: Number(task.listId),
+      order: Number(task.order),
     };
-    return nameMap[name] || name;
-  };
+    writeTaskDragPayload(e.dataTransfer, {
+      type: 'task',
+      taskId: Number(task.id),
+      listId: Number(task.listId),
+      order: Number(task.order),
+    });
+  }, []);
 
-  const orderedQuadrants = [1, 2, 3, 4].map(id => {
-    const quadrant = quadrantLists.find(q => Number(q.id) === id);
-    return quadrant;
-  }).filter(Boolean) as LocalList[];
+  const handleDragEnd = useCallback(() => {
+    setDraggingTaskId(null);
+    setDropState({ containerId: null, insertIndex: null });
+    dragPayloadRef.current = null;
+  }, []);
 
-  const handlePlanButtonClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onSwitchToPlanMode) {
-      onSwitchToPlanMode();
+  const handleContainerDragOver = useCallback(
+    (e: React.DragEvent, quadrantId: number, quadrantTasks: LocalTask[]) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+
+      const container = e.currentTarget as HTMLElement;
+      const containerRect = container.getBoundingClientRect();
+      const mouseY = e.clientY;
+
+      // Find insert index based on card positions
+      const cards = Array.from(container.querySelectorAll('[data-task-card]')) as HTMLElement[];
+      let insertIndex = quadrantTasks.length;
+
+      for (let i = 0; i < cards.length; i++) {
+        const cardRect = cards[i].getBoundingClientRect();
+        const midY = cardRect.top + cardRect.height / 2;
+        if (mouseY < midY) {
+          insertIndex = i;
+          break;
+        }
+      }
+
+      setDropState({ containerId: quadrantId, insertIndex });
+    },
+    []
+  );
+
+  const handleContainerDragLeave = useCallback((e: React.DragEvent) => {
+    const container = e.currentTarget as HTMLElement;
+    if (!container.contains(e.relatedTarget as Node)) {
+      setDropState({ containerId: null, insertIndex: null });
     }
-  };
+  }, []);
 
-  const showPlanButton = isExpanded && !isPlanMode;
+  const handleDrop = useCallback(
+    async (e: React.DragEvent, targetQuadrantId: number) => {
+      e.preventDefault();
+      e.stopPropagation();
 
-  // Check if quadrants are ready (all 4 exist)
-  const quadrantsReady = orderedQuadrants.length === 4;
+      const payload = readTaskDragPayload(e.dataTransfer);
+      if (!payload) {
+        setDropState({ containerId: null, insertIndex: null });
+        return;
+      }
+
+      const { taskId, listId: sourceListId } = payload;
+      const targetListId = targetQuadrantId;
+
+      // Get current insert index
+      const container = e.currentTarget as HTMLElement;
+      const quadrantTasks = getQuadrantTasks(targetQuadrantId);
+      const cards = Array.from(container.querySelectorAll('[data-task-card]')) as HTMLElement[];
+      let insertIndex = quadrantTasks.length;
+
+      for (let i = 0; i < cards.length; i++) {
+        const cardRect = cards[i].getBoundingClientRect();
+        const midY = cardRect.top + cardRect.height / 2;
+        if (e.clientY < midY) {
+          insertIndex = i;
+          break;
+        }
+      }
+
+      setDropState({ containerId: null, insertIndex: null });
+      setDraggingTaskId(null);
+
+      // Find the task being moved
+      const movingTask = displayTasks.find((t) => Number(t.id) === taskId);
+      if (!movingTask) return;
+
+      // Build optimistic state
+      const tasksWithoutMoved = displayTasks.filter((t) => Number(t.id) !== taskId);
+      const targetTasks = tasksWithoutMoved
+        .filter((t) => Number(t.listId) === targetListId)
+        .sort((a, b) => Number(a.order) - Number(b.order));
+
+      const newOrder = calcNewOrder(targetTasks, insertIndex);
+
+      const updatedTask: LocalTask = {
+        ...movingTask,
+        listId: BigInt(targetListId),
+        order: BigInt(newOrder),
+      };
+
+      const newOptimistic = [...tasksWithoutMoved, updatedTask];
+      setOptimisticTasks(newOptimistic);
+
+      // Determine actual position index in target container (excluding the moved task)
+      const actualPositionIndex = Math.min(insertIndex, targetTasks.length);
+
+      try {
+        await onUpdateTaskContainerAndPosition(
+          BigInt(taskId),
+          BigInt(targetListId),
+          BigInt(actualPositionIndex)
+        );
+        // On success, clear optimistic state (parent will refetch)
+        setOptimisticTasks(null);
+      } catch (err) {
+        // Rollback
+        setOptimisticTasks(null);
+        toast.error('Failed to move task. Please try again.');
+      }
+    },
+    [displayTasks, getQuadrantTasks, onUpdateTaskContainerAndPosition]
+  );
 
   return (
-    <div
-      className="w-full rounded-lg border bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden flex flex-col transition-all duration-300 ease-out"
-      style={{
-        maxHeight: isExpanded ? '60vh' : `${HEADER_HEIGHT}px`,
-        minHeight: `${HEADER_HEIGHT}px`,
-        willChange: 'max-height',
-      }}
-    >
-      {/* Fixed header — never scrolls */}
-      <div
-        className="flex-shrink-0 flex w-full items-center justify-between p-3 bg-gradient-to-r from-[#d4a5ff]/70 to-[#9e6cff]/70 dark:from-[#d4a5ff]/60 dark:to-[#9e6cff]/60 backdrop-blur-md rounded-t-lg border-b cursor-pointer z-10"
-        style={{ height: `${HEADER_HEIGHT}px` }}
-        onClick={onToggleExpand}
-      >
-        <div className="flex items-center gap-2">
-          <ChevronDown
-            className="h-5 w-5 text-gray-800 dark:text-gray-100 transition-transform duration-300 ease-out"
-            style={{
-              transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
-              willChange: 'transform',
-            }}
-          />
-          <h2 className="text-xl font-bold tracking-tight text-gray-800 dark:text-gray-100">Daily Priorities</h2>
-        </div>
-        {showPlanButton && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handlePlanButtonClick}
-            className="h-8 px-3 text-gray-800 dark:text-gray-100 hover:bg-white/20 dark:hover:bg-black/20 border-2 border-gray-800 dark:border-gray-100"
+    <div className="grid grid-cols-2 gap-3">
+      {QUADRANT_IDS.map((quadrantId) => {
+        const quadrantTasks = getQuadrantTasks(quadrantId);
+        const label = QUADRANT_LABELS[quadrantId];
+        const isDropTarget = dropState.containerId === quadrantId;
+
+        return (
+          <div
+            key={quadrantId}
+            className={`
+              relative rounded-xl border p-3 min-h-[120px] transition-all duration-150
+              ${label.color}
+              ${isDropTarget ? 'ring-2 ring-primary/40 border-primary/40' : ''}
+            `}
+            onDragOver={(e) => handleContainerDragOver(e, quadrantId, quadrantTasks)}
+            onDragLeave={handleContainerDragLeave}
+            onDrop={(e) => handleDrop(e, quadrantId)}
           >
-            <Calendar className="h-4 w-4 mr-1.5" />
-            Plan
-          </Button>
-        )}
-      </div>
-
-      {/* Content area — does NOT scroll itself; only task lists inside quadrants scroll */}
-      {isExpanded && (
-        <div className="flex-1 overflow-hidden flex flex-col min-h-0 p-2 gap-1">
-          {!quadrantsReady ? (
-            <div className="flex items-center justify-center flex-1" style={{ minHeight: '200px' }}>
-              <div className="text-center space-y-3">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto"></div>
-                <p className="text-sm text-muted-foreground">
-                  Initializing quadrant lists...
-                </p>
-              </div>
+            {/* Quadrant header */}
+            <div className="mb-2">
+              <p className="text-xs font-semibold text-foreground/80 leading-tight">{label.title}</p>
+              <p className="text-[10px] text-muted-foreground leading-tight">{label.subtitle}</p>
             </div>
-          ) : (
-            <>
-              {/* Column Headers */}
-              <div className="grid grid-cols-2 gap-2 md:gap-4 flex-shrink-0">
-                <div className="h-8 flex items-center justify-center">
-                  <span className="text-xs md:text-sm font-semibold text-muted-foreground">Important × Urgent</span>
+
+            {/* Task list with drop indicators */}
+            <div className="space-y-1" data-container-id={quadrantId}>
+              {quadrantTasks.map((task, index) => {
+                const showIndicatorAbove =
+                  isDropTarget &&
+                  dropState.insertIndex === index &&
+                  Number(task.id) !== draggingTaskId;
+
+                return (
+                  <div key={task.localId} data-task-card>
+                    {showIndicatorAbove && <div className="drop-indicator" />}
+                    <TaskCard
+                      task={task}
+                      onToggleComplete={onToggleComplete}
+                      onEditTask={onEditTask}
+                      editTaskId={editTaskId}
+                      setEditTaskId={setEditTaskId}
+                      isDragEnabled={true}
+                      onDragStart={handleDragStart}
+                      onDragEnd={handleDragEnd}
+                    />
+                  </div>
+                );
+              })}
+
+              {/* Drop indicator at end */}
+              {isDropTarget &&
+                dropState.insertIndex === quadrantTasks.length &&
+                quadrantTasks.length > 0 && (
+                  <div className="drop-indicator" />
+                )}
+
+              {/* Empty state with drop indicator */}
+              {quadrantTasks.length === 0 && (
+                <div
+                  className={`
+                    text-center py-4 text-xs text-muted-foreground/50 rounded-lg border border-dashed border-border/30
+                    transition-all duration-150
+                    ${isDropTarget ? 'border-primary/40 bg-primary/5 text-primary/50' : ''}
+                  `}
+                >
+                  {isDropTarget ? 'Drop here' : 'No tasks'}
                 </div>
-                <div className="h-8 flex items-center justify-center">
-                  <span className="text-xs md:text-sm font-semibold text-muted-foreground">Important × Not Urgent</span>
-                </div>
-              </div>
-
-              {/* 2×2 Quadrant Grid */}
-              <div className="grid grid-cols-2 grid-rows-2 gap-2 md:gap-4 flex-1 min-h-0">
-                {orderedQuadrants.map((quadrant) => {
-                  const quadrantTasks = getQuadrantTasks(quadrant.id);
-
-                  return (
-                    <div
-                      key={quadrant.localId}
-                      data-list-id={quadrant.id.toString()}
-                      className={`rounded-xl border-2 pt-2 pb-3 md:pt-3 md:pb-4 transition-all duration-200 hover:shadow-lg px-1.5 flex flex-col overflow-hidden ${getQuadrantColor(quadrant.urgent, quadrant.important)}`}
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleDropWrapper(e, quadrant.id)}
-                    >
-                      {/* Quadrant header */}
-                      <div className="flex items-center justify-between mb-1.5 flex-shrink-0 px-0.5">
-                        <h3 className="text-xs font-semibold text-muted-foreground truncate">
-                          {getQuadrantDisplayName(quadrant.name)}
-                        </h3>
-                        <span className="text-xs text-muted-foreground/70 ml-1 flex-shrink-0">
-                          {quadrantTasks.length}
-                        </span>
-                      </div>
-
-                      {/* Task list — scrolls internally when > 4 tasks */}
-                      <div
-                        className="flex-1 overflow-y-auto space-y-1.5 min-h-0"
-                        style={{ maxHeight: `${TASK_LIST_MAX_HEIGHT}px` }}
-                      >
-                        {quadrantTasks.length === 0 ? (
-                          <div className="flex items-center justify-center h-16 text-xs text-muted-foreground/60 border border-dashed rounded-lg">
-                            Drop here
-                          </div>
-                        ) : (
-                          quadrantTasks.map((task, taskIndex) => (
-                            <TaskCard
-                              key={task.localId}
-                              task={task}
-                              index={taskIndex}
-                              onDragStart={onDragStart}
-                              onDrop={(e) => handleDropWrapper(e, quadrant.id, taskIndex)}
-                              onTouchDrop={onTouchDrop}
-                              onEdit={() => onEditTask(task)}
-                              onDelete={() => onDeleteTask(task.id)}
-                              onToggleComplete={() => onToggleComplete(task.id, { completed: !task.completed })}
-                              isDragTarget={dragTargetTaskId === task.localId}
-                              onDragEnter={() => handleDragEnter(task.localId)}
-                              onDragLeave={handleDragLeave}
-                              editTaskId={editTaskId}
-                              setEditTaskId={setEditTaskId}
-                            />
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-      )}
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
-});
+};
 
 export default EisenhowerMatrix;

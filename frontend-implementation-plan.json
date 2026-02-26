@@ -1,26 +1,108 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix Skipped Day Reset to uncheck all boxes and reset streak to 0",
+  "title": "Cross-container task drag & drop with drop indicator line",
   "requirements": [
     {
-      "id": "REQ-2",
-      "summary": "Fix the Skipped Day Reset frontend handler in the Start New Day dialog so that after the reset mutation completes, the UI reflects all checkboxes as unchecked and the streak count displayed as 0 by invalidating or updating the relevant React Query caches for routines and streak data.",
+      "id": "REQ-1",
+      "summary": "Add visual drop indicator line to task drag-and-drop matching the routine indicator style",
       "acceptanceCriteria": [
-        "After clicking Skipped Day Reset, all routine checkboxes immediately appear unchecked in the UI.",
-        "After clicking Skipped Day Reset, the streak count displayed in the UI shows 0.",
-        "The UI state is consistent with a fresh re-fetch from the backend."
+        "A thin horizontal line appears between task cards at the hover insert position during drag",
+        "The line updates in real time as the drag moves through a container",
+        "The line disappears when the drag ends or is cancelled",
+        "The visual style matches the routine drop indicator line"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useQueries.ts",
+          "path": "frontend/src/components/TaskCard.tsx",
           "operation": "modify",
-          "description": "Add or modify the useResetSkippedDay mutation hook to properly invalidate the morning routine queries after the backend resetSkippedDay call completes. Ensure the mutation's onSuccess callback invalidates the query key ['morningRoutines'] and any related routine data cache keys to force a fresh fetch that will show all checkboxes unchecked and streak counts reset to 0."
+          "description": "Update the TaskCard component to support drop indicator line rendering during drag operations. Add state to track whether a drop indicator should appear above the card. Implement dragover handlers that calculate the insert position (above or below the card) based on cursor Y position relative to the card midpoint. Render a .drop-indicator element (styled like the routine indicator) conditionally based on the drop position state. Ensure the indicator disappears on dragleave and drop events. The indicator should only appear when dragging a task (not a routine) over another task card."
+        },
+        {
+          "path": "frontend/src/components/EisenhowerMatrix.tsx",
+          "operation": "modify",
+          "description": "Enable the Eisenhower Matrix quadrants to accept dropped tasks from other quadrants or custom lists. Add dragover handlers to each quadrant container that prevent default behavior and set dropEffect to 'move'. Implement drop handlers that read the dragged task data using readTaskDragPayload, calculate the new order value using 1000-based sparse indexing between neighbors, optimistically update the local task state to reflect the new quadrant (listId), and call useUpdateTaskContainerAndPosition with the new listId and position. On backend failure, roll back the task to its original quadrant and position. Ensure routine sections are excluded from all drag scopes by checking drag payload type. Wire drop indicator logic into the quadrant task lists so the indicator line appears between tasks during drag within or into a quadrant."
+        },
+        {
+          "path": "frontend/src/components/CustomLists.tsx",
+          "operation": "modify",
+          "description": "Enable custom lists to accept dropped tasks from quadrants or other custom lists. Add dragover handlers to each list container that prevent default behavior and set dropEffect to 'move'. Implement drop handlers that read the dragged task data, calculate the new order value using 1000-based sparse indexing, optimistically update the local task to reflect the new listId, and call useUpdateTaskContainerAndPosition. On backend failure, roll back the task to its original list and position. Ensure routine sections cannot be drag sources or targets by validating drag payload types. Wire drop indicator logic into the list task rendering so the indicator line appears between tasks during drag within or into a list."
+        },
+        {
+          "path": "frontend/src/index.css",
+          "operation": "modify",
+          "description": "Verify that the existing .drop-indicator class (used in MorningRoutine) is globally available and styled as a thin horizontal bar. If it is not already global or is scoped only to routine styles, extract it to a shared utility class with appropriate height, background color, border radius, and margin to match the routine drop indicator appearance. Ensure it works in both light and dark themes using CSS custom properties."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Implement cross-container task drag-and-drop between Eisenhower Matrix quadrants and custom lists with optimistic updates and rollback",
+      "acceptanceCriteria": [
+        "Tasks can be dragged from any quadrant and dropped into any other quadrant at the chosen insert position",
+        "Tasks can be dragged from any quadrant into any custom list and vice versa",
+        "Tasks can be dragged between different custom lists",
+        "On drop into a different container, the task's container field and order value are updated",
+        "Order is recalculated using 1000-based sparse indexing between the new neighbors",
+        "The task appears instantly at the drop position (optimistic update) before backend confirmation",
+        "If the backend call fails, the task returns to its original container and original position",
+        "No status, title, description, tags, or other metadata fields change on drop",
+        "Routine sections cannot be drag targets or drag sources for tasks",
+        "Same-container drops reorder in place using the same indicator line and optimistic logic"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/EisenhowerMatrix.tsx",
+          "operation": "modify",
+          "description": "Implement cross-container drop logic for quadrants as described in REQ-1. When a task is dropped into a different quadrant, calculate the target order value by finding the tasks before and after the drop position in the target quadrant and using 1000-based sparse indexing (if dropped at the top, use targetFirstOrder - 1000; if at the bottom, use targetLastOrder + 1000; otherwise, use the midpoint between neighbors). Optimistically update the local task array by removing the task from its original quadrant and inserting it at the target position in the new quadrant with the new listId and order. Call useUpdateTaskContainerAndPosition with taskId, newListId, and positionIndex. If the mutation fails, revert the optimistic update by restoring the task to its original quadrant and original order. Ensure the drop indicator line disappears immediately after the drop completes. Do not modify task completion status, title, description, or any other fields during the drop operation."
+        },
+        {
+          "path": "frontend/src/components/CustomLists.tsx",
+          "operation": "modify",
+          "description": "Implement cross-container drop logic for custom lists as described in REQ-1. When a task is dropped into a different list (or from a quadrant), calculate the target order value using the same 1000-based sparse indexing logic as quadrants. Optimistically update the local task state by removing the task from its source container and inserting it at the target position in the destination list with the new listId and order. Call useUpdateTaskContainerAndPosition with the new listId and positionIndex. On backend failure, roll back the optimistic update to restore the task to its original list and order. Ensure the drop indicator disappears after drop. Do not change task metadata fields on drop."
+        },
+        {
+          "path": "frontend/src/components/TaskCard.tsx",
+          "operation": "modify",
+          "description": "Enhance TaskCard drag handlers to support cross-container drop operations. Ensure the dragstart handler writes the full task data (including listId and order) to the drag payload using writeTaskDragPayload. During dragover, compute whether the drop indicator should appear above or below the card based on cursor Y position relative to the card's midpoint. Store this state and render the .drop-indicator element at the appropriate position (before or after the card content). On drop, clear the indicator state. On dragleave, clear the indicator if the cursor fully exits the card bounds. Ensure routine items are never treated as valid drop targets or drag sources for tasks by checking payload type."
+        },
+        {
+          "path": "frontend/src/utils/dragPayload.ts",
+          "operation": "modify",
+          "description": "Extend dragPayload utilities if necessary to include a payload type discriminator (e.g., 'task' vs 'routine') so that drag-and-drop handlers can reject routine payloads when tasks are expected and vice versa. If the current implementation already distinguishes task and routine payloads, verify it works correctly. Ensure writeTaskDragPayload includes all fields needed for cross-container drops (taskId, listId, order) and that readTaskDragPayload safely parses and validates the payload, returning null if invalid or if the payload type is not 'task'."
+        },
+        {
+          "path": "frontend/src/pages/TaskManager.tsx",
+          "operation": "modify",
+          "description": "Review TaskManager for any global drag-and-drop coordination logic. Ensure that when tasks are moved between containers via drag-and-drop, the local task state is updated optimistically and the backend mutation is called. If the TaskManager maintains a master task array or map, ensure it is updated in sync with the optimistic changes in EisenhowerMatrix and CustomLists. Verify that the rollback logic on backend failure is wired correctly so the UI reverts to the pre-drop state. Ensure routine sections remain isolated from task drag-and-drop operations."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Ensure all existing routine features remain fully intact after implementing task drag-and-drop changes",
+      "acceptanceCriteria": [
+        "All routine drag-and-drop behavior (within-section only, indicator line, optimistic snap, rollback) is unchanged",
+        "Streak badge, streak preview, streak weight, and streak reset logic are unchanged",
+        "Start New Day button behavior for next-day and skipped-day resets is unchanged",
+        "Onboarding seed routines still auto-populate for new users",
+        "Desktop-only test date dropdown still works and only affects routine logic"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/MorningRoutine.tsx",
+          "operation": "modify",
+          "description": "After implementing task drag-and-drop in other components, verify that all existing MorningRoutine drag-and-drop logic remains intact. Ensure routine items can only be reordered within their own section (Morning or Evening) and cannot be dragged into task containers or vice versa. Confirm that the existing drop indicator line logic in MorningRoutine continues to work correctly. Test that the streak badge, streak preview on check, and weight ranges are unaffected. Ensure the Start New Day reset button (with next-day and skipped-day logic) continues to function as before. Verify that the compact 4-row layout, scroll behavior, 1-tap check/uncheck, 1-tap delete, and press-and-hold reorder mode are all preserved. If any routine-specific drag logic was modified during task drag-and-drop implementation, revert those changes and isolate task drag logic to task components only."
         },
         {
           "path": "frontend/src/components/Header.tsx",
           "operation": "modify",
-          "description": "Update the Skipped Day Reset button handler in the Start New Day dialog to call the useResetSkippedDay mutation and wait for completion. After the mutation succeeds, ensure the UI updates immediately by relying on the query invalidation from the mutation hook. Verify that the dialog closes only after the mutation completes and cache invalidation triggers a refetch showing updated routine states."
+          "description": "Verify that the Header component's Start New Day dialog and test date picker functionality remain unchanged after task drag-and-drop implementation. Ensure the reset logic (next-day and skipped-day) still calls the correct backend methods and that the test date picker dropdown (desktop-only) continues to work for routine debugging without affecting task drag-and-drop."
+        },
+        {
+          "path": "frontend/src/pages/TaskManager.tsx",
+          "operation": "modify",
+          "description": "Verify that routine onboarding seed logic and all routine-related state management remain unchanged after implementing task drag-and-drop. Ensure that new users still receive seed routines on first login. Confirm that routine CRUD operations (add, edit, delete, reorder) are unaffected by the new task drag-and-drop logic. Test that routine sections are visually and functionally isolated from task containers during drag operations."
         }
       ]
     }

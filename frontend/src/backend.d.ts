@@ -230,6 +230,7 @@ export interface backendInterface {
     updatePreset(id: bigint, updatedPreset: SpendPreset): Promise<void>;
     updateRoutineItemPosition(routineId: RoutineId, positionIndex: bigint): Promise<void>;
     updateTask(id: TaskId, updatedTask: TaskUpdateInput): Promise<void>;
+    updateTaskContainerAndPosition(taskId: TaskId, newContainerId: ListId, positionIndex: bigint): Promise<void>;
     updateTaskPosition(taskId: TaskId, positionIndex: bigint): Promise<void>;
     updateTierLimits(tier: UserTier, newLimits: TierLimits): Promise<void>;
 }

@@ -1,210 +1,286 @@
-import { memo, useState, useCallback } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import React, { useState, useRef, useCallback } from 'react';
+import { LocalTask, LocalList } from '@/lib/types';
 import TaskCard from './TaskCard';
-import type { LocalTask, LocalList } from '@/lib/types';
+import { readTaskDragPayload, writeTaskDragPayload } from '@/utils/dragPayload';
+import { toast } from 'sonner';
+import { Trash2 } from 'lucide-react';
 
 interface CustomListsProps {
   tasks: LocalTask[];
   lists: LocalList[];
-  onDragStart: (e: React.DragEvent, task: LocalTask) => void;
-  onDrop: (e: React.DragEvent, listId: bigint, index?: number) => void;
-  onTouchDrop: (task: LocalTask, targetListId: bigint, targetIndex?: number) => void;
-  onReorder: (taskId: bigint, listId: bigint, newIndex: number) => void;
-  onEditTask: (task: LocalTask) => void;
-  onDeleteTask: (taskId: bigint) => void;
-  onDeleteList: (listId: bigint) => void;
-  onToggleComplete: (taskId: bigint, updates: Partial<LocalTask>) => void;
-  onCreateTask: () => void;
-  onCreateList: () => void;
-  onQuickAddTask: (listId: bigint) => void;
-  isHidden?: boolean;
-  isPlanMode?: boolean;
-  // Shared edit mode state
+  onToggleComplete: (taskId: string) => void;
+  onEditTask: (taskId: string) => void;
   editTaskId: string | null;
   setEditTaskId: (id: string | null) => void;
+  onDeleteList?: (listId: string) => void;
+  onUpdateTaskContainerAndPosition: (
+    taskId: bigint,
+    newContainerId: bigint,
+    positionIndex: bigint
+  ) => Promise<void>;
+  onReorderTask?: (taskId: bigint, positionIndex: bigint) => Promise<void>;
 }
 
-const CustomLists = memo(function CustomLists({
+interface DropState {
+  containerId: number | null;
+  insertIndex: number | null;
+}
+
+function calcNewOrder(tasks: LocalTask[], insertIndex: number): number {
+  const sorted = [...tasks].sort((a, b) => Number(a.order) - Number(b.order));
+  const n = sorted.length;
+  if (n === 0) return 1000;
+  if (insertIndex <= 0) {
+    const first = Number(sorted[0].order);
+    return first > 1 ? Math.floor(first / 2) : 1000;
+  }
+  if (insertIndex >= n) {
+    return Number(sorted[n - 1].order) + 1000;
+  }
+  const before = Number(sorted[insertIndex - 1].order);
+  const after = Number(sorted[insertIndex].order);
+  return Math.floor((before + after) / 2);
+}
+
+const CustomLists: React.FC<CustomListsProps> = ({
   tasks,
   lists,
-  onDragStart,
-  onDrop,
-  onTouchDrop,
-  onReorder,
-  onEditTask,
-  onDeleteTask,
-  onDeleteList,
   onToggleComplete,
-  onCreateTask,
-  onCreateList,
-  onQuickAddTask,
-  isHidden = false,
-  isPlanMode = false,
+  onEditTask,
   editTaskId,
   setEditTaskId,
-}: CustomListsProps) {
-  const [dragTargetTaskId, setDragTargetTaskId] = useState<string | null>(null);
+  onDeleteList,
+  onUpdateTaskContainerAndPosition,
+  onReorderTask,
+}) => {
+  const [dropState, setDropState] = useState<DropState>({ containerId: null, insertIndex: null });
+  const [draggingTaskId, setDraggingTaskId] = useState<number | null>(null);
+  const [optimisticTasks, setOptimisticTasks] = useState<LocalTask[] | null>(null);
+  const dragPayloadRef = useRef<{ taskId: number; listId: number; order: number } | null>(null);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
+  const displayTasks = optimisticTasks ?? tasks;
 
-  const handleDragEnter = useCallback((taskLocalId: string) => {
-    setDragTargetTaskId(taskLocalId);
+  const customLists = lists.filter((l) => !l.quadrant);
+
+  const getListTasks = useCallback(
+    (listId: number) => {
+      return [...displayTasks.filter((t) => Number(t.listId) === listId)].sort(
+        (a, b) => Number(a.order) - Number(b.order)
+      );
+    },
+    [displayTasks]
+  );
+
+  const handleDragStart = useCallback((e: React.DragEvent, task: LocalTask) => {
+    setDraggingTaskId(Number(task.id));
+    dragPayloadRef.current = {
+      taskId: Number(task.id),
+      listId: Number(task.listId),
+      order: Number(task.order),
+    };
+    writeTaskDragPayload(e.dataTransfer, {
+      type: 'task',
+      taskId: Number(task.id),
+      listId: Number(task.listId),
+      order: Number(task.order),
+    });
   }, []);
 
-  const handleDragLeave = useCallback(() => {
-    setDragTargetTaskId(null);
+  const handleDragEnd = useCallback(() => {
+    setDraggingTaskId(null);
+    setDropState({ containerId: null, insertIndex: null });
+    dragPayloadRef.current = null;
   }, []);
 
-  const handleDropWrapper = useCallback((e: React.DragEvent, listId: bigint, index?: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragTargetTaskId(null);
-    onDrop(e, listId, index);
-  }, [onDrop]);
+  const handleContainerDragOver = useCallback(
+    (e: React.DragEvent, listId: number, listTasks: LocalTask[]) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
 
-  const getListTasks = (listId: bigint) => {
-    return tasks
-      .filter(task => task.listId === listId)
-      .sort((a, b) => Number(a.order) - Number(b.order));
-  };
+      const container = e.currentTarget as HTMLElement;
+      const mouseY = e.clientY;
 
-  const handleDeleteListClick = (listId: bigint) => {
-    const listTasks = getListTasks(listId);
-    if (listTasks.length > 0) {
-      if (window.confirm('This list contains tasks. Are you sure you want to delete it?')) {
-        onDeleteList(listId);
+      const cards = Array.from(container.querySelectorAll('[data-task-card]')) as HTMLElement[];
+      let insertIndex = listTasks.length;
+
+      for (let i = 0; i < cards.length; i++) {
+        const cardRect = cards[i].getBoundingClientRect();
+        const midY = cardRect.top + cardRect.height / 2;
+        if (mouseY < midY) {
+          insertIndex = i;
+          break;
+        }
       }
-    } else {
-      onDeleteList(listId);
-    }
-  };
 
-  if (isHidden) {
-    return null;
-  }
+      setDropState({ containerId: listId, insertIndex });
+    },
+    []
+  );
+
+  const handleContainerDragLeave = useCallback((e: React.DragEvent) => {
+    const container = e.currentTarget as HTMLElement;
+    if (!container.contains(e.relatedTarget as Node)) {
+      setDropState({ containerId: null, insertIndex: null });
+    }
+  }, []);
+
+  const handleDrop = useCallback(
+    async (e: React.DragEvent, targetListId: number) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const payload = readTaskDragPayload(e.dataTransfer);
+      if (!payload) {
+        setDropState({ containerId: null, insertIndex: null });
+        return;
+      }
+
+      const { taskId } = payload;
+
+      // Get current insert index
+      const container = e.currentTarget as HTMLElement;
+      const listTasks = getListTasks(targetListId);
+      const cards = Array.from(container.querySelectorAll('[data-task-card]')) as HTMLElement[];
+      let insertIndex = listTasks.length;
+
+      for (let i = 0; i < cards.length; i++) {
+        const cardRect = cards[i].getBoundingClientRect();
+        const midY = cardRect.top + cardRect.height / 2;
+        if (e.clientY < midY) {
+          insertIndex = i;
+          break;
+        }
+      }
+
+      setDropState({ containerId: null, insertIndex: null });
+      setDraggingTaskId(null);
+
+      // Find the task being moved
+      const movingTask = displayTasks.find((t) => Number(t.id) === taskId);
+      if (!movingTask) return;
+
+      // Build optimistic state
+      const tasksWithoutMoved = displayTasks.filter((t) => Number(t.id) !== taskId);
+      const targetTasks = tasksWithoutMoved
+        .filter((t) => Number(t.listId) === targetListId)
+        .sort((a, b) => Number(a.order) - Number(b.order));
+
+      const newOrder = calcNewOrder(targetTasks, insertIndex);
+
+      const updatedTask: LocalTask = {
+        ...movingTask,
+        listId: BigInt(targetListId),
+        order: BigInt(newOrder),
+      };
+
+      const newOptimistic = [...tasksWithoutMoved, updatedTask];
+      setOptimisticTasks(newOptimistic);
+
+      const actualPositionIndex = Math.min(insertIndex, targetTasks.length);
+
+      try {
+        await onUpdateTaskContainerAndPosition(
+          BigInt(taskId),
+          BigInt(targetListId),
+          BigInt(actualPositionIndex)
+        );
+        setOptimisticTasks(null);
+      } catch (err) {
+        setOptimisticTasks(null);
+        toast.error('Failed to move task. Please try again.');
+      }
+    },
+    [displayTasks, getListTasks, onUpdateTaskContainerAndPosition]
+  );
+
+  if (customLists.length === 0) return null;
 
   return (
-    <div className="w-full h-[calc(50vh-80px)] rounded-lg border bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden">
-      <div className="sticky top-0 z-10 flex w-full items-center justify-between p-3 bg-gradient-to-r from-[#e0e0e0]/70 to-[#fafafa]/70 dark:from-[#e0e0e0]/60 dark:to-[#fafafa]/60 backdrop-blur-md rounded-t-lg border-b">
-        <h2 className="text-xl font-bold tracking-tight text-gray-800 dark:text-gray-100">My Lists</h2>
-        {isPlanMode && (
-          <span className="text-xs text-muted-foreground/70 italic">
-            (Press & hold to drag tasks)
-          </span>
-        )}
-      </div>
+    <div className="flex gap-3 overflow-x-auto pb-2">
+      {customLists.map((list) => {
+        const listId = Number(list.id);
+        const listTasks = getListTasks(listId);
+        const isDropTarget = dropState.containerId === listId;
 
-      <div className="p-4 space-y-4 h-[calc(100%-56px)] overflow-y-auto">
-        {!isPlanMode && (
-          <div className="flex gap-2">
-            <Button
-              onClick={onCreateTask}
-              className="flex-1 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white font-medium shadow-md hover:shadow-lg transition-all"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Task
-            </Button>
-            <Button
-              onClick={onCreateList}
-              variant="outline"
-              className="flex-1"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New List
-            </Button>
-          </div>
-        )}
+        return (
+          <div
+            key={list.localId}
+            className={`
+              flex-shrink-0 w-64 rounded-xl border border-border/50 bg-card/60 p-3
+              transition-all duration-150
+              ${isDropTarget ? 'ring-2 ring-primary/40 border-primary/40' : ''}
+            `}
+          >
+            {/* List header */}
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-foreground/80 truncate">{list.name}</h3>
+              {onDeleteList && (
+                <button
+                  onClick={() => onDeleteList(list.localId)}
+                  className="p-1 rounded hover:bg-destructive/10 text-muted-foreground/40 hover:text-destructive transition-colors flex-shrink-0"
+                  title="Delete list"
+                >
+                  <Trash2 size={12} />
+                </button>
+              )}
+            </div>
 
-        {lists.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>No custom lists yet. Create your first list!</p>
-          </div>
-        ) : (
-          <ScrollArea className="w-full">
-            <div className="flex gap-4 pb-4">
-              {lists.map((list) => {
-                const listTasks = getListTasks(list.id);
+            {/* Task list with drop zone */}
+            <div
+              className="space-y-1 min-h-[60px]"
+              data-container-id={listId}
+              onDragOver={(e) => handleContainerDragOver(e, listId, listTasks)}
+              onDragLeave={handleContainerDragLeave}
+              onDrop={(e) => handleDrop(e, listId)}
+            >
+              {listTasks.map((task, index) => {
+                const showIndicatorAbove =
+                  isDropTarget &&
+                  dropState.insertIndex === index &&
+                  Number(task.id) !== draggingTaskId;
 
                 return (
-                  <div
-                    key={list.localId}
-                    data-list-id={list.id.toString()}
-                    className="flex-shrink-0 w-80 h-[calc(50vh-180px)] flex flex-col rounded-xl border-2 bg-background/50 p-4 transition-all duration-200 hover:shadow-lg"
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDropWrapper(e, list.id)}
-                  >
-                    <div className="flex items-center justify-between mb-4 flex-shrink-0">
-                      <h3 className="text-lg font-semibold truncate flex-1">{list.name}</h3>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onQuickAddTask(list.id)}
-                          className="h-8 w-8 hover:bg-primary/10"
-                          title="Add task to this list"
-                        >
-                          <Plus className="h-4 w-4 text-primary" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteListClick(list.id)}
-                          className="h-8 w-8 hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto space-y-2">
-                      {listTasks.length === 0 ? (
-                        <div className="flex items-center justify-center h-32 text-sm text-muted-foreground border-2 border-dashed rounded-lg">
-                          Drop tasks here
-                        </div>
-                      ) : (
-                        listTasks.map((task, index) => (
-                          <TaskCard
-                            key={task.localId}
-                            task={task}
-                            index={index}
-                            onDragStart={onDragStart}
-                            onDrop={(e) => handleDropWrapper(e, list.id, index)}
-                            onTouchDrop={onTouchDrop}
-                            onEdit={() => onEditTask(task)}
-                            onDelete={() => onDeleteTask(task.id)}
-                            onToggleComplete={() => onToggleComplete(task.id, { completed: !task.completed })}
-                            isDragTarget={dragTargetTaskId === task.localId}
-                            onDragEnter={() => handleDragEnter(task.localId)}
-                            onDragLeave={handleDragLeave}
-                            editTaskId={editTaskId}
-                            setEditTaskId={setEditTaskId}
-                          />
-                        ))
-                      )}
-                    </div>
+                  <div key={task.localId} data-task-card>
+                    {showIndicatorAbove && <div className="drop-indicator" />}
+                    <TaskCard
+                      task={task}
+                      onToggleComplete={onToggleComplete}
+                      onEditTask={onEditTask}
+                      editTaskId={editTaskId}
+                      setEditTaskId={setEditTaskId}
+                      isDragEnabled={true}
+                      onDragStart={handleDragStart}
+                      onDragEnd={handleDragEnd}
+                    />
                   </div>
                 );
               })}
+
+              {/* Drop indicator at end */}
+              {isDropTarget &&
+                dropState.insertIndex === listTasks.length &&
+                listTasks.length > 0 && (
+                  <div className="drop-indicator" />
+                )}
+
+              {/* Empty state */}
+              {listTasks.length === 0 && (
+                <div
+                  className={`
+                    text-center py-4 text-xs text-muted-foreground/50 rounded-lg border border-dashed border-border/30
+                    transition-all duration-150
+                    ${isDropTarget ? 'border-primary/40 bg-primary/5 text-primary/50' : ''}
+                  `}
+                >
+                  {isDropTarget ? 'Drop here' : 'No tasks'}
+                </div>
+              )}
             </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        )}
-      </div>
+          </div>
+        );
+      })}
     </div>
   );
-}, (prevProps, nextProps) => {
-  return (
-    prevProps.tasks === nextProps.tasks &&
-    prevProps.lists === nextProps.lists &&
-    prevProps.isHidden === nextProps.isHidden &&
-    prevProps.isPlanMode === nextProps.isPlanMode &&
-    prevProps.editTaskId === nextProps.editTaskId
-  );
-});
+};
 
 export default CustomLists;

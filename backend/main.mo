@@ -11,8 +11,6 @@ import Principal "mo:core/Principal";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
-// Always enable migration, required for data changes in actor
-
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -1505,6 +1503,55 @@ actor {
     {
       routines = { total = totalRoutineSize; userBreakdowns = userRoutineBreakdowns };
       tasks = { total = totalTaskSize; userBreakdowns = userTaskBreakdowns };
+    };
+  };
+
+  public shared ({ caller }) func updateTaskContainerAndPosition(taskId : TaskId, newContainerId : ListId, positionIndex : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can perform this action");
+    };
+
+    switch (users.get(caller)) {
+      case (null) { Runtime.trap("User not found") };
+      case (?user) {
+        switch (user.tasks.get(taskId)) {
+          case (null) { Runtime.trap("Task not found") };
+          case (?task) {
+            if (not user.lists.containsKey(newContainerId)) {
+              Runtime.trap("Target container does not exist");
+            };
+
+            let filteredTasks = user.tasks.values().toArray().filter(func(t) { t.listId == newContainerId });
+            let numTasks = filteredTasks.size();
+
+            let newOrder = if (numTasks == 0) {
+              START_OFFSET;
+            } else if (positionIndex >= numTasks) {
+              let lastTask = filteredTasks[numTasks - 1];
+              lastTask.order + START_OFFSET;
+            } else if (positionIndex == 0) {
+              let firstTask = filteredTasks[0];
+              if (firstTask.order > 1) {
+                firstTask.order / 2;
+              } else {
+                START_OFFSET;
+              };
+            } else {
+              let beforeTask = filteredTasks[positionIndex - 1];
+              let afterTask = filteredTasks[positionIndex];
+              (beforeTask.order + afterTask.order) / 2;
+            };
+
+            let updatedTask = {
+              task with
+              listId = newContainerId;
+              order = newOrder;
+            };
+
+            user.tasks.add(taskId, updatedTask);
+          };
+        };
+      };
     };
   };
 };

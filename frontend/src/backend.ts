@@ -313,6 +313,7 @@ export interface backendInterface {
     updatePreset(id: bigint, updatedPreset: SpendPreset): Promise<void>;
     updateRoutineItemPosition(routineId: RoutineId, positionIndex: bigint): Promise<void>;
     updateTask(id: TaskId, updatedTask: TaskUpdateInput): Promise<void>;
+    updateTaskContainerAndPosition(taskId: TaskId, newContainerId: ListId, positionIndex: bigint): Promise<void>;
     updateTaskPosition(taskId: TaskId, positionIndex: bigint): Promise<void>;
     updateTierLimits(tier: UserTier, newLimits: TierLimits): Promise<void>;
 }
@@ -1230,6 +1231,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.updateTask(arg0, arg1);
+            return result;
+        }
+    }
+    async updateTaskContainerAndPosition(arg0: TaskId, arg1: ListId, arg2: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateTaskContainerAndPosition(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateTaskContainerAndPosition(arg0, arg1, arg2);
             return result;
         }
     }

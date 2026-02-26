@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
+import { useQueryClient } from '@tanstack/react-query';
 import {
-  useGetCallerUserProfile,
   useTaskQueries,
   useMorningRoutineQueries,
   useAppMode,
@@ -9,631 +9,688 @@ import {
   useMonetarySettings,
   useSpendRecords,
   useSpendPresets,
-  useSaveCallerUserProfile,
-  usePayrollHistory,
+  useGetCallerUserProfile,
 } from '../hooks/useQueries';
-import { toLocalTask, toLocalList, type LocalTask, type LocalList } from '../lib/types';
-import { writeDragPayload, readDragPayload } from '../utils/dragPayload';
-import { parseTierError } from '../utils/tierErrors';
-import { usePlanModeTip } from '../hooks/usePlanModeTip';
-import { useTestDate } from '../hooks/useTestDate';
+import { useActor } from '../hooks/useActor';
+import { LocalTask, LocalList, toLocalTask, toLocalList } from '@/lib/types';
+import {
+  RoutineSection,
+  UserProfile,
+  SpendInput,
+  SpendPreset,
+  MonetarySettings,
+  TaskCreateInput,
+} from '../backend';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import EisenhowerMatrix from '../components/EisenhowerMatrix';
 import CustomLists from '../components/CustomLists';
 import MorningRoutine from '../components/MorningRoutine';
-import UserProfileSetup from '../components/UserProfileSetup';
 import BottomNavigation from '../components/BottomNavigation';
-import SettingsDialog from '../components/SettingsDialog';
-import UserInfoDialog from '../components/UserInfoDialog';
-import TodayEarnsDialog from '../components/TodayEarnsDialog';
-import SpendPlanDialog from '../components/SpendPlanDialog';
-import InsightsDialog from '../components/InsightsDialog';
 import UniversalAddTaskDialog from '../components/UniversalAddTaskDialog';
 import CreateListDialog from '../components/CreateListDialog';
 import EditTaskDialog from '../components/EditTaskDialog';
-import PlanModeTipDialog from '../components/PlanModeTipDialog';
+import SettingsDialog from '../components/SettingsDialog';
+import TodayEarnsDialog from '../components/TodayEarnsDialog';
+import SpendPlanDialog from '../components/SpendPlanDialog';
+import InsightsDialog from '../components/InsightsDialog';
+import UserInfoDialog from '../components/UserInfoDialog';
+import UserProfileSetup from '../components/UserProfileSetup';
 import AuthBootstrapLoading from '../components/AuthBootstrapLoading';
 import UnauthenticatedScreen from '../components/UnauthenticatedScreen';
-import { RoutineSection, type TaskCreateInput, type TaskUpdateInput } from '@/backend';
+import PlanModeTipDialog from '../components/PlanModeTipDialog';
+import { usePlanModeTip } from '../hooks/usePlanModeTip';
 import { toast } from 'sonner';
+import { normalizeError } from '../utils/tierErrors';
 
 interface TaskManagerProps {
   onOpenAdminDashboard: () => void;
 }
 
-export default function TaskManager({ onOpenAdminDashboard }: TaskManagerProps) {
-  const { identity, login, loginStatus, isInitializing } = useInternetIdentity();
+const MORNING_SEEDS = [
+  { text: '🌅 Wake up & drink water', section: RoutineSection.top },
+  { text: '🧘 5-min stretch or breathe', section: RoutineSection.top },
+  { text: '📓 Write 3 intentions', section: RoutineSection.top },
+  { text: '🚫 No phone first 30 min', section: RoutineSection.top },
+];
+
+const EVENING_SEEDS = [
+  { text: "📋 Review today's tasks", section: RoutineSection.bottom },
+  { text: "📝 Plan tomorrow's top 3", section: RoutineSection.bottom },
+  { text: '📵 Screen-free 1hr before bed', section: RoutineSection.bottom },
+  { text: '🙏 Note 3 things grateful for', section: RoutineSection.bottom },
+  { text: '😴 Sleep by target time', section: RoutineSection.bottom },
+];
+
+const TaskManager: React.FC<TaskManagerProps> = ({ onOpenAdminDashboard }) => {
+  const { identity, isInitializing, login, loginStatus } = useInternetIdentity();
+  const queryClient = useQueryClient();
+  const { actor } = useActor();
+
   const isAuthenticated = !!identity;
-  const isLoggingIn = loginStatus === 'logging-in';
 
-  const principalString = identity?.getPrincipal().toString() || null;
-
-  const { testDate, setTestDate } = useTestDate();
-
-  const { data: userProfile, isLoading: profileLoading, isFetched } = useGetCallerUserProfile();
-  const saveProfile = useSaveCallerUserProfile();
+  // Profile
   const {
-    tasks,
-    lists,
-    isLoading: dataLoading,
-    ensureQuadrants,
+    data: userProfile,
+    isLoading: profileLoading,
+    isFetched: profileFetched,
+  } = useGetCallerUserProfile();
+
+  const showProfileSetup =
+    isAuthenticated && !profileLoading && profileFetched && userProfile === null;
+
+  // App mode
+  const { data: appMode } = useAppMode();
+  const isPlanMode = appMode === 'plan';
+
+  // Plan mode tip — use markAsShown (the actual returned key)
+  const planModeTip = usePlanModeTip(identity?.getPrincipal().toString());
+  const showPlanTip = planModeTip.shouldShow;
+  const dismissPlanTip = planModeTip.markAsShown;
+
+  // Task queries
+  const {
+    tasks: rawTasks,
+    lists: rawLists,
+    isLoading: tasksLoading,
     createTask,
     updateTask,
-    completeTask,
     deleteTask,
-    moveTask,
-    updateTaskPosition,
+    reorderTask,
+    updateTaskContainerAndPosition,
     createList,
     deleteList,
   } = useTaskQueries();
 
+  // Routine queries
   const {
     routines,
-    resetNewDay,
+    isLoading: routinesLoading,
     createRoutine,
     deleteRoutine,
-    updateRoutineItemPosition,
+    reorderRoutine,
+    resetNewDay,
   } = useMorningRoutineQueries();
 
-  // Local display mode state for routine reorder toggle
-  const [displayMode, setDisplayMode] = useState<'normal' | 'reorder'>('normal');
+  // Monetary
+  const { data: earningsEnabled } = useEarningsEnabled();
+  const { data: monetarySettings } = useMonetarySettings();
+  const { data: spendRecords } = useSpendRecords();
+  const { data: spendPresets } = useSpendPresets();
 
-  const { appMode, setAppMode } = useAppMode();
-  const { earningsEnabled, toggleEarningsSystem } = useEarningsEnabled();
-  const { monetarySettings, saveMonetarySettings, addPayroll } = useMonetarySettings();
-  const { spends, createSpend, deleteSpend } = useSpendRecords();
-  const { presets, createPreset, updatePreset, deletePreset } = useSpendPresets();
-  const { payrollHistory, submitPayrollLog, editPayrollLog } = usePayrollHistory();
-  const { shouldShow: shouldShowPlanTip, isChecking: isCheckingPlanTip, markAsShown: markPlanTipAsShown } = usePlanModeTip(principalString);
+  // Local state
+  const [editTaskId, setEditTaskId] = useState<string | null>(null);
+  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
+  const [isCreateListOpen, setIsCreateListOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isTodayEarnsOpen, setIsTodayEarnsOpen] = useState(false);
+  const [isSpendPlanOpen, setIsSpendPlanOpen] = useState(false);
+  const [isInsightsOpen, setIsInsightsOpen] = useState(false);
+  const [isUserInfoOpen, setIsUserInfoOpen] = useState(false);
+  const [preSelectedListId, setPreSelectedListId] = useState<bigint | null | undefined>(undefined);
+  const [isTogglingEarnings, setIsTogglingEarnings] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [isSubmittingPayroll, setIsSubmittingPayroll] = useState(false);
+  const [isCreatingSpend, setIsCreatingSpend] = useState(false);
+  const [isDeletingSpend, setIsDeletingSpend] = useState(false);
 
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [userInfoOpen, setUserInfoOpen] = useState(false);
-  const [todayEarnsOpen, setTodayEarnsOpen] = useState(false);
-  const [spendPlanOpen, setSpendPlanOpen] = useState(false);
-  const [insightsOpen, setInsightsOpen] = useState(false);
-  const [addTaskOpen, setAddTaskOpen] = useState(false);
-  const [createListOpen, setCreateListOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<LocalTask | null>(null);
-  const [preSelectedListId, setPreSelectedListId] = useState<bigint | null>(null);
-  const [planTipOpen, setPlanTipOpen] = useState(false);
-
-  const [isMatrixExpanded, setIsMatrixExpanded] = useState(true);
+  // Routine UI state (lifted here since MorningRoutine needs them)
+  const [morningDisplayMode, setMorningDisplayMode] = useState(0);
+  const [eveningDisplayMode, setEveningDisplayMode] = useState(0);
   const [isMorningExpanded, setIsMorningExpanded] = useState(true);
   const [isEveningExpanded, setIsEveningExpanded] = useState(true);
-  const [bootstrapState, setBootstrapState] = useState<'idle' | 'running' | 'complete' | 'failed'>('idle');
-
-  const [planLayout, setPlanLayout] = useState<'lists' | 'homeLike'>('lists');
-
   const [checkedRoutineIds, setCheckedRoutineIds] = useState<Set<bigint>>(new Set());
 
-  // Shared edit mode state — only one task can be in edit mode at a time (uses localId string)
-  const [editTaskId, setEditTaskIdRaw] = useState<string | null>(null);
+  // Convert to local types
+  const tasks: LocalTask[] = (rawTasks ?? []).map(toLocalTask);
+  const lists: LocalList[] = (rawLists ?? []).map(toLocalList);
 
-  const setEditTaskId = useCallback((id: string | null) => {
-    setEditTaskIdRaw(id);
+  const quadrantsReady = lists.some((l) => l.quadrant);
+
+  const morningRoutines = (routines ?? []).filter((r) => r.section === RoutineSection.top);
+  const eveningRoutines = (routines ?? []).filter((r) => r.section === RoutineSection.bottom);
+
+  // Seeding routines for new users
+  const hasSeeded = React.useRef(false);
+  React.useEffect(() => {
+    if (
+      !hasSeeded.current &&
+      isAuthenticated &&
+      !routinesLoading &&
+      routines !== undefined &&
+      routines.length === 0 &&
+      actor
+    ) {
+      hasSeeded.current = true;
+      const seedRoutines = async () => {
+        try {
+          for (const seed of MORNING_SEEDS) {
+            await actor.createMorningRoutine(seed.text, seed.section);
+          }
+          for (const seed of EVENING_SEEDS) {
+            await actor.createMorningRoutine(seed.text, seed.section);
+          }
+          queryClient.invalidateQueries({ queryKey: ['morningRoutines'] });
+        } catch {
+          // Silently fail seeding
+        }
+      };
+      seedRoutines();
+    }
+  }, [isAuthenticated, routinesLoading, routines, actor, queryClient]);
+
+  // Handlers
+  const handleToggleComplete = useCallback(
+    async (localId: string) => {
+      const task = tasks.find((t) => t.localId === localId);
+      if (!task) return;
+      try {
+        await updateTask.mutateAsync({
+          id: task.id,
+          updatedTask: {
+            title: task.title,
+            description: task.description,
+            completed: !task.completed,
+            urgent: task.urgent,
+            important: task.important,
+            isLongTask: task.isLongTask,
+            listId: task.listId,
+            order: task.order,
+          },
+        });
+      } catch (err) {
+        toast.error(normalizeError(err));
+      }
+    },
+    [tasks, updateTask]
+  );
+
+  const handleEditTask = useCallback((localId: string) => {
+    setEditTaskId(localId);
   }, []);
 
-  const handleMainAreaClick = useCallback(() => {
-    if (editTaskId !== null) {
-      setEditTaskIdRaw(null);
-    }
-  }, [editTaskId]);
+  const handleUpdateTaskContainerAndPosition = useCallback(
+    async (taskId: bigint, newContainerId: bigint, positionIndex: bigint) => {
+      await updateTaskContainerAndPosition.mutateAsync({
+        taskId,
+        newContainerId,
+        positionIndex,
+      });
+    },
+    [updateTaskContainerAndPosition]
+  );
 
-  const showProfileSetup = isAuthenticated && !profileLoading && isFetched && userProfile === null;
+  const handleReorderTask = useCallback(
+    async (taskId: bigint, positionIndex: bigint) => {
+      await reorderTask.mutateAsync({ taskId, positionIndex });
+    },
+    [reorderTask]
+  );
 
-  // Derive quadrantsReady from lists data
-  const quadrantsReady = (lists || []).some(l => l.quadrant);
+  const handleAddTask = useCallback((listId?: bigint | null) => {
+    setPreSelectedListId(listId ?? undefined);
+    setIsAddTaskOpen(true);
+  }, []);
 
-  useEffect(() => {
-    if (!isAuthenticated || !userProfile || bootstrapState !== 'idle') return;
+  const handleAddList = useCallback(() => {
+    setIsCreateListOpen(true);
+  }, []);
 
-    const bootstrap = async () => {
-      setBootstrapState('running');
+  const handleDeleteTask = useCallback(
+    async (localId: string) => {
+      const task = tasks.find((t) => t.localId === localId);
+      if (!task) return;
       try {
-        await ensureQuadrants.mutateAsync();
-        setBootstrapState('complete');
-      } catch (error: any) {
-        console.error('Bootstrap error:', error);
-        setBootstrapState('failed');
-        toast.error('Failed to initialize workspace. Please refresh the page to try again.');
+        await deleteTask.mutateAsync(task.id);
+        setEditTaskId(null);
+      } catch (err) {
+        toast.error(normalizeError(err));
       }
-    };
+    },
+    [tasks, deleteTask]
+  );
 
-    if (!quadrantsReady) {
-      bootstrap();
-    } else {
-      setBootstrapState('complete');
-    }
-  }, [isAuthenticated, userProfile, quadrantsReady, bootstrapState]);
-
-  useEffect(() => {
-    if (appMode === 1) {
-      setPlanLayout('lists');
-    }
-  }, [appMode]);
-
-  useEffect(() => {
-    if (appMode === 1 && planLayout === 'lists' && shouldShowPlanTip && !isCheckingPlanTip && bootstrapState === 'complete') {
-      setPlanTipOpen(true);
-    }
-  }, [appMode, planLayout, shouldShowPlanTip, isCheckingPlanTip, bootstrapState]);
-
-  if (isInitializing) {
-    return <AuthBootstrapLoading />;
-  }
-
-  if (!isAuthenticated) {
-    const handleLogin = async () => {
+  const handleDeleteList = useCallback(
+    async (localId: string) => {
+      const list = lists.find((l) => l.localId === localId);
+      if (!list) return;
       try {
-        await login();
-        toast.success('Logged in successfully');
-      } catch (error: any) {
-        console.error('Login error:', error);
-        toast.error('Failed to log in. Please try again.');
+        await deleteList.mutateAsync(list.id);
+      } catch (err) {
+        toast.error(normalizeError(err));
       }
-    };
+    },
+    [lists, deleteList]
+  );
 
-    return <UnauthenticatedScreen onLogin={handleLogin} isLoggingIn={isLoggingIn} />;
-  }
+  const handleCreateRoutine = useCallback(
+    async (text: string, section: RoutineSection): Promise<void> => {
+      await createRoutine.mutateAsync({ text, section });
+    },
+    [createRoutine]
+  );
 
+  const handleDeleteRoutine = useCallback(
+    async (id: bigint): Promise<void> => {
+      await deleteRoutine.mutateAsync(id);
+    },
+    [deleteRoutine]
+  );
+
+  const handleReorderRoutine = useCallback(
+    async (routineId: bigint, positionIndex: bigint): Promise<void> => {
+      await reorderRoutine.mutateAsync({ routineId, positionIndex });
+    },
+    [reorderRoutine]
+  );
+
+  const handleToggleRoutineChecked = useCallback((id: bigint) => {
+    setCheckedRoutineIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  // Header's onResetNewDay expects () => void — it calls this then closes dialog
+  const handleResetNewDay = useCallback((): void => {
+    const completedIds = Array.from(checkedRoutineIds);
+    resetNewDay.mutateAsync(completedIds).then(() => {
+      setCheckedRoutineIds(new Set());
+      toast.success('New day started! All routines have been reset.');
+    }).catch((err) => {
+      toast.error(normalizeError(err));
+    });
+  }, [checkedRoutineIds, resetNewDay]);
+
+  const handleSaveProfile = useCallback(
+    async (profile: UserProfile): Promise<void> => {
+      setIsSavingProfile(true);
+      try {
+        await actor?.saveCallerUserProfile(profile);
+        queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
+        toast.success('Profile saved!');
+      } catch {
+        toast.error('Failed to save profile');
+      } finally {
+        setIsSavingProfile(false);
+      }
+    },
+    [actor, queryClient]
+  );
+
+  const handleCreateSpend = useCallback(
+    async (input: SpendInput): Promise<string> => {
+      if (!actor) throw new Error('Actor not available');
+      setIsCreatingSpend(true);
+      try {
+        const result = await actor.createSpend(input);
+        queryClient.invalidateQueries({ queryKey: ['spendRecords'] });
+        queryClient.invalidateQueries({ queryKey: ['monetarySettings'] });
+        return result;
+      } finally {
+        setIsCreatingSpend(false);
+      }
+    },
+    [actor, queryClient]
+  );
+
+  const handleDeleteSpend = useCallback(
+    async (spendId: bigint): Promise<void> => {
+      if (!actor) throw new Error('Actor not available');
+      setIsDeletingSpend(true);
+      try {
+        await actor.deleteSpend(spendId);
+        queryClient.invalidateQueries({ queryKey: ['spendRecords'] });
+        queryClient.invalidateQueries({ queryKey: ['monetarySettings'] });
+      } finally {
+        setIsDeletingSpend(false);
+      }
+    },
+    [actor, queryClient]
+  );
+
+  const handleCreatePreset = useCallback(
+    async (preset: SpendPreset): Promise<bigint> => {
+      if (!actor) throw new Error('Actor not available');
+      const result = await actor.createPreset(preset);
+      queryClient.invalidateQueries({ queryKey: ['spendPresets'] });
+      return result;
+    },
+    [actor, queryClient]
+  );
+
+  const handleUpdatePreset = useCallback(
+    async (id: bigint, preset: SpendPreset): Promise<void> => {
+      if (!actor) throw new Error('Actor not available');
+      await actor.updatePreset(id, preset);
+      queryClient.invalidateQueries({ queryKey: ['spendPresets'] });
+    },
+    [actor, queryClient]
+  );
+
+  const handleDeletePreset = useCallback(
+    async (id: bigint): Promise<void> => {
+      if (!actor) throw new Error('Actor not available');
+      await actor.deletePreset(id);
+      queryClient.invalidateQueries({ queryKey: ['spendPresets'] });
+    },
+    [actor, queryClient]
+  );
+
+  const handleSubmitPayroll = useCallback(
+    async (date: bigint): Promise<void> => {
+      setIsSubmittingPayroll(true);
+      try {
+        if (!actor) throw new Error('Actor not available');
+        await actor.submitPayrollLog(date);
+        queryClient.invalidateQueries({ queryKey: ['payrollHistory'] });
+        queryClient.invalidateQueries({ queryKey: ['monetarySettings'] });
+      } finally {
+        setIsSubmittingPayroll(false);
+      }
+    },
+    [actor, queryClient]
+  );
+
+  const handleToggleEarnings = useCallback(
+    async (enabled: boolean): Promise<void> => {
+      setIsTogglingEarnings(true);
+      try {
+        await actor?.toggleEarningsSystem(enabled);
+        queryClient.invalidateQueries({ queryKey: ['earningsEnabled'] });
+      } finally {
+        setIsTogglingEarnings(false);
+      }
+    },
+    [actor, queryClient]
+  );
+
+  const handleSaveMonetarySettings = useCallback(
+    async (settings: MonetarySettings): Promise<void> => {
+      setIsSavingSettings(true);
+      try {
+        if (!actor) throw new Error('Actor not available');
+        await actor.saveMonetarySettings(settings);
+        queryClient.invalidateQueries({ queryKey: ['monetarySettings'] });
+      } finally {
+        setIsSavingSettings(false);
+      }
+    },
+    [actor, queryClient]
+  );
+
+  // UniversalAddTaskDialog expects (title, description, listId, urgent, important, isLongTask)
+  const handleCreateTask = useCallback(
+    (
+      title: string,
+      description: string,
+      listId: bigint,
+      urgent: boolean,
+      important: boolean,
+      isLongTask: boolean
+    ): void => {
+      const input: TaskCreateInput = {
+        title,
+        description,
+        urgent,
+        important,
+        isLongTask,
+        listId,
+        order: BigInt(1000),
+      };
+      createTask.mutateAsync(input).then(() => {
+        setIsAddTaskOpen(false);
+      }).catch((err) => {
+        toast.error(normalizeError(err));
+      });
+    },
+    [createTask]
+  );
+
+  // Loading / auth states
+  if (isInitializing) return <AuthBootstrapLoading />;
+  if (!isAuthenticated)
+    return (
+      <UnauthenticatedScreen
+        onLogin={login}
+        isLoggingIn={loginStatus === 'logging-in'}
+      />
+    );
   if (showProfileSetup) {
     return <UserProfileSetup />;
   }
 
-  const isBootstrapping = bootstrapState === 'running';
-  if (profileLoading || dataLoading || isBootstrapping) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">
-            {isBootstrapping ? 'Initializing workspace...' : 'Loading your workspace...'}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const localTasks: LocalTask[] = (tasks || []).map(toLocalTask);
-  const localLists: LocalList[] = (lists || []).map(toLocalList);
-
-  const morningRoutines = routines?.filter(r => r.section === RoutineSection.top) || [];
-  const eveningRoutines = routines?.filter(r => r.section === RoutineSection.bottom) || [];
-
-  const quadrantLists = localLists.filter(l => l.quadrant);
-  const customLists = localLists.filter(l => !l.quadrant);
-
-  const isHomeMode = appMode === 0;
-  const isPlanMode = appMode === 1;
-
-  const handleDragStart = (e: React.DragEvent, task: LocalTask) => {
-    e.dataTransfer.effectAllowed = 'move';
-    writeDragPayload(e.dataTransfer, {
-      taskId: task.id.toString(),
-      sourceListId: task.listId.toString(),
-    });
-  };
-
-  const handleDrop = async (e: React.DragEvent, targetListId: bigint, targetIndex?: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const payload = readDragPayload(e.dataTransfer);
-    if (!payload) {
-      console.warn('No valid drag payload found');
-      return;
-    }
-
-    try {
-      const taskId = BigInt(payload.taskId);
-      const sourceListId = BigInt(payload.sourceListId);
-
-      if (sourceListId !== targetListId) {
-        await moveTask.mutateAsync({ taskId, destinationListId: targetListId });
-      }
-
-      if (targetIndex !== undefined) {
-        await updateTaskPosition.mutateAsync({ taskId, positionIndex: BigInt(targetIndex) });
-      }
-    } catch (error) {
-      console.error('Drop error:', error);
-    }
-  };
-
-  const handleTouchDrop = async (task: LocalTask, targetListId: bigint, targetIndex?: number) => {
-    try {
-      if (task.listId !== targetListId) {
-        await moveTask.mutateAsync({ taskId: task.id, destinationListId: targetListId });
-      }
-
-      if (targetIndex !== undefined) {
-        await updateTaskPosition.mutateAsync({ taskId: task.id, positionIndex: BigInt(targetIndex) });
-      }
-    } catch (error) {
-      console.error('Touch drop error:', error);
-    }
-  };
-
-  const handleReorder = async (taskId: bigint, listId: bigint, newIndex: number) => {
-    try {
-      await updateTaskPosition.mutateAsync({ taskId, positionIndex: BigInt(newIndex) });
-    } catch (error) {
-      console.error('Reorder error:', error);
-    }
-  };
-
-  const handleToggleComplete = async (taskId: bigint, updates: Partial<LocalTask>) => {
-    const newCompleted = updates.completed ?? false;
-    try {
-      completeTask.mutate({ id: taskId, completed: newCompleted });
-    } catch (error) {
-      console.error('Toggle complete error:', error);
-    }
-  };
-
-  const handleCreateTask = async (title: string, description: string, listId: bigint, urgent: boolean, important: boolean, isLongTask: boolean) => {
-    const input: TaskCreateInput = {
-      title,
-      description,
-      urgent,
-      important,
-      isLongTask,
-      listId,
-      order: BigInt(1000),
-    };
-
-    try {
-      await createTask.mutateAsync(input);
-      setAddTaskOpen(false);
-    } catch (error: any) {
-      console.error('Create task error:', error);
-      const errorMessage = parseTierError(error);
-      toast.error(errorMessage);
-    }
-  };
-
-  const handleCreateList = async (name: string) => {
-    try {
-      await createList.mutateAsync(name);
-      setCreateListOpen(false);
-    } catch (error: any) {
-      console.error('Create list error:', error);
-      const errorMessage = parseTierError(error);
-      toast.error(errorMessage);
-    }
-  };
-
-  const handleUpdateTask = async (taskId: bigint, updates: Partial<LocalTask>) => {
-    const task = localTasks.find(t => t.id === taskId);
-    if (!task) return;
-
-    const input: TaskUpdateInput = {
-      title: updates.title ?? task.title,
-      description: updates.description ?? task.description,
-      completed: updates.completed ?? task.completed,
-      urgent: updates.urgent ?? task.urgent,
-      important: updates.important ?? task.important,
-      isLongTask: updates.isLongTask ?? task.isLongTask,
-      listId: updates.listId ?? task.listId,
-      order: updates.order ?? task.order,
-    };
-
-    try {
-      await updateTask.mutateAsync({ id: taskId, task: input });
-    } catch (error) {
-      console.error('Update task error:', error);
-    }
-  };
-
-  const handleDeleteTask = async (taskId: bigint) => {
-    try {
-      await deleteTask.mutateAsync(taskId);
-      toast.success('Task deleted');
-    } catch (error) {
-      console.error('Delete task error:', error);
-      toast.error('Failed to delete task');
-    }
-  };
-
-  const handleToggleEarnings = async (enabled: boolean) => {
-    try {
-      await toggleEarningsSystem.mutateAsync(enabled);
-    } catch (error) {
-      console.error('Toggle earnings error:', error);
-      throw error;
-    }
-  };
-
-  const handleSubmitPayroll = async (dailyIncome: bigint) => {
-    try {
-      await addPayroll.mutateAsync(dailyIncome);
-    } catch (error) {
-      console.error('Submit payroll error:', error);
-      throw error;
-    }
-  };
-
-  const handleOpenAddTask = (listId?: bigint) => {
-    if (listId) {
-      setPreSelectedListId(listId);
-    } else {
-      setPreSelectedListId(null);
-    }
-    setAddTaskOpen(true);
-  };
-
-  const handleSwitchToPlanMode = () => {
-    setAppMode.mutate(1);
-  };
-
-  const handlePlanModeX = () => {
-    setPlanLayout('homeLike');
-  };
-
-  const handleCreateRoutine = async (text: string, section: RoutineSection) => {
-    try {
-      await createRoutine.mutateAsync({ text, section });
-    } catch (error: any) {
-      console.error('Create routine error:', error);
-      const errorMessage = parseTierError(error);
-      toast.error(errorMessage);
-    }
-  };
-
-  const handleDismissPlanTip = () => {
-    markPlanTipAsShown();
-    setPlanTipOpen(false);
-  };
-
-  const handleToggleRoutineChecked = (id: bigint) => {
-    setCheckedRoutineIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
-
-  const handleResetNewDay = async () => {
-    try {
-      const completedIds = Array.from(checkedRoutineIds);
-      await resetNewDay.mutateAsync(completedIds);
-      setCheckedRoutineIds(new Set());
-      toast.success('New day started! All routines have been reset.');
-    } catch (error: any) {
-      console.error('Reset new day error:', error);
-      toast.error('Failed to reset routines. Please try again.');
-    }
-  };
-
-  const handleSaveProfile = async (profile: typeof userProfile) => {
-    if (!profile) return;
-    try {
-      await saveProfile.mutateAsync(profile);
-      toast.success('Profile saved');
-    } catch (error) {
-      console.error('Save profile error:', error);
-      toast.error('Failed to save profile');
-    }
-  };
-
-  const displayModeNumber = displayMode === 'reorder' ? 1 : 0;
-
-  const handleToggleDisplayMode = (mode: number) => {
-    setDisplayMode(mode === 1 ? 'reorder' : 'normal');
-  };
+  const editingTask = editTaskId ? tasks.find((t) => t.localId === editTaskId) ?? null : null;
 
   return (
-    <div
-      className={`min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted pb-20${isPlanMode ? ' pt-safe' : ''}`}
-      onClick={handleMainAreaClick}
-    >
-      {(isHomeMode || (isPlanMode && planLayout === 'homeLike')) && (
-        <Header
-          onOpenAdminDashboard={onOpenAdminDashboard}
-          testDate={testDate}
-          onTestDateChange={setTestDate}
-          showTestDatePicker={isHomeMode}
-          onResetNewDay={handleResetNewDay}
-          isResettingDay={resetNewDay.isPending}
-        />
-      )}
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header uses its own internal reset logic; we pass a simple () => void callback */}
+      <Header
+        onOpenAdminDashboard={onOpenAdminDashboard}
+        onResetNewDay={handleResetNewDay}
+        isResettingDay={resetNewDay.isPending}
+      />
 
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {(isHomeMode || (isPlanMode && planLayout === 'homeLike')) && (
-          <MorningRoutine
-            section={RoutineSection.top}
-            routines={morningRoutines}
-            onCreateRoutine={handleCreateRoutine}
-            onDeleteRoutine={async (id) => {
-              await deleteRoutine.mutateAsync(id);
-            }}
-            onReorderRoutine={async (routineId, positionIndex) => {
-              await updateRoutineItemPosition.mutateAsync({ routineId, positionIndex });
-            }}
-            displayMode={displayModeNumber}
-            onToggleDisplayMode={handleToggleDisplayMode}
-            isExpanded={isMorningExpanded}
-            onToggleExpand={() => setIsMorningExpanded(!isMorningExpanded)}
-            testDate={testDate}
-            checkedRoutineIds={checkedRoutineIds}
-            onToggleChecked={handleToggleRoutineChecked}
-          />
-        )}
-
-        <EisenhowerMatrix
-          tasks={localTasks}
-          quadrantLists={quadrantLists}
-          onDragStart={handleDragStart}
-          onDrop={handleDrop}
-          onTouchDrop={handleTouchDrop}
-          onReorder={handleReorder}
-          onEditTask={setEditingTask}
-          onDeleteTask={(id) => deleteTask.mutate(id)}
-          onToggleComplete={handleToggleComplete}
-          isExpanded={isMatrixExpanded}
-          onToggleExpand={() => setIsMatrixExpanded(!isMatrixExpanded)}
-          isPlanMode={isPlanMode}
-          onSwitchToPlanMode={handleSwitchToPlanMode}
-          editTaskId={editTaskId}
-          setEditTaskId={setEditTaskId}
+      <main className="flex-1 px-3 pt-3 pb-32 space-y-4 max-w-2xl mx-auto w-full">
+        {/* Morning Routine */}
+        <MorningRoutine
+          section={RoutineSection.top}
+          routines={morningRoutines}
+          onCreateRoutine={handleCreateRoutine}
+          onDeleteRoutine={handleDeleteRoutine}
+          onReorderRoutine={handleReorderRoutine}
+          isLoading={routinesLoading}
+          displayMode={morningDisplayMode}
+          onToggleDisplayMode={setMorningDisplayMode}
+          isExpanded={isMorningExpanded}
+          onToggleExpand={() => setIsMorningExpanded((v) => !v)}
+          checkedRoutineIds={checkedRoutineIds}
+          onToggleChecked={handleToggleRoutineChecked}
         />
 
-        {(isHomeMode || (isPlanMode && planLayout === 'homeLike')) && (
-          <MorningRoutine
-            section={RoutineSection.bottom}
-            routines={eveningRoutines}
-            onCreateRoutine={handleCreateRoutine}
-            onDeleteRoutine={async (id) => {
-              await deleteRoutine.mutateAsync(id);
-            }}
-            onReorderRoutine={async (routineId, positionIndex) => {
-              await updateRoutineItemPosition.mutateAsync({ routineId, positionIndex });
-            }}
-            displayMode={displayModeNumber}
-            onToggleDisplayMode={handleToggleDisplayMode}
-            isExpanded={isEveningExpanded}
-            onToggleExpand={() => setIsEveningExpanded(!isEveningExpanded)}
-            testDate={testDate}
-            checkedRoutineIds={checkedRoutineIds}
-            onToggleChecked={handleToggleRoutineChecked}
-          />
-        )}
-
-        {isPlanMode && planLayout === 'lists' && (
-          <CustomLists
-            tasks={localTasks}
-            lists={customLists}
-            onDragStart={handleDragStart}
-            onDrop={handleDrop}
-            onTouchDrop={handleTouchDrop}
-            onReorder={handleReorder}
-            onEditTask={setEditingTask}
-            onDeleteTask={(id) => deleteTask.mutate(id)}
-            onDeleteList={(id) => deleteList.mutate(id)}
+        {/* Daily Priorities (Eisenhower Matrix) */}
+        <section>
+          <h2 className="text-sm font-semibold text-muted-foreground mb-2 px-1">
+            Daily Priorities
+          </h2>
+          <EisenhowerMatrix
+            tasks={tasks}
+            lists={lists}
             onToggleComplete={handleToggleComplete}
-            onCreateTask={() => handleOpenAddTask()}
-            onCreateList={() => setCreateListOpen(true)}
-            onQuickAddTask={(listId) => handleOpenAddTask(listId)}
-            isPlanMode={isPlanMode}
+            onEditTask={handleEditTask}
             editTaskId={editTaskId}
             setEditTaskId={setEditTaskId}
+            onUpdateTaskContainerAndPosition={handleUpdateTaskContainerAndPosition}
+            onReorderTask={handleReorderTask}
           />
+        </section>
+
+        {/* Evening Routine */}
+        <MorningRoutine
+          section={RoutineSection.bottom}
+          routines={eveningRoutines}
+          onCreateRoutine={handleCreateRoutine}
+          onDeleteRoutine={handleDeleteRoutine}
+          onReorderRoutine={handleReorderRoutine}
+          isLoading={routinesLoading}
+          displayMode={eveningDisplayMode}
+          onToggleDisplayMode={setEveningDisplayMode}
+          isExpanded={isEveningExpanded}
+          onToggleExpand={() => setIsEveningExpanded((v) => !v)}
+          checkedRoutineIds={checkedRoutineIds}
+          onToggleChecked={handleToggleRoutineChecked}
+        />
+
+        {/* Custom Lists */}
+        {lists.filter((l) => !l.quadrant).length > 0 && (
+          <section>
+            <h2 className="text-sm font-semibold text-muted-foreground mb-2 px-1">Other Lists</h2>
+            <CustomLists
+              tasks={tasks}
+              lists={lists}
+              onToggleComplete={handleToggleComplete}
+              onEditTask={handleEditTask}
+              editTaskId={editTaskId}
+              setEditTaskId={setEditTaskId}
+              onDeleteList={handleDeleteList}
+              onUpdateTaskContainerAndPosition={handleUpdateTaskContainerAndPosition}
+              onReorderTask={handleReorderTask}
+            />
+          </section>
         )}
       </main>
 
-      <BottomNavigation
-        isPlanMode={isPlanMode}
-        planLayout={planLayout}
-        onSwitchMode={(mode) => setAppMode.mutate(mode)}
-        onPlanModeX={handlePlanModeX}
-        onAddTask={() => handleOpenAddTask()}
-        onAddList={() => setCreateListOpen(true)}
-        onOpenSettings={() => setSettingsOpen(true)}
-        onOpenUserInfo={() => setUserInfoOpen(true)}
-        onOpenTodayEarns={() => setTodayEarnsOpen(true)}
-        onOpenSpendPlan={() => setSpendPlanOpen(true)}
-        onOpenInsights={() => setInsightsOpen(true)}
-        earningsEnabled={earningsEnabled}
-      />
-
       <Footer />
 
-      <SettingsDialog
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        onToggleEarnings={handleToggleEarnings}
-        isTogglingEarnings={toggleEarningsSystem.isPending}
-        earningsEnabled={earningsEnabled}
-        monetarySettings={monetarySettings}
-        onSaveSettings={async (settings) => {
-          await saveMonetarySettings.mutateAsync(settings);
-        }}
-        isSaving={saveMonetarySettings.isPending}
+      <BottomNavigation
+        isPlanMode={isPlanMode}
+        onSwitchMode={() => {}}
+        onAddTask={() => handleAddTask()}
+        onAddList={handleAddList}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenTodayEarns={() => setIsTodayEarnsOpen(true)}
+        onOpenSpendPlan={() => setIsSpendPlanOpen(true)}
+        onOpenInsights={() => setIsInsightsOpen(true)}
+        earningsEnabled={earningsEnabled ?? false}
+        onOpenUserInfo={() => setIsUserInfoOpen(true)}
       />
 
-      <UserInfoDialog
-        open={userInfoOpen}
-        onOpenChange={setUserInfoOpen}
-        userProfile={userProfile ?? null}
-        onSaveProfile={handleSaveProfile}
-        isSavingProfile={saveProfile.isPending}
-      />
-
-      <TodayEarnsDialog
-        open={todayEarnsOpen}
-        onOpenChange={setTodayEarnsOpen}
-        tasks={localTasks}
-        routines={routines || []}
-        monetarySettings={monetarySettings}
-        onSubmitPayroll={handleSubmitPayroll}
-        isSubmitting={addPayroll.isPending}
-      />
-
-      <SpendPlanDialog
-        open={spendPlanOpen}
-        onOpenChange={setSpendPlanOpen}
-        spends={spends || []}
-        presets={presets || []}
-        monetarySettings={monetarySettings}
-        onCreateSpend={async (input) => {
-          return await createSpend.mutateAsync(input);
-        }}
-        onDeleteSpend={async (id) => { await deleteSpend.mutateAsync(id); }}
-        onCreatePreset={async (preset) => {
-          return await createPreset.mutateAsync(preset);
-        }}
-        onUpdatePreset={async (id, preset) => { await updatePreset.mutateAsync({ id, preset }); }}
-        onDeletePreset={async (id) => { await deletePreset.mutateAsync(id); }}
-        isCreating={createSpend.isPending}
-        isDeleting={deleteSpend.isPending}
-      />
-
-      <InsightsDialog
-        open={insightsOpen}
-        onOpenChange={setInsightsOpen}
-        spends={spends || []}
-        monetarySettings={monetarySettings}
-      />
-
+      {/* Dialogs */}
       <UniversalAddTaskDialog
-        open={addTaskOpen}
-        onOpenChange={setAddTaskOpen}
-        lists={localLists}
+        open={isAddTaskOpen}
+        onOpenChange={setIsAddTaskOpen}
+        lists={lists}
         onCreateTask={handleCreateTask}
         isLoading={createTask.isPending}
-        preSelectedListId={preSelectedListId}
         quadrantsReady={quadrantsReady}
+        preSelectedListId={preSelectedListId}
       />
 
       <CreateListDialog
-        open={createListOpen}
-        onOpenChange={setCreateListOpen}
-        onCreateList={handleCreateList}
+        open={isCreateListOpen}
+        onOpenChange={setIsCreateListOpen}
+        onCreateList={async (name) => {
+          try {
+            await createList.mutateAsync(name);
+            setIsCreateListOpen(false);
+          } catch (err) {
+            toast.error(normalizeError(err));
+          }
+        }}
         isLoading={createList.isPending}
       />
 
       {editingTask && (
         <EditTaskDialog
-          open={!!editingTask}
-          onOpenChange={(open) => { if (!open) setEditingTask(null); }}
+          open={!!editTaskId}
+          onOpenChange={(open) => {
+            if (!open) setEditTaskId(null);
+          }}
           task={editingTask}
-          lists={localLists}
-          onUpdateTask={handleUpdateTask}
-          onDeleteTask={handleDeleteTask}
-          isLoading={updateTask.isPending || deleteTask.isPending}
+          lists={lists}
+          onUpdateTask={async (taskId, updates) => {
+            const task = tasks.find((t) => t.id === taskId);
+            if (!task) return;
+            try {
+              await updateTask.mutateAsync({
+                id: taskId,
+                updatedTask: {
+                  title: updates.title ?? task.title,
+                  description: updates.description ?? task.description,
+                  completed: updates.completed ?? task.completed,
+                  urgent: updates.urgent ?? task.urgent,
+                  important: updates.important ?? task.important,
+                  isLongTask: updates.isLongTask ?? task.isLongTask,
+                  listId: updates.listId ?? task.listId,
+                  order: updates.order ?? task.order,
+                },
+              });
+              setEditTaskId(null);
+            } catch (err) {
+              toast.error(normalizeError(err));
+            }
+          }}
+          onDeleteTask={async (taskId) => {
+            const task = tasks.find((t) => t.id === taskId);
+            if (!task) return;
+            await handleDeleteTask(task.localId);
+          }}
+          isLoading={updateTask.isPending}
         />
       )}
 
-      <PlanModeTipDialog
-        open={planTipOpen}
-        onOpenChange={setPlanTipOpen}
-        onDismiss={handleDismissPlanTip}
+      <SettingsDialog
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+        monetarySettings={monetarySettings}
+        earningsEnabled={earningsEnabled ?? false}
+        onToggleEarnings={handleToggleEarnings}
+        onSaveSettings={handleSaveMonetarySettings}
+        isSaving={isSavingSettings}
+        isTogglingEarnings={isTogglingEarnings}
       />
+
+      {earningsEnabled && (
+        <>
+          <TodayEarnsDialog
+            open={isTodayEarnsOpen}
+            onOpenChange={setIsTodayEarnsOpen}
+            tasks={tasks}
+            routines={routines ?? []}
+            monetarySettings={monetarySettings}
+            onSubmitPayroll={handleSubmitPayroll}
+            isSubmitting={isSubmittingPayroll}
+          />
+
+          <SpendPlanDialog
+            open={isSpendPlanOpen}
+            onOpenChange={setIsSpendPlanOpen}
+            spends={spendRecords ?? []}
+            presets={spendPresets ?? []}
+            monetarySettings={monetarySettings}
+            onCreateSpend={handleCreateSpend}
+            onDeleteSpend={handleDeleteSpend}
+            onCreatePreset={handleCreatePreset}
+            onUpdatePreset={handleUpdatePreset}
+            onDeletePreset={handleDeletePreset}
+            isCreating={isCreatingSpend}
+            isDeleting={isDeletingSpend}
+          />
+
+          <InsightsDialog
+            open={isInsightsOpen}
+            onOpenChange={setIsInsightsOpen}
+            spends={spendRecords ?? []}
+            monetarySettings={monetarySettings}
+          />
+        </>
+      )}
+
+      <UserInfoDialog
+        open={isUserInfoOpen}
+        onOpenChange={setIsUserInfoOpen}
+        userProfile={userProfile ?? null}
+        onSaveProfile={handleSaveProfile}
+        isSavingProfile={isSavingProfile}
+      />
+
+      {showPlanTip && isPlanMode && (
+        <PlanModeTipDialog
+          open={showPlanTip}
+          onOpenChange={(open) => {
+            if (!open) dismissPlanTip();
+          }}
+          onDismiss={dismissPlanTip}
+        />
+      )}
     </div>
   );
-}
+};
+
+export default TaskManager;

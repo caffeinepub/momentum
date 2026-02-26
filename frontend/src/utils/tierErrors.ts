@@ -1,27 +1,30 @@
-export function parseTierError(error: any): string {
-  const message = error?.message || String(error);
-  
-  // Task limit errors
-  if (message.includes('maximum number of tasks')) {
-    const match = message.match(/\((\d+)\)/);
-    const limit = match ? match[1] : 'your tier limit';
-    return `You have reached the maximum number of tasks (${limit}) for your tier. Please upgrade to add more tasks.`;
-  }
-  
-  // Routine limit errors
+/**
+ * Normalizes backend tier-limit error messages into user-friendly strings.
+ */
+export function normalizeError(err: unknown): string {
+  if (!err) return 'An unexpected error occurred.';
+
+  const message =
+    err instanceof Error
+      ? err.message
+      : typeof err === 'string'
+      ? err
+      : JSON.stringify(err);
+
+  // Tier limit errors
   if (message.includes('maximum number of routines')) {
-    const match = message.match(/\((\d+)\)/);
-    const limit = match ? match[1] : 'your tier limit';
-    return `You have reached the maximum number of routines (${limit}) for your tier. Please upgrade to add more routines.`;
+    return 'Routine limit reached for your tier. Upgrade to add more routines.';
   }
-  
-  // Custom list limit errors
   if (message.includes('maximum number of custom lists')) {
-    const match = message.match(/\((\d+)\)/);
-    const limit = match ? match[1] : 'your tier limit';
-    return `You have reached the maximum number of custom lists (${limit}) for your tier. Please upgrade to add more lists.`;
+    return 'Custom list limit reached for your tier. Upgrade to add more lists.';
   }
-  
-  // Generic fallback
-  return 'An error occurred. Please try again or contact support if the problem persists.';
+  if (message.includes('maximum number of tasks')) {
+    return 'Task limit reached for your tier. Upgrade to add more tasks.';
+  }
+
+  // Generic backend trap messages — strip Motoko prefix if present
+  const trapMatch = message.match(/Canister.*?trapped.*?:\s*(.+)/i);
+  if (trapMatch) return trapMatch[1];
+
+  return message || 'An unexpected error occurred.';
 }

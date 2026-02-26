@@ -1,33 +1,62 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T23:14:01.463Z",
+  "generatedAt": "2026-02-26T15:49:17.033Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 2,
-    "implemented": 1,
+    "total": 3,
+    "implemented": 3,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Fix the Skipped Day Reset backend logic so that when a user triggers a skipped day reset, all morning and evening routine checkbox states are set to unchecked (false) and the streak counter is reset to 0.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
+        "summary": "Add a visual drop indicator line to task drag-and-drop: a thin horizontal bar that appears between task cards at the target insert position while dragging, updates live as the dragged card moves within or between containers, and disappears on drop or cancel. This should match the same visual style as the routine drop indicator line already implemented in MorningRoutine.tsx.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/TaskCard.tsx",
+          "frontend/src/components/EisenhowerMatrix.tsx",
+          "frontend/src/components/CustomLists.tsx",
+          "frontend/src/index.css"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/TaskCard.tsx",
+          "frontend/src/components/EisenhowerMatrix.tsx",
+          "frontend/src/components/CustomLists.tsx",
+          "frontend/src/index.css"
+        ]
       },
       {
         "id": "REQ-2",
-        "summary": "Fix the Skipped Day Reset frontend handler in the Start New Day dialog so that after the reset mutation completes, the UI reflects all checkboxes as unchecked and the streak count displayed as 0 — by invalidating or updating the relevant React Query caches for routines and streak data.",
+        "summary": "Implement cross-container task drag-and-drop between Eisenhower Matrix quadrants and custom lists. A task dragged from one quadrant or list to another should snap optimistically to the exact insert position chosen, with no status changes. On drop, update the task's container identity (quadrantId or listId, whichever applies) and recalculate its order value using 1000-based sparse indexing based on its new neighbors. Fire a backend sync call after the optimistic update; if the backend call fails, roll back the task to its original container and position. Routines must be excluded from all drag scopes — no dragging into or out of routine sections.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/Header.tsx"
+          "frontend/src/components/EisenhowerMatrix.tsx",
+          "frontend/src/components/CustomLists.tsx",
+          "frontend/src/components/TaskCard.tsx",
+          "frontend/src/utils/dragPayload.ts",
+          "frontend/src/pages/TaskManager.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/Header.tsx"
+          "frontend/src/components/EisenhowerMatrix.tsx",
+          "frontend/src/components/CustomLists.tsx",
+          "frontend/src/components/TaskCard.tsx",
+          "frontend/src/utils/dragPayload.ts",
+          "frontend/src/pages/TaskManager.tsx"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Ensure all existing routine features listed below remain fully intact after implementing the task drag-and-drop changes. Specifically: Morning/Evening sections, compact 4-row containers with scroll, 1-tap check/uncheck, 1-tap delete, press-and-hold reorder, text-selection disabled on cards, routine-scoped drop indicator line, optimistic snap with 1000-based sparse indexing, streak badge (streak+1 preview on check), streak weight ranges, Start New Day reset with next-day and skipped-day logic, configurable reset time, routine weight contributions to earnings, onboarding seed routines, and desktop-only test date dropdown.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/MorningRoutine.tsx",
+          "frontend/src/components/Header.tsx",
+          "frontend/src/pages/TaskManager.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/TaskManager.tsx"
         ]
       }
     ]
@@ -38,9 +67,18 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/Header.tsx",
-    "frontend/src/components/admin/TierSettings.tsx",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/components/CustomLists.tsx",
+    "frontend/src/components/EisenhowerMatrix.tsx",
+    "frontend/src/components/TaskCard.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
     "frontend/src/hooks/useQueries.ts",
+    "frontend/src/index.css",
+    "frontend/src/pages/TaskManager.tsx",
+    "frontend/src/utils/dragPayload.ts",
+    "frontend/src/utils/tierErrors.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",
