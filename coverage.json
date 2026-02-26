@@ -1,27 +1,45 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-26T17:04:50.994Z",
+  "generatedAt": "2026-02-26T19:46:40.947Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 1,
-    "implemented": 1,
+    "total": 3,
+    "implemented": 3,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Add a visual drop indicator line to task drag-and-drop reordering in all task containers (Eisenhower Matrix quadrants and Custom Lists), matching the same drop indicator line behavior that already exists for routine item reordering in MorningRoutine.tsx.",
+        "summary": "Fix the drop handler in CustomLists so that when a task is dragged into a list that already contains tasks, the 1000-based order value is correctly calculated between the two neighbor tasks at the drop position (e.g., order = (prevNeighbor.order + nextNeighbor.order) / 2, or anchored at 1000 multiples from the nearest neighbor when dropping at the start or end).",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/TaskCard.tsx",
-          "frontend/src/components/EisenhowerMatrix.tsx",
           "frontend/src/components/CustomLists.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/TaskCard.tsx",
-          "frontend/src/components/EisenhowerMatrix.tsx",
+          "frontend/src/components/CustomLists.tsx"
+        ]
+      },
+      {
+        "id": "REQ-2",
+        "summary": "Fix the optimistic local state update in the drop handler so that when a task is dropped into a non-empty destination list, both the task's `listId` and new `order` are immediately applied to local React state — the task must disappear from the source list and appear at the correct position in the destination list without waiting for the backend response.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/CustomLists.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/CustomLists.tsx"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Ensure the backend `updateTask` call (or equivalent mutation) is invoked with the updated `listId` and `order` after a successful optimistic update into a non-empty list, and that a failure triggers a full rollback to the pre-drag snapshot.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/CustomLists.tsx"
+        ],
+        "matchedFiles": [
           "frontend/src/components/CustomLists.tsx"
         ]
       }
@@ -33,8 +51,6 @@
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/components/CustomLists.tsx",
-    "frontend/src/components/EisenhowerMatrix.tsx",
-    "frontend/src/components/TaskCard.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

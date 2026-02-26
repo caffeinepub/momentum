@@ -1,34 +1,56 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Add drop indicator line to task drag-and-drop reordering",
+  "title": "Fix drag-and-drop into non-empty lists",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Add visual drop indicator line to task drag-and-drop reordering matching MorningRoutine.tsx behavior",
+      "summary": "Fix the drop handler in CustomLists so that when a task is dragged into a list that already contains tasks, the 1000-based order value is correctly calculated between the two neighbor tasks at the drop position",
       "acceptanceCriteria": [
-        "When dragging a task over a valid drop target within a task list, a visible indicator line appears between task items showing the insertion position.",
-        "The indicator line updates dynamically as the user drags over different positions in the list.",
-        "The indicator line disappears when the drag ends (drop or cancel).",
-        "The drop indicator line visual style matches the existing drop indicator line used in MorningRoutine.tsx for routine items.",
-        "The indicator line works in all task container contexts: Eisenhower Matrix quadrants and Custom Lists.",
-        "Existing task drag-and-drop reorder functionality continues to work correctly after the change."
+        "Dragging a task into a non-empty list moves it to the correct visual position immediately (optimistic UI).",
+        "The calculated order value places the task between its new neighbors using the 1000-based method without requiring recalculation of other tasks.",
+        "Dropping at the top of a non-empty list assigns an order less than the first task's order.",
+        "Dropping at the bottom of a non-empty list assigns an order greater than the last task's order.",
+        "Dropping between two tasks assigns an order between their two order values."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/TaskCard.tsx",
+          "path": "frontend/src/components/CustomLists.tsx",
           "operation": "modify",
-          "description": "Add drop indicator line state and rendering logic to TaskCard component. Mirror the pattern from MorningRoutine.tsx routine items: add local state to track when the card is a drag-over target, add onDragEnter/onDragLeave/onDrop handlers to manage indicator visibility, and render a visual indicator line (similar styling to routine drop indicator) above or below the card based on drag position. Ensure the indicator clears on drag end and does not interfere with existing drag-and-drop reorder functionality."
-        },
-        {
-          "path": "frontend/src/components/EisenhowerMatrix.tsx",
-          "operation": "modify",
-          "description": "Update EisenhowerMatrix quadrant rendering to support drop indicator line display. Ensure that each quadrant's task list container properly propagates drag events to TaskCard components and that the indicator line is visible within the quadrant boundaries. Verify that existing drag-and-drop reorder logic continues to work correctly with the new indicator."
-        },
+          "description": "Fix the drop handler's order calculation logic for non-empty destination lists. When dropping at index 0 (top), calculate order as (firstTask.order - 1000). When dropping at the end, calculate order as (lastTask.order + 1000). When dropping between tasks at index i, calculate order as ((tasks[i-1].order + tasks[i].order) / 2). Ensure BigInt arithmetic is used consistently. Remove any conditional branches that skip order calculation for non-empty lists. Verify the existing drag payload reading from dataTransfer works correctly for non-empty list drops."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Fix the optimistic local state update in the drop handler so that when a task is dropped into a non-empty destination list, both the task's listId and new order are immediately applied to local React state",
+      "acceptanceCriteria": [
+        "On drop, the task instantly moves to the destination list in the UI with the correct order, even before the backend responds.",
+        "The source list no longer shows the task immediately after drop.",
+        "If the backend call fails, the task reverts to its original list and position (pre-drag snapshot rollback).",
+        "Empty-list drag-and-drop continues to work as before."
+      ],
+      "file_operations": [
         {
           "path": "frontend/src/components/CustomLists.tsx",
           "operation": "modify",
-          "description": "Update CustomLists task rendering to support drop indicator line display. Ensure that each custom list's task container properly propagates drag events to TaskCard components and that the indicator line is visible within the list boundaries. Verify that existing drag-and-drop reorder logic continues to work correctly with the new indicator."
+          "description": "Fix the optimistic state update in the drop handler to immediately apply both the new listId and computed order to the dragged task in the local tasks state. Ensure the queryClient.setQueryData call for ['tasks'] updates the task object with { ...task, listId: destinationListId, order: calculatedOrder } before the backend mutation is called. Verify that the source list immediately reflects the task removal and the destination list immediately shows the task at the correct position. Ensure the pre-drag snapshot (stored at dragStart) is used for rollback on backend failure. Test that empty-list drops still function correctly after this change."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Ensure the backend updateTask call is invoked with the updated listId and order after a successful optimistic update into a non-empty list, and that a failure triggers a full rollback to the pre-drag snapshot",
+      "acceptanceCriteria": [
+        "Backend is called with the new listId and computed order after every successful drop into a non-empty list.",
+        "On backend error, all affected local state is restored to the snapshot taken at drag start.",
+        "A toast or error indicator is shown if the backend sync fails."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/CustomLists.tsx",
+          "operation": "modify",
+          "description": "Ensure the updateTask mutation (from useUpdateTask hook) is called with the full TaskUpdateInput including the new listId and computed order immediately after the optimistic state update. Wrap the mutation call in a try-catch block. On error, restore the queryClient tasks state to the pre-drag snapshot and display a toast notification (using the toast utility) with a user-friendly error message such as 'Failed to move task. Changes reverted.' Verify that the rollback logic restores all affected tasks to their original state. Ensure the mutation is called for both empty and non-empty list drops."
         }
       ]
     }

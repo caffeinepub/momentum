@@ -1,20 +1,37 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Project with drag-and-drop task/routine reordering functionality. Task drop indicator line is missing and needs to be added to match routine behavior.",
+  "summary": "Momentum — a productivity app with routines, daily priorities (Eisenhower Matrix), custom lists, drag-and-drop task management, productivity-money system, PWA support, and admin dashboard. Currently fixing drag-and-drop into non-empty lists.",
   "architectural_notes": [
-    "Routines have drop indicator line on drag-and-drop; tasks need the same behavior added"
+    "Drag-and-drop uses 1000-based order method: on drop, calculate new order between neighbors without recalculating other tasks; update listId + order optimistically in local state; sync to backend; rollback to pre-drag snapshot on failure",
+    "Step 1 (snapshot on drag start) is already implemented; Step 2 (drop handler: order calc, listId update, optimistic UI, backend sync, rollback) is the active build target"
   ],
   "known_issues": [
-    "Task drag-and-drop reorder missing drop indicator line (routines have it, tasks do not)"
+    "Drag-and-drop into non-empty lists does not move task — order calculation between existing neighbor tasks not triggering, optimistic state update not firing"
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-add-a-visual-drop-indicator-line-to-task-drag-and-drop-reordering-in-all-task-containers-eisenhower-matrix-quadrants-and-custom-lists-matching-the-same-drop-indicator-line-behavior-that-already-exists-for-routine-item-reordering-in-morningroutine-tsx",
-      "title": "Add a visual drop indicator line to task drag-and-drop reordering in all task containers (Eisenhower Matrix quadrants and Custom Lists), matching the same drop indicator line behavior that already exists for routine item reordering in MorningRoutine.tsx.",
+      "id": "feature-fix-the-drop-handler-in-customlists-so-that-when-a-task-is-dragged-into-a-list-that-already-contains-tasks-the-1000-based-order-value-is-correctly-calculated-between-the-two-neighbor-tasks-at-the-drop-position-e-g-order-prevneighbor-order-nextneighbor-order-2-or-anchored-at-1000-multiples-from-the-nearest-neighbor-when-dropping-at-the-start-or-end",
+      "title": "Fix the drop handler in CustomLists so that when a task is dragged into a list that already contains tasks, the 1000-based order value is correctly calculated between the two neighbor tasks at the drop position (e.g., order = (prevNeighbor.order + nextNeighbor.order) / 2, or anchored at 1000 multiples from the nearest neighbor when dropping at the start or end).",
       "reqIds": [
         "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-optimistic-local-state-update-in-the-drop-handler-so-that-when-a-task-is-dropped-into-a-non-empty-destination-list-both-the-task-s-listid-and-new-order-are-immediately-applied-to-local-react-state-the-task-must-disappear-from-the-source-list-and-appear-at-the-correct-position-in-the-destination-list-without-waiting-for-the-backend-response",
+      "title": "Fix the optimistic local state update in the drop handler so that when a task is dropped into a non-empty destination list, both the task's `listId` and new `order` are immediately applied to local React state — the task must disappear from the source list and appear at the correct position in the destination list without waiting for the backend response.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-backend-updatetask-call-or-equivalent-mutation-is-invoked-with-the-updated-listid-and-order-after-a-successful-optimistic-update-into-a-non-empty-list-and-that-a-failure-triggers-a-full-rollback-to-the-pre-drag-snapshot",
+      "title": "Ensure the backend `updateTask` call (or equivalent mutation) is invoked with the updated `listId` and `order` after a successful optimistic update into a non-empty list, and that a failure triggers a full rollback to the pre-drag snapshot.",
+      "reqIds": [
+        "REQ-3"
       ],
       "version": 1
     }
@@ -22,7 +39,7 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Add drop indicator line to task drag-and-drop reordering to match existing routine behavior",
+      "summary": "Fix drag-and-drop into non-empty lists: 1000-based order calculation between neighbors not applying correctly, listId + order not updating in optimistic local state when destination list has existing tasks",
       "reqIds": [],
       "status": "pending"
     }

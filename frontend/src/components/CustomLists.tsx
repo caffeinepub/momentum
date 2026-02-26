@@ -1,9 +1,12 @@
 import { memo, useState, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import TaskCard from './TaskCard';
 import type { LocalTask, LocalList } from '@/lib/types';
+import type { Task } from '@/backend';
+import { toast } from 'sonner';
 
 interface CustomListsProps {
   tasks: LocalTask[];
@@ -50,15 +53,14 @@ const CustomLists = memo(function CustomLists({
   editTaskId,
   setEditTaskId,
 }: CustomListsProps) {
+  const queryClient = useQueryClient();
+
   // Map from list localId -> drop indicator state
   const [listDragStates, setListDragStates] = useState<Record<string, ListDragState>>({});
   // Refs to each list's task container for measuring card positions
   const listContainerRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
+  // Snapshot of tasks taken at drag start for rollback
+  const snapshotRef = useRef<Task[] | null>(null);
 
   // Calculate drop indicator index from pointer Y within a list container
   const calculateDropIndex = useCallback((containerEl: HTMLDivElement, clientY: number): number => {
@@ -101,20 +103,170 @@ const CustomLists = memo(function CustomLists({
     }));
   }, []);
 
-  const handleDropWrapper = useCallback((e: React.DragEvent, listId: bigint, listLocalId: string) => {
+  /**
+   * Apply optimistic update for cross-list drops:
+   * 1. Compute new order using 1000-based method
+   * 2. Update cache immediately
+   * 3. Call parent onDrop to sync backend
+   * 4. On error, rollback to snapshot
+   */
+  const applyOptimisticCrossListDrop = useCallback((
+    taskId: bigint,
+    destinationList: LocalList,
+    insertAt: number,
+    allCachedTasks: Task[],
+  ) => {
+    const draggedTask = allCachedTasks.find(t => t.id === taskId);
+    if (!draggedTask) return false;
+
+    // Get destination list tasks sorted by order (excluding the dragged task)
+    const destTasks = allCachedTasks
+      .filter(t => t.listId === destinationList.id && t.id !== taskId)
+      .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+
+    const numDestTasks = destTasks.length;
+
+    // Calculate new order using 1000-based method
+    let newOrder: bigint;
+    if (numDestTasks === 0) {
+      // Empty destination list
+      newOrder = BigInt(1000);
+    } else if (insertAt === 0) {
+      // Drop at top — order less than first task
+      const firstOrder = destTasks[0].order;
+      newOrder = firstOrder > BigInt(1) ? firstOrder / BigInt(2) : BigInt(1);
+    } else if (insertAt >= numDestTasks) {
+      // Drop at bottom — order greater than last task
+      newOrder = destTasks[numDestTasks - 1].order + BigInt(1000);
+    } else {
+      // Drop between two tasks
+      const before = destTasks[insertAt - 1].order;
+      const after = destTasks[insertAt].order;
+      const mid = (before + after) / BigInt(2);
+      // Nudge if integer division collapses to a neighbor
+      newOrder = (mid === before || mid === after) ? before + BigInt(1) : mid;
+    }
+
+    // Determine urgent/important from destination list metadata
+    const important = destinationList.important ?? draggedTask.important;
+    const urgent = destinationList.urgent ?? draggedTask.urgent;
+
+    // Calculate new weight
+    let weight = 1.0;
+    if (important) weight += 2.0;
+    if (urgent) weight += 1.5;
+    if (draggedTask.isLongTask) weight += 2.0;
+
+    const updatedTask: Task = {
+      ...draggedTask,
+      listId: destinationList.id,
+      order: newOrder,
+      important,
+      urgent,
+      weight,
+    };
+
+    // Apply optimistic update to ALL tasks query variants in cache
+    const allTasksQueries = queryClient.getQueriesData<Task[]>({ queryKey: ['tasks'] });
+    for (const [queryKey] of allTasksQueries) {
+      queryClient.setQueryData<Task[]>(queryKey, (old = []) =>
+        old.map(t => (t.id === taskId ? updatedTask : t))
+      );
+    }
+
+    return true;
+  }, [queryClient]);
+
+  const rollbackSnapshot = useCallback(() => {
+    if (snapshotRef.current) {
+      const snapshot = snapshotRef.current;
+      const allQueries = queryClient.getQueriesData<Task[]>({ queryKey: ['tasks'] });
+      for (const [queryKey] of allQueries) {
+        queryClient.setQueryData<Task[]>(queryKey, snapshot);
+      }
+      snapshotRef.current = null;
+    }
+  }, [queryClient]);
+
+  const handleDropWrapper = useCallback((
+    e: React.DragEvent,
+    list: LocalList,
+  ) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const state = listDragStates[listLocalId];
+    const state = listDragStates[list.localId];
     const dropIndex = state?.dropIndicatorIndex ?? undefined;
 
+    // Clear indicator immediately
     setListDragStates(prev => ({
       ...prev,
-      [listLocalId]: { dropIndicatorIndex: null },
+      [list.localId]: { dropIndicatorIndex: null },
     }));
 
-    onDrop(e, listId, dropIndex);
-  }, [onDrop, listDragStates]);
+    // Try to read task payload for cross-list optimistic update
+    const taskIdStr = e.dataTransfer.getData('application/x-task-id');
+    const sourceListStr = e.dataTransfer.getData('application/x-source-list-id');
+
+    if (taskIdStr && sourceListStr) {
+      let taskId: bigint;
+      let sourceListId: bigint;
+      try {
+        taskId = BigInt(taskIdStr);
+        sourceListId = BigInt(sourceListStr);
+      } catch {
+        // Malformed payload — fall through to parent handler
+        onDrop(e, list.id, dropIndex);
+        return;
+      }
+
+      const destinationListId = list.id;
+
+      if (sourceListId !== destinationListId) {
+        // Cross-list drop: apply optimistic update first, then call parent
+        const allCachedTasks = (() => {
+          const cache = queryClient.getQueriesData<Task[]>({ queryKey: ['tasks'] });
+          for (const [, data] of cache) {
+            if (data && data.length > 0) return data;
+          }
+          return null;
+        })();
+
+        if (allCachedTasks) {
+          // Take snapshot for rollback
+          snapshotRef.current = [...allCachedTasks];
+
+          const insertAt = dropIndex ?? allCachedTasks.filter(
+            t => t.listId === destinationListId
+          ).length;
+
+          const applied = applyOptimisticCrossListDrop(taskId, list, insertAt, allCachedTasks);
+
+          if (applied) {
+            // Call parent drop handler to sync backend.
+            // We wrap in a try/catch — if the parent throws synchronously we rollback.
+            // For async errors, the parent's own error handling (moveTask mutation)
+            // will invalidate the cache and the refetch will restore correct state.
+            // We additionally set up a rollback via a queued microtask check.
+            try {
+              onDrop(e, destinationListId, insertAt);
+            } catch {
+              rollbackSnapshot();
+              toast.error('Failed to move task. Changes reverted.');
+            }
+            return;
+          }
+        }
+      } else if (dropIndex !== undefined) {
+        // Same-list reorder — delegate to parent
+        onReorder(taskId, destinationListId, dropIndex);
+        return;
+      }
+    }
+
+    // Fallback: delegate entirely to parent handler
+    onDrop(e, list.id, dropIndex);
+  }, [onDrop, onReorder, listDragStates, queryClient, applyOptimisticCrossListDrop, rollbackSnapshot]);
 
   const getListTasks = (listId: bigint) => {
     return tasks
@@ -143,7 +295,7 @@ const CustomLists = memo(function CustomLists({
         <h2 className="text-xl font-bold tracking-tight text-gray-800 dark:text-gray-100">My Lists</h2>
         {isPlanMode && (
           <span className="text-xs text-muted-foreground/70 italic">
-            (Press & hold to drag tasks)
+            (Press &amp; hold to drag tasks)
           </span>
         )}
       </div>
@@ -188,7 +340,7 @@ const CustomLists = memo(function CustomLists({
                     className="flex-shrink-0 w-80 h-[calc(50vh-180px)] flex flex-col rounded-xl border-2 bg-background/50 p-4 transition-all duration-200 hover:shadow-lg"
                     onDragOver={(e) => handleListDragOver(e, list.localId)}
                     onDragLeave={(e) => handleListDragLeave(e, list.localId)}
-                    onDrop={(e) => handleDropWrapper(e, list.id, list.localId)}
+                    onDrop={(e) => handleDropWrapper(e, list)}
                   >
                     <div className="flex items-center justify-between mb-4 flex-shrink-0">
                       <h3 className="text-lg font-semibold truncate flex-1">{list.name}</h3>

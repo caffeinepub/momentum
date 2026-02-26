@@ -1,16 +1,14 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-26T17:04:50.990Z",
-  "summary": "The diff implements REQ-1 by adding a visual drop indicator line to task drag-and-drop reordering in both EisenhowerMatrix.tsx and CustomLists.tsx, matching the MorningRoutine.tsx pattern. TaskCard.tsx receives a data-task-card attribute for position measurement. All acceptance criteria appear to be addressed: dynamic indicator updates on drag-over, clearing on drag-end/leave, consistent visual style, and coverage of both container types.",
+  "generatedAt": "2026-02-26T19:46:40.944Z",
+  "summary": "The diff modifies CustomLists.tsx to implement a cross-list drop handler with 1000-based order calculation, optimistic cache updates, backend sync via parent onDrop, rollback on error, and toast notification on failure. All three requirements appear to be addressed based on the file summary description and the visible partial code.",
   "missing_requirements": [],
   "hallucinated_features": [],
-  "confidence": 0.92,
+  "confidence": 0.72,
   "changed_files": [
     "frontend-file-summaries.txt",
     "frontend/src/components/CustomLists.tsx",
-    "frontend/src/components/EisenhowerMatrix.tsx",
-    "frontend/src/components/TaskCard.tsx",
     "project_state.json"
   ]
 }
